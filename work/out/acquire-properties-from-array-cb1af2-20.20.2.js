@@ -244,7 +244,7 @@ r2 = assert;
 r1 = r2.sameValue;
 r3 = subject;
 r3 = r3[2];
-r4 = "<ro0_12840>";
+r4 = "2";
 r5 = "[1, 2, 3]: third property";
 r1.call(r2-r5);
 r2 = assert;

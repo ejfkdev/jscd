@@ -137,7 +137,7 @@ function _anon_21(a0) {
   r3 = r4.getPrototypeOf(a0);
   r4 = null;
   r2.sameValue(r3, r4);
-  r2 = _ro0_66376_;
+  r2 = Reflect;
   r1 = r2.ownKeys;
   r0 = r2.ownKeys(a0);
   r2 = assert;
@@ -159,7 +159,7 @@ function _anon_21(a0) {
   r1 = r2.sameValue;
   r4 = Object;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54152>"];
+  r4 = r4.hasOwnProperty;
   r3 = r4.call;
   r6 = "name";
   r3 = r4.call(a0, r6);
@@ -169,7 +169,7 @@ function _anon_21(a0) {
   r1 = r2.sameValue;
   r4 = Object;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54152>"];
+  r4 = r4.hasOwnProperty;
   r3 = r4.call;
   r6 = "length";
   r3 = r4.call(a0, r6);
@@ -179,7 +179,7 @@ function _anon_21(a0) {
   r1 = r2.sameValue;
   r4 = Object;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54152>"];
+  r4 = r4.hasOwnProperty;
   r3 = r4.call;
   r6 = "prototype";
   r3 = r4.call(a0, r6);

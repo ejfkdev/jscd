@@ -103,14 +103,14 @@ function _anon_0(a0) {
 let t0;
   r1 = verifyNotConfigurable;
   r2 = Number;
-  r3 = "<ro0_55656>";
+  r3 = "MIN_VALUE";
   t0 = r1(r2, r3);
   r1 = __context;
   try {
     r3 = assert;
     r2 = r3.sameValue;
     r4 = Number;
-    delete r4["<ro0_55656>"];
+    delete r4["MIN_VALUE"];
     r4 = undefined;
     r5 = false;
     r0 = r3.sameValue(r4, r5);

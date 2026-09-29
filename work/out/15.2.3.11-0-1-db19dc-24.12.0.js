@@ -103,7 +103,7 @@ r1 = ["f"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = Object;
-f = r1["<ro0_53960>"];
+f = r1.isSealed;
 r2 = assert;
 r1 = r2.sameValue;
 r3 = typeof f;

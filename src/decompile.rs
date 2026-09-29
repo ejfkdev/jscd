@@ -618,8 +618,8 @@ pub struct Decompiler<'a> {
     dis: Disassembler<'a>,
     ts: usize,
     scope_cache: std::cell::RefCell<HashMap<ObjId, Scope>>,
-    /// 只读堆名表（可选）
-    ro_map: Option<RoMap>,
+    /// 只读堆名表（可选）；与 `dis.ro_map` 共享同一份（13.x 的 SFI 名字也要用它）
+    ro_map: Option<std::rc::Rc<RoMap>>,
     /// 字节码 → (读 acc, 写 acc)：来自版本表（codegen 从 bytecodes.h 提取）
     acc_use: HashMap<String, (bool, bool)>,
     /// object_constant 递归深度（对象图可能成环 → 护栏）
@@ -734,9 +734,12 @@ impl<'a> Decompiler<'a> {
         }
     }
 
-    /// 注入只读堆名表（提升属性名可读性）。
+    /// 注入只读堆名表（提升属性名可读性）。反汇编器共用同一份：
+    /// 13.x 起函数名/属性名常以 `ro{chunk}/{offset}` 形式出现，`sfi_name` 也要查表。
     pub fn with_ro_map(mut self, m: Option<RoMap>) -> Self {
-        self.ro_map = m;
+        let rc = m.map(std::rc::Rc::new);
+        self.ro_map = rc.clone();
+        self.dis = self.dis.with_ro_map(rc);
         self
     }
 
@@ -1046,7 +1049,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         if let Some(s) = self.scope_cache.borrow().get(&scope_id) {
             return Some(s.clone());
         }
-        let s = read_scope(self.cache, self.table, self.ts, scope_id, self.ro_map.as_ref())?;
+        let s = read_scope(self.cache, self.table, self.ts, scope_id, self.ro_map.as_deref())?;
         self.scope_cache.borrow_mut().insert(scope_id, s.clone());
         Some(s)
     }
@@ -1499,7 +1502,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         match self.d.cache.array_elem(pool, idx) {
             Some(Elem::Smi(v)) => Expr::Num(v as f64),
             Some(Elem::Ref(Ref::Object(o))) => self.object_constant(o),
-            Some(Elem::Ref(Ref::RoRef(c, o))) => match self.d.ro_map.as_ref().and_then(|m| m.get(c, o)) {
+            Some(Elem::Ref(Ref::RoRef(c, o))) => match self.d.ro_map.as_deref().and_then(|m| m.get(c, o)) {
                 // 一律按字符串字面量给出：RO 串的内容未必是合法标识符
                 // （"|" / ":" / "-" 之类曾输出成裸标识符 → 语法错误），
                 // 用 `Expr::Str` 在任何表达式位置都合法且保真。
@@ -1604,7 +1607,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     Some(Elem::Ref(Ref::Object(x))) => self.object_constant(x),
                     Some(Elem::Ref(Ref::Root(r))) => self.root_value(r),
                     Some(Elem::Ref(Ref::RoRef(c, off))) => {
-                        match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                        match self.d.ro_map.as_deref().and_then(|m| m.get(c, off)) {
                             Some(name) => Expr::Str(name.to_string()),
                             None => Expr::Str(format!("<ro{c}_{off}>")),
                         }
@@ -1876,7 +1879,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 Some(Elem::Ref(Ref::Object(v))) => self.object_constant(v),
                 Some(Elem::Ref(Ref::Root(i))) => self.root_value(i),
                 Some(Elem::Ref(Ref::RoRef(c, off))) => {
-                    match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                    match self.d.ro_map.as_deref().and_then(|m| m.get(c, off)) {
                         Some(n) => Expr::Str(n.to_string()),
                         None => Expr::Str(format!("<ro{c}_{off}>")),
                     }
@@ -1920,7 +1923,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 Some(Elem::Ref(Ref::Root(r))) => items.push(self.root_value(r)),
                 // 只读堆里的字符串（如 "a"）只能靠 ro-map 还原
                 Some(Elem::Ref(Ref::RoRef(c, off))) => {
-                    items.push(match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                    items.push(match self.d.ro_map.as_deref().and_then(|m| m.get(c, off)) {
                         Some(n) => Expr::Str(n.to_string()),
                         None => Expr::Str(format!("<ro{c}_{off}>")),
                     });
@@ -2336,7 +2339,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             Some(Elem::Ref(Ref::Object(x))) => self.object_constant(x),
             Some(Elem::Ref(Ref::Root(r))) => self.root_value(r),
             Some(Elem::Ref(Ref::RoRef(c, off))) => {
-                match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                match self.d.ro_map.as_deref().and_then(|m| m.get(c, off)) {
                     Some(n) => Expr::Str(n.to_string()),
                     None => Expr::Str(format!("<ro{c}_{off}>")),
                 }

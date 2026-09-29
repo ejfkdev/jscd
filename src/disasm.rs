@@ -38,6 +38,10 @@ pub struct Disassembler<'a> {
     layout: FamilyLayout,
     /// 源码占位字符串长度（attached ref 0 展示用，来自头部 source_hash）
     source_len: u32,
+    /// 只读堆名表：13.x 起函数名/属性名常以 `ro{chunk}/{offset}` 引用出现，
+    /// 没有它只能回落成空字符串（node24 的 `count` 因此成了匿名函数，
+    /// 调用点 `count(...)` 找的是全局名 → 生成器 fixture 全空）
+    ro_map: Option<std::rc::Rc<crate::decompile::RoMap>>,
 }
 
 impl<'a> Disassembler<'a> {
@@ -105,7 +109,14 @@ impl<'a> Disassembler<'a> {
             table,
             layout,
             source_len: 0,
+            ro_map: None,
         }
+    }
+
+    /// 附上只读堆名表（`--ro-map`）。
+    pub fn with_ro_map(mut self, m: Option<std::rc::Rc<crate::decompile::RoMap>>) -> Self {
+        self.ro_map = m;
+        self
     }
 
     /// 渲染全部函数（按对象序 = 序列化序）。
@@ -130,6 +141,21 @@ impl<'a> Disassembler<'a> {
     /// name_or_scope_info 为 String 直接用；为 ScopeInfo 时读 FunctionName
     /// （function_variable_info.name），空则回落 inferred_function_name。
     pub fn sfi_name(&self, id: ObjId) -> String {
+        if std::env::var("JSCD_DBG_SFI").is_ok() {
+            let n = self.cache.array_len(id).max(16);
+            let mut out = Vec::new();
+            for i in 0..n.min(16) {
+                out.push(match self.cache.slot_at(id, i) {
+                    Some(SlotValue::Ref(r)) => format!("{i}:{}", self.describe_ref(r)),
+                    Some(other) => format!("{i}:{other:?}"),
+                    None => format!("{i}:-"),
+                });
+            }
+            eprintln!(
+                "[sfi] id={id} name_slot={} slots={out:?}",
+                self.sfi_name_slot()
+            );
+        }
         let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, self.sfi_name_slot()) else {
             return String::new();
         };
@@ -161,6 +187,12 @@ impl<'a> Disassembler<'a> {
                 let n = self.table.root_name(i).unwrap_or_default().to_string();
                 n.strip_prefix("String:").map(str::to_string).unwrap_or_default()
             }
+            Ref::RoRef(c, off) => self
+                .ro_map
+                .as_deref()
+                .and_then(|m| m.get(c, off))
+                .map(str::to_string)
+                .unwrap_or_default(),
             _ => String::new(),
         }
     }
@@ -261,6 +293,14 @@ impl<'a> Disassembler<'a> {
     }
 
     fn scope_function_name(&self, id: ObjId) -> String {
+        if std::env::var("JSCD_DBG_SFI").is_ok() {
+            let (a, b) = self.scope_name_slots(id);
+            eprintln!(
+                "[sfi] scope={id} name_slot={a:?} inferred_slot={b:?} v0={:?} v1={:?}",
+                a.and_then(|s| self.cache.slot_at(id, s)),
+                b.and_then(|s| self.cache.slot_at(id, s))
+            );
+        }
         match self.scope_name_slots(id).0 {
             Some(slot) => match self.cache.slot_at(id, slot) {
                 Some(SlotValue::Ref(r)) => self.name_from_ref(*r),

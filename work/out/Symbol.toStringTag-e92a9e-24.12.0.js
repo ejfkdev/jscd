@@ -102,15 +102,15 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = assert;
   r1 = r2.sameValue;
-  r3 = _ro0_65192_;
+  r3 = DataView;
   r3 = r3.prototype;
   r4 = Symbol;
   r3 = r3[r4.toStringTag];
-  r4 = "<ro0_65192>";
+  r4 = "DataView";
   r5 = "The value of DataView.prototype[Symbol.toStringTag] is expected to be \"DataView\"";
   r1.call(r2-r5);
   r1 = verifyProperty;
-  r2 = _ro0_65192_;
+  r2 = DataView;
   r2 = r2.prototype;
   r3 = Symbol;
   r3 = r3.toStringTag;

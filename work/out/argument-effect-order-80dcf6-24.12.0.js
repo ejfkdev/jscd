@@ -148,7 +148,7 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.compareArray;
   r3 = __ctx.ctx3;
-  r4 = ["<ro0_62704>"];
+  r4 = ["get next"];
   r0 = r2.compareArray(r3, r4);
   return r0;
 }
@@ -205,7 +205,7 @@ function get_next(a0) {
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
   r0 = r1.push;
-  r2 = "<ro0_62704>";
+  r2 = "get next";
   r1.push(r2);
   return _anon_36;
 }
@@ -257,7 +257,7 @@ function get_next(a0) {
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
   r0 = r1.push;
-  r2 = "<ro0_62704>";
+  r2 = "get next";
   r1.push(r2);
   return _anon_67;
 }
@@ -276,7 +276,7 @@ function get_next(a0) {
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
   r0 = r1.push;
-  r2 = "<ro0_62704>";
+  r2 = "get next";
   r1.push(r2);
   return _anon_85;
 }

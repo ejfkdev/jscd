@@ -162,7 +162,7 @@ let phi0, phi1, phi2, phi3;
       r22 = r12.negated();
       r23 = "Arithmetic until limit with time largestUnit is self-consistent (";
       r23 = r23 + r0;
-      r23 = r23 + "<ro0_12624>";
+      r23 = r23 + ")";
       r19.call(r20-r23);
       continue;
     }
@@ -255,7 +255,7 @@ let phi0, phi1, phi2, phi3;
       r22 = r7.negated();
       r23 = "Arithmetic until limit with time largestUnit is self-consistent (";
       r23 = r23 + r1;
-      r23 = r23 + "<ro0_12624>";
+      r23 = r23 + ")";
       r2 = r19.call(r20-r23);
       continue;
     }

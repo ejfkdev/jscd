@@ -110,16 +110,16 @@ let phi0;
     throw new r1(r2);
   }
   r2 = String;
-  r1 = r2["<ro0_54152>"];
+  r1 = r2.hasOwnProperty;
   r3 = "fromCharCode";
-  phi0 = r2["<ro0_54152>"](r3);
+  phi0 = r2.hasOwnProperty(r3);
   if (!phi0) {
     r1 = Test262Error;
     r2 = "#2: String.hasOwnProperty(\"fromCharCode\") return true. Actual: ";
     r4 = String;
-    r3 = r4["<ro0_54152>"];
+    r3 = r4.hasOwnProperty;
     r5 = "fromCharCode";
-    r2 = r2 + r4["<ro0_54152>"](r5);
+    r2 = r2 + r4.hasOwnProperty(r5);
     throw new r1(r2);
   }
   r0 = undefined;

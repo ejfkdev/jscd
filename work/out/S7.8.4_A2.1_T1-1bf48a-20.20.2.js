@@ -102,8 +102,8 @@ let r0, r1, r2, r3;
 r1 = ["unicode", "character", "index"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-unicode = ["A", "B", "C", "D", "E", "F", "<ro0_13344>", "H", "I", "<ro0_13416>", "<ro0_13440>", "L", "<ro0_13488>", "N", "O", "P", "Q", "R", "S", "T", "<ro0_13680>", "<ro0_13704>", "<ro0_13728>", "<ro0_13752>", "<ro0_13776>", "Z"];
-character = ["A", "B", "C", "D", "E", "F", "<ro0_13344>", "H", "I", "<ro0_13416>", "<ro0_13440>", "L", "<ro0_13488>", "N", "O", "P", "Q", "R", "S", "T", "<ro0_13680>", "<ro0_13704>", "<ro0_13728>", "<ro0_13752>", "<ro0_13776>", "Z"];
+unicode = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+character = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
 r0 = undefined;
 index = 0;
 while (true) {
@@ -118,7 +118,7 @@ while (true) {
     r2 = "#";
     r3 = character;
     r2 = r2 + r3[index];
-    r2 = r2 + "<ro0_12408>";
+    r2 = r2 + " ";
     throw new r1(r2);
   }
   index = ++index;

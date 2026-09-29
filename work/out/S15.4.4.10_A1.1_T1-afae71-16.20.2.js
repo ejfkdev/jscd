@@ -115,9 +115,9 @@ r1.getClass = r2.toString;
 r2 = arr;
 r1 = r2.getClass;
 r1 = r2.getClass();
-r2 = "<ro0_29480>";
+r2 = "[object ";
 r2 = r2 + "Array";
-if (r1 !== (r2 + "<ro0_29504>")) {
+if (r1 !== (r2 + "]")) {
   r1 = Test262Error;
   r2 = "#1: var x = [0,1,2,3,4]; var arr = x.slice(0,3); arr is Array object. Actual: ";
   r4 = arr;

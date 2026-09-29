@@ -114,10 +114,10 @@ function _anon_6(a0) {
   r1 = assert;
   r0 = r1.sameValue;
   r3 = a0.prototype;
-  r2 = r3["<ro0_54152>"];
+  r2 = r3.hasOwnProperty;
   r4 = Symbol;
   r4 = r4.iterator;
-  r2 = r3["<ro0_54152>"](r4);
+  r2 = r3.hasOwnProperty(r4);
   r3 = false;
   r1.sameValue(r2, r3);
   return;

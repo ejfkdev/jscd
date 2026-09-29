@@ -119,9 +119,9 @@ function inner(a0) {
   let r0, r1, r2;
 let phi0;
   r1 = inner;
-  r0 = r1["<ro0_54152>"];
+  r0 = r1.hasOwnProperty;
   r2 = "caller";
-  phi0 = r1["<ro0_54152>"](r2);
+  phi0 = r1.hasOwnProperty(r2);
   if (!phi0) {
     return CALLER_OWN_PROPERTY_DOES_NOT_EXIST;
   }

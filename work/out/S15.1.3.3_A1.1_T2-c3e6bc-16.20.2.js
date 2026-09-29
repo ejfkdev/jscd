@@ -152,7 +152,7 @@ while (true) {
             r2 = r2 + hexO;
             r2 = r2 + "-";
             r2 = r2 + hexP;
-            r2 = r2 + "<ro0_36552>";
+            r2 = r2 + " ";
             throw new r1(r2);
           }
           r1 = decimalToHexString;
@@ -161,7 +161,7 @@ while (true) {
           r1 = Test262Error;
           r2 = "#";
           r2 = r2 + hexP;
-          r2 = r2 + "<ro0_36552>";
+          r2 = r2 + " ";
           throw new r1(r2);
         }
       }
@@ -190,7 +190,7 @@ if (r1 > 0) {
     r2 = r2 + hexO;
     r2 = r2 + "-";
     r2 = r2 + hexP;
-    r2 = r2 + "<ro0_36552>";
+    r2 = r2 + " ";
     throw new r1(r2);
   }
   r1 = decimalToHexString;
@@ -199,6 +199,6 @@ if (r1 > 0) {
   r1 = Test262Error;
   r2 = "#";
   r2 = r2 + hexP;
-  r2 = r2 + "<ro0_36552>";
+  r2 = r2 + " ";
   throw new r1(r2);
 }

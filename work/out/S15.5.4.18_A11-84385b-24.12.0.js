@@ -104,18 +104,18 @@ let phi0;
   r2 = String;
   r2 = r2.prototype;
   r2 = r2.toUpperCase;
-  r1 = r2["<ro0_54152>"];
+  r1 = r2.hasOwnProperty;
   r3 = "length";
-  phi0 = r2["<ro0_54152>"](r3);
+  phi0 = r2.hasOwnProperty(r3);
   if (!phi0) {
     r1 = Test262Error;
     r2 = "#1: String.prototype.toUpperCase.hasOwnProperty(\"length\") return true. Actual: ";
     r4 = String;
     r4 = r4.prototype;
     r4 = r4.toUpperCase;
-    r3 = r4["<ro0_54152>"];
+    r3 = r4.hasOwnProperty;
     r5 = "length";
-    r2 = r2 + r4["<ro0_54152>"](r5);
+    r2 = r2 + r4.hasOwnProperty(r5);
     throw new r1(r2);
   }
   r0 = undefined;

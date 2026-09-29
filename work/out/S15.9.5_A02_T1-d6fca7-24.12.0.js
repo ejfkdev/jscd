@@ -104,9 +104,9 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = Date;
   r4 = r4.prototype;
-  r3 = r4["<ro0_54152>"];
+  r3 = r4.hasOwnProperty;
   r5 = "toString";
-  r3 = r4["<ro0_54152>"](r5);
+  r3 = r4.hasOwnProperty(r5);
   r4 = true;
   r5 = "Date.prototype.hasOwnProperty(\"toString\") must return true";
   r0 = r1.call(r2-r5);

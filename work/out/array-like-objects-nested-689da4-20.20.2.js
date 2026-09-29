@@ -149,7 +149,7 @@ r2 = 1;
 r2 = 2;
 /* class op: DefineKeyedOwnProperty */
 r1.toString = toString;
-r3 = "<ro0_12864>";
+r3 = "3";
 r4 = get_3;
 r5 = null;
 r6 = 0;

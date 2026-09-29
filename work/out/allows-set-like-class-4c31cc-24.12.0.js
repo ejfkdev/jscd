@@ -119,9 +119,9 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r4 = s2;
-  r3 = r4["<ro0_66040>"];
+  r3 = r4.isDisjointFrom;
   r5 = __ctx.ctx4;
-  r3 = r4["<ro0_66040>"](r5);
+  r3 = r4.isDisjointFrom(r5);
   r4 = true;
   r0 = r2.sameValue(r3, r4);
   return r0;

@@ -113,9 +113,9 @@ function _anon_6(a0) {
   let r0, r1, r2;
   r1 = Date;
   r1 = r1.prototype;
-  r0 = r1["<ro0_57760>"];
+  r0 = r1.setFullYear;
   r2 = 2012;
-  r1["<ro0_57760>"](r2);
+  r1.setFullYear(r2);
   return;
 }
 

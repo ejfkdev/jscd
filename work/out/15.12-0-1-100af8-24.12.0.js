@@ -102,7 +102,7 @@ let r0, r1, r2, r3, r4, r5;
 r1 = ["o"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-o = JSON;
+o = _ro0_61040_;
 r2 = assert;
 r1 = r2.sameValue;
 r3 = typeof o;

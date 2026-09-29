@@ -118,9 +118,9 @@ function _anon_0(a0) {
   r1 = r1.prototype;
   r1.add = _anon_11;
   r2 = s2;
-  r1 = r2["<ro0_66112>"];
+  r1 = r2.union;
   r3 = expected;
-  __ctx.ctx8 = r2["<ro0_66112>"](r3);
+  __ctx.ctx8 = r2.union(r3);
   r2 = assert;
   r1 = r2.compareArray;
   r3 = [...__ctx.ctx8];

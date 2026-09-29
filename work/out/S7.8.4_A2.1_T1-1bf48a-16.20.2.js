@@ -118,7 +118,7 @@ while (true) {
     r2 = "#";
     r3 = character;
     r2 = r2 + r3[index];
-    r2 = r2 + "<ro0_36552>";
+    r2 = r2 + " ";
     throw new r1(r2);
   }
   index = ++index;

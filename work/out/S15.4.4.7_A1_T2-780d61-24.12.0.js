@@ -119,7 +119,7 @@ r2 = x;
 r1 = r2.push;
 r3 = true;
 r4 = Number;
-r4 = r4["<ro0_55728>"];
+r4 = r4.POSITIVE_INFINITY;
 r5 = "NaN";
 r6 = "1";
 r7 = 0;
@@ -152,7 +152,7 @@ if (r1 !== true) {
 r1 = x;
 r1 = r1[2];
 r2 = Number;
-if (r1 !== r2["<ro0_55728>"]) {
+if (r1 !== r2.POSITIVE_INFINITY) {
   r1 = Test262Error;
   r2 = "#5: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[2] === Number.POSITIVE_INFINITY. Actual: ";
   r3 = x;

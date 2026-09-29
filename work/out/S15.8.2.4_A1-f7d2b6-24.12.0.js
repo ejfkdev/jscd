@@ -103,9 +103,9 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Math;
-  r3 = r4["<ro0_61272>"];
+  r3 = r4.atan;
   r5 = NaN;
-  r3 = r4["<ro0_61272>"](r5);
+  r3 = r4.atan(r5);
   r4 = NaN;
   r0 = r2.sameValue(r3, r4);
   return r0;

@@ -125,9 +125,9 @@ function f(a0) {
     r3 = assert;
     r2 = r3.sameValue;
     r5 = f;
-    r4 = r5["<ro0_54152>"];
+    r4 = r5.hasOwnProperty;
     r6 = "arguments";
-    r4 = r5["<ro0_54152>"](r6);
+    r4 = r5.hasOwnProperty(r6);
     r5 = false;
     r3.sameValue(r4, r5);
     callCount = ++callCount;

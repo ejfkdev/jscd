@@ -128,7 +128,7 @@ while (true) {
   r1 = r1 ** r2[i];
   if (r1 !== Infinity) {
     r1 = Test262Error;
-    r2 = "<ro0_12600>";
+    r2 = "(";
     r2 = r2 + base;
     r2 = r2 + " ** ";
     r3 = exponents;
