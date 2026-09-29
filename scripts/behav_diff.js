@@ -108,8 +108,17 @@ for (const args of cases) {
   const b = callTimed(decoded, args, 'mine');
   const av = a.ok ? a.value : 'ERR ' + a.value;
   const bv = b.ok ? b.value : 'ERR ' + b.value;
-  if (av === bv && a.ok) same++;
-  else diffs.push({ args, orig: av, mine: bv });
+  if (av === bv && a.ok) {
+    same++;
+  } else if (!a.ok && !b.ok) {
+    // 两边都抛错：比较**错误类型**。具体消息里含源码表达式文本（如 "s.toUpperCase"），
+    // 码缓存里没有源码文本 —— 那部分不可还原；类型一致即语义一致。
+    const typeOf = (s) => String(s).replace(/^ERR /, '').split(':')[0].trim();
+    if (typeOf(av) === typeOf(bv)) same++;
+    else diffs.push({ args, orig: av, mine: bv, note: 'error-type' });
+  } else {
+    diffs.push({ args, orig: av, mine: bv });
+  }
 }
 result.matched = same;
 result.status = same === cases.length ? 'pass' : (same === 0 ? 'fail' : 'partial');
