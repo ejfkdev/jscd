@@ -595,6 +595,8 @@ pub struct Decompiler<'a> {
     scope_cache: std::cell::RefCell<HashMap<ObjId, Scope>>,
     /// 只读堆名表（可选）
     ro_map: Option<RoMap>,
+    /// 字节码 → (读 acc, 写 acc)：来自版本表（codegen 从 bytecodes.h 提取）
+    acc_use: HashMap<String, (bool, bool)>,
 }
 
 /// 循环上下文（break/continue 目标）。
@@ -618,6 +620,8 @@ struct FnCtx<'a, 'b> {
     /// 寄存器（下标 = V8 寄存器索引 >= 0）
     regs: Vec<Option<Expr>>,
     acc: Option<Expr>,
+    /// acc 的当前值是否已落进寄存器（Star 后为真）→ 死 acc 无需重复求值
+    acc_stored: bool,
     /// 已生成的语句
     out: String,
     indent: usize,
@@ -634,6 +638,10 @@ struct FnCtx<'a, 'b> {
     tmp_counter: usize,
     /// 分支间物化的累加器变量（phi）
     phi_vars: Vec<String>,
+    /// 指令内吞掉后续区间时（如 switch 的 case 体）主循环下次的起点
+    skip_to: Option<usize>,
+    /// 已被 guard 子句就地发射的"冷块"区间（起点下标, 终点下标 exclusive）→ 线性扫描时跳过
+    skip_spans: Vec<(usize, usize)>,
     name: String,
     is_async: bool,
     is_generator: bool,
@@ -659,6 +667,17 @@ impl<'a> Decompiler<'a> {
             ts: table.tagged_size as usize,
             scope_cache: std::cell::RefCell::new(HashMap::new()),
             ro_map: None,
+            acc_use: table
+                .bytecodes
+                .iter()
+                .filter(|b| !b.acc.is_empty())
+                .map(|b| {
+                    (
+                        b.name.clone(),
+                        (b.acc.contains('r'), b.acc.contains('w')),
+                    )
+                })
+                .collect(),
         }
     }
 
@@ -955,6 +974,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             scope_id,
             regs: Vec::new(),
             acc: None,
+            acc_stored: false,
             out: String::new(),
             indent: 0,
             loops: Vec::new(),
@@ -965,6 +985,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             label_counter: 0,
             tmp_counter: 0,
             phi_vars: Vec::new(),
+            skip_to: None,
+            skip_spans: Vec::new(),
             name,
             is_async: false,
             is_generator: false,
@@ -1198,33 +1220,77 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 .collect();
             return Expr::Ident(format!("[{}]", items.join(", ")));
         }
-        Expr::Ident(format!("__const_{o}"))
+        Expr::Ident(format!("<c{o}:{}>", ty.name(self.d.table)))
     }
 
-    /// 对象字面量（ObjectBoilerplateDescription：keys + values 两个数组交替）。
+    /// 字面量键：Smi / 堆字符串 / RO 字符串（经 ro-map 还原）。
+    fn elem_key(&self, o: ObjId, idx: usize) -> Option<String> {
+        match self.d.cache.array_elem(o, idx) {
+            Some(Elem::Smi(v)) => Some(v.to_string()),
+            Some(Elem::Ref(Ref::RoRef(c, off))) => Some(
+                self.d
+                    .ro_map
+                    .as_ref()
+                    .and_then(|m| m.get(c, off))
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| format!("<ro{c}_{off}>")),
+            ),
+            Some(Elem::Ref(r)) => crate::disasm::name_of_ref(self.d.cache, self.d.table, r),
+            _ => None,
+        }
+    }
+
+    /// 对象字面量的"键为字符串"打分（用于自动判定 kDescriptionStartIndex）。
+    fn obp_string_keys(&self, o: ObjId, start: usize, len: usize) -> usize {
+        let count = len.saturating_sub(start) / 2;
+        (0..count.min(64))
+            .filter(|i| self.elem_key(o, start + 2 * i).is_some_and(|k| !k.starts_with('<') || k.starts_with("<ro")))
+            .count()
+    }
+
+    /// 对象字面量（ObjectBoilerplateDescription）。
+    ///
+    /// 元素布局随版本变化：
+    ///   V8 9.4–12.4：[flags, key0, val0, key1, val1, ...]（kDescriptionStartIndex = 1）
+    ///   V8 13.x+    ：[backing_store_size, flags, key0, val0, ...]（V8_ARRAY_EXTRA_FIELDS）
+    /// 末位若多出一个元素，它是"计算属性名的个数"（Smi），靠整数除法自然排除。
     fn object_boilerplate(&mut self, o: ObjId) -> Expr {
         let len = self.d.cache.array_len(o);
+        let v8_major: u32 = self
+            .d
+            .table
+            .v8
+            .split('.')
+            .next()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        // 版本给先验，语料给证据：字符串键更多的那种布局胜出
+        let (pref, alt) = if v8_major >= 13 { (2usize, 1usize) } else { (1usize, 2usize) };
+        let start = if len >= 4 && self.obp_string_keys(o, alt, len) > self.obp_string_keys(o, pref, len) {
+            alt
+        } else {
+            pref
+        };
+        let count = len.saturating_sub(start) / 2;
         let mut parts = Vec::new();
-        // 布局：[count, key0, val0, key1, val1, ...]（键在 FixedArray 的后半段）
-        let half = (len.saturating_sub(1)) / 2;
-        for i in 0..half.min(32) {
-            let key_idx = 1 + i;
-            let val_idx = 1 + half + i;
-            let key = match self.d.cache.array_elem(o, key_idx) {
-                Some(Elem::Smi(v)) => Some(v.to_string()),
-                Some(Elem::Ref(r)) => crate::disasm::name_of_ref(self.d.cache, self.d.table, r),
-                _ => None,
-            };
-            let val = match self.d.cache.array_elem(o, val_idx) {
+        for i in 0..count.min(64) {
+            let key = self.elem_key(o, start + 2 * i);
+            let val = match self.d.cache.array_elem(o, start + 2 * i + 1) {
                 Some(Elem::Smi(v)) => Expr::Num(v as f64),
                 Some(Elem::Ref(Ref::Object(v))) => self.object_constant(v),
                 Some(Elem::Ref(Ref::Root(i))) => self.root_value(i),
+                Some(Elem::Ref(Ref::RoRef(c, off))) => {
+                    match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                        Some(n) => Expr::Str(n.to_string()),
+                        None => Expr::Str(format!("<ro{c}_{off}>")),
+                    }
+                }
                 _ => Expr::Undefined,
             };
             let k = match key {
                 Some(k) if is_ident(&k) => k,
                 Some(k) => format!("[{}]", js_string(&k)),
-                None => "[/*unknown*/0]".to_string(),
+                None => "[/*computed*/]".to_string(),
             };
             parts.push((k, val));
         }
@@ -1233,10 +1299,25 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// 数组字面量（ArrayBoilerplateDescription：常量池元素序列）。
     fn array_boilerplate(&mut self, o: ObjId) -> Expr {
-        let len = self.d.cache.array_len(o);
+        // 布局随版本变化：
+        //   V8 ≥ 9.x：Struct{map, flags(Smi), constant_elements(FixedArrayBase)}，
+        //             真值在 constant_elements（FixedCOWArray）里，得再解一层
+        //   老版本：元素序列直接平铺在 description 上
+        let mut holder = o;
+        let mut len = self.d.cache.array_len(o);
+        if self.d.cache.array_elem(o, 1).is_none() {
+            if let Some(Elem::Ref(Ref::Object(inner))) = self.d.cache.array_elem(o, 0) {
+                let n = self.d.cache.obj(inner).ty.name(self.d.table).to_string();
+                // 只认 Fixed*ArrayMap（排除 JSArrayMap / ArrayBoilerplateDescriptionMap 等误判）
+                if n.contains("Fixed") && n.contains("ArrayMap") {
+                    holder = inner;
+                    len = self.d.cache.array_len(inner);
+                }
+            }
+        }
         let mut items = Vec::new();
-        for i in 0..len.min(32) {
-            match self.d.cache.array_elem(o, i) {
+        for i in 0..len.min(64) {
+            match self.d.cache.array_elem(holder, i) {
                 Some(Elem::Smi(v)) => items.push(Expr::Num(v as f64)),
                 Some(Elem::Ref(Ref::Object(oid))) => items.push(self.object_constant(oid)),
                 Some(Elem::Ref(Ref::Root(r))) => items.push(self.root_value(r)),
@@ -1288,7 +1369,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     }
 
     /// 判断指令是否读取 acc（决定上一条 acc 是否已死、需不需要成句）。
-    fn reads_acc(name: &str) -> bool {
+    fn reads_acc(&self, name: &str) -> bool {
+        // 版本表（bytecodes.h 的 ImplicitRegisterUse）优先：手工名单只作兜底
+        if let Some(&(r, _)) = self.d.acc_use.get(name) {
+            return r;
+        }
         let base = name.split('.').next().unwrap_or(name);
         matches!(
             base,
@@ -1333,6 +1418,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         while i < end {
             let ins = self.instrs[i].clone();
             let base = ins.name.split('.').next().unwrap_or(&ins.name).to_string();
+
+            // ⓪ 已被 guard 子句就地发射的冷块 → 跳过（它的内容已在对应分支里生成过）
+            if let Some(&(_, e)) = self.skip_spans.iter().find(|(s, _)| *s == i) {
+                i = e.max(i + 1);
+                continue;
+            }
 
             // ① try/catch：handler 覆盖的区间包一层
             if let Some(h) = self
@@ -1418,6 +1509,48 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     continue;
                 }
                 if let Some(&t_idx) = self.idx_of.get(&target) {
+                    // ③a guard 子句：跳转目标块是"只进不落"且以 return/throw 收尾的冷块
+                    //     （V8 对 switch 分支和提前 return 的典型布局）→ 直接展开成
+                    //     `if (cond) { <冷块> }`，主流程线性继续，避免整段逻辑被嵌进 if/else。
+                    if t_idx > i && self.is_detached(t_idx) {
+                        let (ext_raw, tail_shared) = self.detached_extent(t_idx, end);
+                        let ext = ext_raw.min(end);
+                        if ext > t_idx && self.block_terminates(ext - 1) {
+                            let acc_save = self.acc.clone();
+                            let acc_stored_save = self.acc_stored;
+                            let regs_save = self.regs.clone();
+                            // 冷块可能已被别的分支发射过（共享 return / case 穿透）→ 临时放开区间，允许重复展开
+                            let mut stash: Vec<(usize, usize)> = Vec::new();
+                            self.skip_spans.retain(|s| {
+                                if s.0 >= t_idx && s.0 < ext {
+                                    stash.push(*s);
+                                    false
+                                } else {
+                                    true
+                                }
+                            });
+                            self.line(&format!("if ({cond}) {{"));
+                            self.indent += 1;
+                            let r = self.emit_range(t_idx, ext);
+                            self.indent -= 1;
+                            self.line("}");
+                            self.skip_spans.extend(stash);
+                            // 冷块只在"跳转发生"时执行 → 未执行路径上 acc/regs 仍是跳转前的状态
+                            self.acc = acc_save;
+                            self.acc_stored = acc_stored_save;
+                            self.regs = regs_save;
+                            // 共享的尾部终结指令（如 pos/neg 共用的 Return）留给线性路径再发射一次
+                            let skip_end = if tail_shared { ext - 1 } else { ext };
+                            if skip_end > t_idx {
+                                self.skip_spans.push((t_idx, skip_end));
+                            }
+                            if let Err(e) = r {
+                                return Err(e);
+                            }
+                            i += 1;
+                            continue;
+                        }
+                    }
                     if t_idx > i {
                         let then_empty = t_idx <= i + 1;
                         if then_empty {
@@ -1535,6 +1668,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             // ⑤ 普通指令
             self.emit_expr_statement(&ins);
             i += 1;
+            if let Some(j) = self.skip_to.take() {
+                if j > i {
+                    i = j;
+                }
+            }
         }
         Ok(())
     }
@@ -1548,6 +1686,74 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         if a != b && !a.is_empty() {
             self.line(&format!("{phi} = {a};"));
         }
+    }
+
+    /// 无条件终结控制流的指令（其后的指令不可能由 fallthrough 到达）。
+    fn block_terminates(&self, idx: usize) -> bool {
+        let Some(ins) = self.instrs.get(idx) else {
+            return false;
+        };
+        let base = ins.name.split('.').next().unwrap_or(&ins.name);
+        matches!(base, "Return" | "Throw" | "ReThrow" | "Abort")
+    }
+
+    /// 该指令是否只能被跳转进入（前一条指令必然离开当前顺序流）。
+    ///
+    /// 例外：前一条无条件 Jump 的目标正好是它自己 → 等价于 fallthrough（V8 会用
+    /// `… ; Jump L; L:` 这种"空跳转"做占位），不能当成冷块。
+    fn is_detached(&self, idx: usize) -> bool {
+        if idx == 0 {
+            return true;
+        }
+        let Some(prev) = self.instrs.get(idx - 1) else {
+            return true;
+        };
+        let base = prev.name.split('.').next().unwrap_or(&prev.name);
+        if matches!(base, "Return" | "Throw" | "ReThrow" | "Abort") {
+            return true;
+        }
+        match self.uncond_jump_target(prev) {
+            Some(t) => t != self.instrs[idx].offset,
+            None => false,
+        }
+    }
+
+    /// 冷块的物理范围（下标区间 [start, ext)）与"尾部是否为共享终结点"。
+    ///
+    /// 从 start 沿 fallthrough 前进，遇到"块的共享入口"（被外部跳转指向的指令）即停，
+    /// 保证不会把别的分支的代码吞进来；但若该共享入口本身是 return/throw（尾合并），
+    /// 仍纳入本块——此时由调用方只把"独占前缀"记为跳过区间，尾部留给线性路径。
+    fn detached_extent(&self, start: usize, end: usize) -> (usize, bool) {
+        let targets = self.jump_targets();
+        let mut j = start;
+        while j < end {
+            if j > start && targets.contains(&self.instrs[j].offset) {
+                return if self.block_terminates(j) {
+                    (j + 1, true)
+                } else {
+                    (j, false)
+                };
+            }
+            if self.block_terminates(j) {
+                return (j + 1, false);
+            }
+            j += 1;
+        }
+        (j, false)
+    }
+
+    /// 全部跳转目标偏移集合（冷块边界判定用）。
+    fn jump_targets(&self) -> std::collections::HashSet<usize> {
+        let mut s = std::collections::HashSet::new();
+        for ins in &self.instrs {
+            if let Some(t) = self
+                .uncond_jump_target(ins)
+                .or_else(|| self.cond_jump_target(ins))
+            {
+                s.insert(t);
+            }
+        }
+        s
     }
 
     /// 循环检测：本指令（i）是否为某个后向跳转的目标；返回 (回边下标, 循环退出目标)。
@@ -1688,29 +1894,27 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// 会**保留** acc 的指令（既不读也不写）。其余默认视为"写 acc"。
     /// 只有"下一条会覆盖 acc 且不读它"时，当前 acc 才算死（否则 `Mov`/`Star` 之间会丢值）。
-    fn preserves_acc(name: &str) -> bool {
-        matches!(
-            name,
-            "Star" | "Mov" | "PushContext" | "PopContext" | "Jump" | "JumpLoop" | "Nop"
-                | "Debugger" | "SetPendingMessage" | "ThrowReferenceErrorIfHole"
-                | "ThrowSuperNotCalledIfHole" | "ThrowSuperAlreadyCalledIfNotHole"
-                | "ThrowIfNotSuperConstructor" | "ReThrow" | "CreateBlockContext"
-                | "CreateFunctionContext" | "CreateCatchContext" | "CreateWithContext"
-                | "CreateEvalContext" | "CreateScriptContext" | "SwitchOnGeneratorState"
-                | "SuspendGenerator" | "ResumeGenerator" | "IncBlockCounter"
-                | "StaCurrentContextSlot" | "StaContextSlot" | "StaCurrentScriptContextSlot"
-                | "StaScriptContextSlot" | "StaGlobal" | "StaLookupSlot"
-                | "StaNamedProperty" | "SetNamedProperty" | "StaNamedOwnProperty"
-                | "DefineNamedOwnProperty" | "StaKeyedProperty" | "SetKeyedProperty"
-                | "StaDataPropertyInLiteral" | "DefineKeyedOwnPropertyInLiteral"
-                | "StaInArrayLiteral" | "DefineKeyedOwnProperty" | "CollectTypeProfile"
-        ) || name.starts_with("Star") && name[4..].chars().all(|c| c.is_ascii_digit())
+    fn preserves_acc(&self, name: &str) -> bool {
+        // 明确"不写累加器"（只读 / 完全不碰）→ 值一定保留。
+        // "rw" 有歧义（如 StaGlobal 写回同值）→ 仍按手工名单判断。
+        if let Some(&(_, w)) = self.d.acc_use.get(name) {
+            if !w {
+                return true;
+            }
+        }
+        name_was_preserving(name)
     }
+
 
     /// acc 若已死且带副作用 → 单独成句。
     fn flush_acc_before(&mut self, next_base: &str) {
         // 只有"覆盖 acc 且不读 acc"才说明旧值已死；保留 acc 的指令（Mov/Star/Jump/存储…）不能 flush
-        if Self::reads_acc(next_base) || Self::preserves_acc(next_base) {
+        if self.reads_acc(next_base) || self.preserves_acc(next_base) {
+            return;
+        }
+        if self.acc_stored {
+            // 值已存进寄存器（Star）→ 死 acc 无需再次求值，否则会重复调用/赋值副作用
+            self.acc = None;
             return;
         }
         if let Some(e) = self.acc.take() {
@@ -1724,8 +1928,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 单条指令 → 表达式/语句。
     fn emit_expr_statement(&mut self, ins: &Instr) {
         let base = ins.name.split('.').next().unwrap_or(&ins.name).to_string();
-        if !Self::reads_acc(&base) {
+        if !self.reads_acc(&base) {
             self.flush_acc_before(&base);
+        }
+        if !self.preserves_acc(&base) {
+            self.acc_stored = false;
         }
         let ops: Vec<String> = ins
             .operands
@@ -1759,11 +1966,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             "Star" => {
                 let r = reg_of(&arg(0));
                 self.store_reg(r, self.acc.clone());
+                self.acc_stored = true;
             }
             // 短 Star：StarN 直接编码寄存器号
             _ if base.starts_with("Star") && base[4..].chars().all(|c| c.is_ascii_digit()) => {
                 let r: u32 = base[4..].parse().unwrap_or(0);
                 self.store_reg(r, self.acc.clone());
+                self.acc_stored = true;
             }
             "Mov" => {
                 let dst = reg_of(&arg(1));
@@ -2326,7 +2535,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
             // ── switch ──
             "SwitchOnSmiNoFeedback" => {
-                self.emit_switch(&ins, &ops);
+                if let Some(j) = self.emit_switch(&ins, &ops) {
+                    self.skip_to = Some(j);
+                }
             }
 
             // ── class ──
@@ -2502,8 +2713,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         vec![self.operand_expr(&head)]
     }
 
-    /// switch 语句（跳转表 → case 分支）。
-    fn emit_switch(&mut self, ins: &Instr, ops: &[String]) {
+    /// switch 语句：按跳转表发射 case 本体，并返回 join 的指令下标。
+    /// V8 把各 case 体顺序排在 switch 指令之后，每个 case 体以 `Jump <join>` 收尾。
+    fn emit_switch(&mut self, ins: &Instr, ops: &[String]) -> Option<usize> {
         let disc = self.acc.clone().unwrap_or(Expr::Hole).render();
         let table_start = ops
             .first()
@@ -2513,33 +2725,62 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .get(1)
             .and_then(|s| s.trim_matches(['[', ']']).parse::<usize>().ok())
             .unwrap_or(0);
-        let mut cases = Vec::new();
+        let mut cases: Vec<(i64, usize)> = Vec::new();
         for i in 0..size {
-            let v = self
+            if let Some(v) = self
                 .pool
                 .and_then(|p| self.d.cache.array_elem(p, table_start + i))
-                .and_then(|e| e.as_smi());
-            if let Some(v) = v {
-                cases.push((i as i64, ins.offset + v as usize));
+                .and_then(|e| e.as_smi())
+            {
+                let prefix = if ins.scale > 1 { 1 } else { 0 };
+                cases.push((i as i64, ins.offset + prefix + v as usize));
             }
         }
+        if cases.is_empty() {
+            return None;
+        }
+        cases.sort_by_key(|(_, t)| *t);
+        let last_target = cases.last().map(|(_, t)| *t).unwrap_or(ins.offset);
+
+        // join：case 体内 Jump 指向的、超过最后一个 case 起点的最远目标
+        let mut join: Option<usize> = None;
+        for (_, t) in &cases {
+            let Some(&idx) = self.idx_of.get(t) else { continue };
+            for j in idx..self.instrs.len().min(idx + 512) {
+                if let Some(jt) = self.uncond_jump_target(&self.instrs[j]) {
+                    if jt > last_target {
+                        if join.map_or(true, |c| jt > c) {
+                            join = Some(jt);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         self.line(&format!("switch ({disc}) {{"));
         self.indent += 1;
-        if cases.is_empty() {
-            self.line("default: /* 跳转表为空 */");
+        for (k, (value, target)) in cases.iter().enumerate() {
+            let Some(&t_idx) = self.idx_of.get(target) else { continue };
+            // case 体结束于下一个 case 起点（或 join）
+            let body_end = cases
+                .get(k + 1)
+                .map(|(_, t)| *t)
+                .or(join)
+                .and_then(|t| self.idx_of.get(&t).copied())
+                .unwrap_or(self.instrs.len());
+            self.line(&format!("case {value}:"));
             self.indent += 1;
-            self.line("break;");
-            self.indent -= 1;
-        }
-        for (case, target) in &cases {
-            self.line(&format!("case {case}: /* → @{target} */"));
-            self.indent += 1;
+            if let Err(e) = self.emit_range(t_idx, body_end.min(self.instrs.len())) {
+                self.line(&format!("/* case body error: {} */", comment_safe(&e)));
+            }
             self.line("break;");
             self.indent -= 1;
         }
         self.indent -= 1;
-        self.line("} /* 各分支本体见下方（V8 将 case 体顺序排在 switch 之后） */");
-        self.acc = None;
+        self.line("}");
+        // V8 的 switch 不改动累加器
+        join.and_then(|j| self.idx_of.get(&j).copied())
     }
 }
 
@@ -2690,4 +2931,24 @@ fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId) -> Vec<Handler> {
         i += 16;
     }
     out
+}
+
+/// 手工兜底名单（版本表缺失该字节码、或 acc 标记为 "rw" 有歧义时使用）。
+fn name_was_preserving(name: &str) -> bool {
+    matches!(
+        name,
+        "Star" | "Mov" | "PushContext" | "PopContext" | "Jump" | "JumpLoop" | "Nop"
+            | "Debugger" | "SetPendingMessage" | "ThrowReferenceErrorIfHole"
+            | "ThrowSuperNotCalledIfHole" | "ThrowSuperAlreadyCalledIfNotHole"
+            | "ThrowIfNotSuperConstructor" | "ReThrow" | "CreateBlockContext"
+            | "CreateFunctionContext" | "CreateCatchContext" | "CreateWithContext"
+            | "CreateEvalContext" | "CreateScriptContext" | "SwitchOnGeneratorState"
+            | "SuspendGenerator" | "ResumeGenerator" | "IncBlockCounter"
+            | "StaCurrentContextSlot" | "StaContextSlot" | "StaCurrentScriptContextSlot"
+            | "StaScriptContextSlot" | "StaGlobal" | "StaLookupSlot"
+            | "StaNamedProperty" | "SetNamedProperty" | "StaNamedOwnProperty"
+            | "DefineNamedOwnProperty" | "StaKeyedProperty" | "SetKeyedProperty"
+            | "StaDataPropertyInLiteral" | "DefineKeyedOwnPropertyInLiteral"
+            | "StaInArrayLiteral" | "DefineKeyedOwnProperty" | "CollectTypeProfile"
+    ) || name.starts_with("Star") && name[4..].chars().all(|c| c.is_ascii_digit())
 }

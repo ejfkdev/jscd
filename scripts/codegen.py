@@ -160,6 +160,23 @@ def _grab_macro_list(text, name):
     return m.group(2) if m else None
 
 
+def _acc_use(inner):
+    """字节码对累加器的隐式读写（反编译时判断 acc 活跃性用）。
+
+    现代写法 V(Name, ImplicitRegisterUse::kReadWriteAccumulator, ...)
+    老写法  V(Name, AccumulatorUse::kReadWrite, ...)
+    返回 "r" / "w" / "rw" / ""（完全不碰累加器）。
+      kWriteShortStar（Star0-3）写的是寄存器、累加器只被读 → 记 "r"。
+    """
+    uses = set(re.findall(r"(?:ImplicitRegisterUse|AccumulatorUse)::(k\w+)", inner))
+    if not uses:
+        return ""
+    read = bool(uses & {"kReadAccumulator", "kReadWriteAccumulator",
+                        "kReadAccumulatorWriteShortStar", "kWriteShortStar"})
+    write = bool(uses & {"kWriteAccumulator", "kReadWriteAccumulator"})
+    return ("rw" if (read and write) else "r" if read else "w" if write else "")
+
+
 def _expand_bytecode_entries(text, macro_name, entries, seen=None, depth=0):
     """递归展开 bytecode 宏列表。
 
@@ -207,6 +224,7 @@ def _expand_bytecode_entries(text, macro_name, entries, seen=None, depth=0):
                 "name": name,
                 "operands": operands,
                 "prefix": name if is_prefix else None,
+                "acc": _acc_use(inner),
             })
         else:
             # 子列表（如 BYTECODE_LIST_WITH_UNIQUE_HANDLERS(V, V_TSA) / SHORT_STAR_BYTECODE_LIST(V)）

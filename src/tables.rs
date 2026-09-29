@@ -90,6 +90,9 @@ pub struct BytecodeDef {
     /// Wide/ExtraWide 前缀字节码标记
     #[serde(default)]
     pub prefix: Option<String>,
+    /// 累加器隐式读写："r" / "w" / "rw" / ""（不碰）；决定反编译的 acc 活跃性
+    #[serde(default)]
+    pub acc: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
