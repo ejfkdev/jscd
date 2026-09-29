@@ -29,6 +29,8 @@ pub enum Ref {
 pub struct Object {
     /// 语义类型名（由 map 引用解析，如 "SharedFunctionInfo"；未知为 "RoRef#n/n"）
     pub type_name: String,
+    /// payload 内的起始偏移（诊断用）
+    pub start_offset: usize,
     /// 反序列化后的对象字节数
     pub byte_size: usize,
     /// 槽序列：index 0 = map，其后按对象内存布局
@@ -122,6 +124,16 @@ impl<'a> Walker<'a> {
             .ok_or_else(|| format!("tag {name} missing from table"))
     }
 
+    /// 可选 tag（版本间增删；缺失时返回 None 而不是报错）。
+    fn opt_tag(&self, name: &str) -> Option<u8> {
+        self.tags.get(name).copied()
+    }
+
+    /// 别名解析（如 kVariableRepeat / kVariableRepeatRoot，kFixedRepeat / kFixedRepeatRoot）。
+    fn tag_any(&self, names: &[&str]) -> Option<u8> {
+        names.iter().find_map(|n| self.opt_tag(n))
+    }
+
     fn byte(&mut self) -> R<u8> {
         let b = *self.data.get(self.pos).ok_or("unexpected end of payload")?;
         self.pos += 1;
@@ -168,12 +180,20 @@ impl<'a> Walker<'a> {
         let b = self.byte()?;
         let t_new = self.tag("kNewObject")?;
         let t_backref = self.tag("kBackref")?;
+        let t_hot = self.tag("kHotObject")?;
+        let t_root_const = self.tag("kRootArrayConstants")?;
+        let t_fixed_raw = self.tag("kFixedRawData")?;
+        // repeat 在 13.x 拆成 *Root 变体（编码为 [count][1 字节 root 索引]）
+        let t_fixed_repeat = self.tag_any(&["kFixedRepeat", "kFixedRepeatRoot"]);
+        let t_fixed_repeat_root_only = self.opt_tag("kFixedRepeat").is_none()
+            && self.opt_tag("kFixedRepeatRoot").is_some();
+
         if self.trace.len() >= 10 {
             self.trace.pop_front();
         }
         self.trace
             .push_back(format!("@{} 0x{b:02x}", self.pos - 1));
-        if (t_new..t_new + 4).contains(&b) {
+        if (t_new..t_backref).contains(&b) {
             let id = self.parse_new_object(depth)?;
             Ok(SlotValue::Ref(Ref::Object(id)))
         } else if b == t_backref {
@@ -184,8 +204,8 @@ impl<'a> Walker<'a> {
             // PutBackReference 会把该对象加入 hot 环
             self.hot_push(HotEntry::Object(idx));
             Ok(SlotValue::Ref(Ref::Object(idx)))
-        } else if (0x90..=0x97).contains(&b) {
-            let i = (b - 0x90) as usize;
+        } else if (t_hot..t_hot + 8).contains(&b) {
+            let i = (b - t_hot) as usize;
             match self.hot.get(i) {
                 Some(HotEntry::Object(id)) => Ok(SlotValue::Ref(Ref::Object(id))),
                 Some(HotEntry::Root(r)) => Ok(SlotValue::Ref(Ref::Root(r))),
@@ -195,38 +215,71 @@ impl<'a> Walker<'a> {
             let idx = self.putint()? as usize;
             self.hot_push(HotEntry::Root(idx));
             Ok(SlotValue::Ref(Ref::Root(idx)))
-        } else if (0x40..=0x5F).contains(&b) {
-            Ok(SlotValue::Ref(Ref::Root((b - 0x40) as usize)))
+        } else if (t_root_const..t_root_const + 32).contains(&b) {
+            Ok(SlotValue::Ref(Ref::Root((b - t_root_const) as usize)))
         } else if b == self.tag("kReadOnlyHeapRef")? {
             let c = self.putint()?;
             let o = self.putint()?;
             Ok(SlotValue::Ref(Ref::RoRef(c, o)))
         } else if b == self.tag("kAttachedReference")? {
             Ok(SlotValue::Ref(Ref::Attached(self.putint()? as usize)))
-        } else if b == self.tag("kStartupObjectCache")? || b == self.tag("kReadOnlyObjectCache")? {
+        } else if Some(b) == self.tag_any(&["kStartupObjectCache"])
+            || Some(b) == self.tag_any(&["kReadOnlyObjectCache", "kSharedHeapObjectCache"])
+        {
             let i = self.putint()? as usize;
             Ok(SlotValue::Ref(Ref::RoRef(u32::MAX, i as u32)))
-        } else if b == self.tag("kRegisterPendingForwardRef")? {
+        } else if Some(b) == self.opt_tag("kRegisterPendingForwardRef") {
             Ok(SlotValue::PendingRef(self.putint()?))
-        } else if b == self.tag("kClearedWeakReference")? {
+        } else if Some(b) == self.opt_tag("kClearedWeakReference") {
             Ok(SlotValue::ClearedWeak)
-        } else if b == self.tag("kWeakPrefix")? {
+        } else if Some(b) == self.opt_tag("kWeakPrefix")
+            || Some(b) == self.opt_tag("kIndirectPointerPrefix")
+            || Some(b) == self.opt_tag("kProtectedPointerPrefix")
+        {
+            // 前缀类 tag（weak / 间接指针 / 受保护指针）：后随一个引用
             let inner = self.parse_ref(depth + 1)?;
             Ok(SlotValue::WeakRef(Box::new(inner)))
-        } else if (0x60..=0x7F).contains(&b) {
-            let n = (b - 0x60 + 1) as usize;
+        } else if Some(b) == self.opt_tag("kInitializeSelfIndirectPointer") {
+            Ok(SlotValue::ClearedWeak) // 仅初始化 host 字段，无流数据
+        } else if Some(b) == self.opt_tag("kAllocateJSDispatchEntry")
+            || Some(b) == self.opt_tag("kJSDispatchEntry")
+        {
+            let _ = self.putint()?; // parameter_count / entry_id
+            Ok(SlotValue::ClearedWeak)
+        } else if (t_fixed_raw..t_fixed_raw + 32).contains(&b) {
+            let n = (b - t_fixed_raw + 1) as usize;
             Ok(SlotValue::Raw(self.raw(n * self.tagged_size)?))
-        } else if b == self.tag("kVariableRawData")? {
+        } else if Some(b) == self.opt_tag("kVariableRawData") {
             let n = self.putint()? as usize;
             Ok(SlotValue::Raw(self.raw(n * self.tagged_size)?))
-        } else if (0x80..=0x8F).contains(&b) {
-            let n = (b - 0x80 + 2) as usize;
-            let inner = self.parse_ref(depth + 1)?;
-            Ok(SlotValue::Repeat(n, Box::new(inner)))
-        } else if b == self.tag("kVariableRepeat")? {
+        } else if t_fixed_repeat.map_or(false, |t| (t..t + 16).contains(&b)) {
+            let base = t_fixed_repeat.unwrap();
+            let n = (b - base + 2) as usize;
+            if t_fixed_repeat_root_only {
+                // FixedRepeatRoot：count + 1 字节 root 索引
+                let root = self.byte()? as usize;
+                Ok(SlotValue::Repeat(n, Box::new(SlotValue::Ref(Ref::Root(root)))))
+            } else {
+                let inner = self.parse_ref(depth + 1)?;
+                Ok(SlotValue::Repeat(n, Box::new(inner)))
+            }
+        } else if Some(b) == self.tag_any(&["kVariableRepeat"]) {
             let n = self.putint()? as usize + 18;
             let inner = self.parse_ref(depth + 1)?;
             Ok(SlotValue::Repeat(n, Box::new(inner)))
+        } else if Some(b) == self.opt_tag("kVariableRepeatRoot") {
+            let n = self.putint()? as usize + 18;
+            let root = self.byte()? as usize;
+            Ok(SlotValue::Repeat(n, Box::new(SlotValue::Ref(Ref::Root(root)))))
+        } else if Some(b) == self.opt_tag("kNewMetaMap")
+            || Some(b) == self.opt_tag("kNewContextlessMetaMap")
+            || Some(b) == self.opt_tag("kNewContextfulMetaMap")
+        {
+            // meta map：无 size/map 字段，body 直接跟在后面（长度取 Map 的固定大小）
+            Err(format!(
+                "meta map tag 0x{b:02x} at {} not supported (rare in code caches)",
+                self.pos - 1
+            ))
         } else {
             Err(format!(
                 "unknown serialization tag 0x{b:02x} at {} (recent: {:?})",
@@ -238,14 +291,19 @@ impl<'a> Walker<'a> {
 
     /// kNewObject：size + map + resolve 段 + body（消费到 size 词数为止）。
     fn parse_new_object(&mut self, depth: usize) -> R<ObjId> {
+        let tag_offset = self.pos.saturating_sub(1); // kNewObject tag 字节位置
         let size_words = self.putint()? as usize;
         let byte_size = size_words * 8;
         let id = self.objects.len();
         if std::env::var("JSCD_TRACE").is_ok() {
-            eprintln!("[obj #{id}] start @{} size={size_words}w depth={depth}", self.pos);
+            eprintln!(
+                "[obj #{id}] tag=0x{:02x} @{} size={size_words}w depth={depth}",
+                self.data[tag_offset], tag_offset
+            );
         }
         self.objects.push(Object {
             type_name: "?unclassified".into(),
+            start_offset: tag_offset,
             byte_size,
             slots: Vec::new(),
         });
@@ -302,8 +360,17 @@ impl<'a> Walker<'a> {
             eprintln!("[obj #{id}] done @{} consumed={consumed}", self.pos);
         }
         if consumed != size_words {
+            let units: Vec<String> = self.objects[id]
+                .slots
+                .iter()
+                .map(|s| format!("{}:{:?}", s.index, unit_kind(&s.value)))
+                .collect();
             return Err(format!(
-                "object {id} size mismatch: consumed {consumed} of {size_words} words"
+                "object {id} (at payload +{} tag=0x{:02x} size={}) size mismatch: consumed {consumed} of {size_words} words; units=[{}]",
+                self.objects[id].start_offset,
+                self.data.get(self.objects[id].start_offset).copied().unwrap_or(0),
+                size_words,
+                units.join(" ")
             ));
         }
         Ok(id)
@@ -312,22 +379,18 @@ impl<'a> Walker<'a> {
 
 /// 解析整个 payload（已解压、已去头）。
 pub fn parse(payload: &[u8], table: &VersionTable) -> R<CodeCache> {
+    // 最小必需集：跨版本恒存在（可选项按需 opt_tag 取）
     let need = [
         "kNewObject",
         "kBackref",
         "kRootArray",
         "kReadOnlyHeapRef",
         "kAttachedReference",
-        "kStartupObjectCache",
-        "kReadOnlyObjectCache",
-        "kRegisterPendingForwardRef",
-        "kResolvePendingForwardRef",
-        "kClearedWeakReference",
-        "kWeakPrefix",
-        "kVariableRawData",
-        "kVariableRepeat",
         "kSynchronize",
         "kNop",
+        "kHotObject",
+        "kRootArrayConstants",
+        "kFixedRawData",
     ];
     for n in need {
         if !table.serialization.tags.contains_key(n) {
@@ -348,7 +411,7 @@ pub fn parse(payload: &[u8], table: &VersionTable) -> R<CodeCache> {
     // 顶层对象必须是 kNewObject（tag 已在此消费，parse_new_object 从 size 开始读）
     let b = w.byte()?;
     let t_new = w.tag("kNewObject")?;
-    if !(t_new..t_new + 4).contains(&b) {
+    if !(t_new..w.tag("kBackref")?).contains(&b) {
         return Err(format!(
             "payload does not start with kNewObject (got 0x{b:02x})"
         ));
@@ -409,6 +472,21 @@ pub fn parse(payload: &[u8], table: &VersionTable) -> R<CodeCache> {
         top_sfi: top,
         roots,
     })
+}
+
+/// 单元形态摘要（诊断用）。
+fn unit_kind(v: &SlotValue) -> String {
+    match v {
+        SlotValue::Ref(Ref::Object(i)) => format!("obj#{i}"),
+        SlotValue::Ref(Ref::Root(i)) => format!("root#{i}"),
+        SlotValue::Ref(Ref::RoRef(c, o)) => format!("ro{c}/{o}"),
+        SlotValue::Ref(Ref::Attached(i)) => format!("attached#{i}"),
+        SlotValue::Repeat(n, inner) => format!("repeat×{n}({})", unit_kind(inner)),
+        SlotValue::Raw(d) => format!("raw{}B", d.len()),
+        SlotValue::ClearedWeak => "cleared".into(),
+        SlotValue::WeakRef(inner) => format!("weak({})", unit_kind(inner)),
+        SlotValue::PendingRef(id) => format!("pending#{id}"),
+    }
 }
 
 fn map_type_name(root_name: &str) -> String {

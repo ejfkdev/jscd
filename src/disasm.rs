@@ -20,26 +20,16 @@ use crate::serializer::{CodeCache, ObjId, Ref, SlotValue};
 use crate::tables::VersionTable;
 use std::fmt::Write as _;
 
-/// SFI 槽位（家族常量，9.x–11.x/12.x+ 该组字段顺序一致）。
-mod sfi {
-    /// function_data
-    pub const FUNCTION_DATA: usize = 1;
-    /// name_or_scope_info
-    pub const NAME: usize = 2;
-    /// outer_scope_info_or_feedback_metadata
-    pub const OUTER: usize = 3;
-    /// script_or_debug_info
-    pub const SCRIPT: usize = 4;
-    /// raw 尾部起点（= 5*ts + 2*ts？）——SFI 无指针压缩 56 字节：5 槽 + 16 字节 raw
-    pub const RAW_TAIL: usize = 5;
-}
-
-/// BCA 槽位。
-mod bca {
-    pub const CONSTANT_POOL: usize = 2;
-    pub const HANDLER_TABLE: usize = 3;
-    pub const SOURCE_POSITION_TABLE: usize = 4;
-    pub const RAW_TAIL: usize = 5;
+/// 9.x 家族兜底槽位（表缺 layout 时使用）。
+mod fallback_slots {
+    /// SFI：function_data / name_or_scope_info / script
+    pub const SFI_FUNCTION_DATA: usize = 1;
+    pub const SFI_NAME: usize = 2;
+    pub const SFI_SCRIPT: usize = 4;
+    /// BCA：constant_pool / handler_table / source_position_table
+    pub const BCA_CONSTANT_POOL: usize = 2;
+    pub const BCA_HANDLER_TABLE: usize = 3;
+    pub const BCA_SOURCE_POSITION_TABLE: usize = 4;
 }
 
 pub struct Disassembler<'a> {
@@ -51,6 +41,64 @@ pub struct Disassembler<'a> {
 }
 
 impl<'a> Disassembler<'a> {
+    /// SFI 槽位：function_data（含 13.6 的 trusted/untrusted 拆分）。
+    fn sfi_function_data_slots(&self) -> Vec<usize> {
+        let ts = self.layout.tagged_size;
+        if let Some(sfi) = &self.table.shared_function_info {
+            let v: Vec<usize> = ["function_data", "trusted_function_data", "untrusted_function_data"]
+                .iter()
+                .filter_map(|n| sfi.slot(ts, n))
+                .collect();
+            if !v.is_empty() {
+                return v;
+            }
+        }
+        vec![fallback_slots::SFI_FUNCTION_DATA]
+    }
+
+    fn sfi_name_slot(&self) -> usize {
+        let ts = self.layout.tagged_size;
+        self.table
+            .shared_function_info
+            .as_ref()
+            .and_then(|s| s.slot(ts, "name_or_scope_info"))
+            .unwrap_or(fallback_slots::SFI_NAME)
+    }
+
+    fn sfi_script_slot(&self) -> usize {
+        let ts = self.layout.tagged_size;
+        self.table
+            .shared_function_info
+            .as_ref()
+            .and_then(|s| s.slot_any(ts, &["script", "script_or_debug_info"]))
+            .unwrap_or(fallback_slots::SFI_SCRIPT)
+    }
+
+    fn bca_slot(&self, names: &[&str], fallback: usize) -> usize {
+        let ts = self.layout.tagged_size;
+        self.table
+            .bytecode_array
+            .as_ref()
+            .and_then(|b| b.fields.get(*names.first().unwrap()).copied().map(|o| o / ts))
+            .or_else(|| {
+                self.table
+                    .bytecode_array
+                    .as_ref()
+                    .and_then(|b| names.iter().find_map(|n| b.fields.get(*n).copied().map(|o| o / ts)))
+            })
+            .unwrap_or(fallback)
+    }
+
+    fn bca_constant_pool_slot(&self) -> usize {
+        self.bca_slot(&["constant_pool"], fallback_slots::BCA_CONSTANT_POOL)
+    }
+    fn bca_handler_table_slot(&self) -> usize {
+        self.bca_slot(&["handler_table"], fallback_slots::BCA_HANDLER_TABLE)
+    }
+    fn bca_source_position_slot(&self) -> usize {
+        self.bca_slot(&["source_position_table"], fallback_slots::BCA_SOURCE_POSITION_TABLE)
+    }
+
     pub fn new(cache: &'a CodeCache, table: &'a VersionTable, layout: FamilyLayout) -> Self {
         Disassembler {
             cache,
@@ -82,7 +130,7 @@ impl<'a> Disassembler<'a> {
     /// name_or_scope_info 为 String 直接用；为 ScopeInfo 时读 FunctionName
     /// （function_variable_info.name），空则回落 inferred_function_name。
     pub fn sfi_name(&self, id: ObjId) -> String {
-        let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, sfi::NAME) else {
+        let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, self.sfi_name_slot()) else {
             return String::new();
         };
         match r {
@@ -117,39 +165,98 @@ impl<'a> Disassembler<'a> {
         }
     }
 
-    /// ScopeInfo 名字段的位置（按 flags 逐段推进，槽位从 0 = map 起算）：
-    /// 1 flags | 2 parameter_count | 3 context_local_count | names[N] | infos[N] |
-    /// [saved_class_variable] | [receiver_info] | [function_variable_info{name,index}] |
-    /// [inferred_function_name] | ...
-    /// 返回 (function_name_slot, inferred_name_slot)。
+    /// ScopeInfo 名字段位置（按版本布局逐段推进，返回 (function_name_slot, inferred_slot)）。
+    ///
+    /// 9.x–12.x：flags(Smi) | parameter_count | context_local_count | names[n] | infos[n] |
+    ///           [saved] | [receiver] | [function_variable_info{name,index}] | [inferred] | ...
+    /// 13.x：    flags(u32) + padding | parameter_count | context_local_count |
+    ///           position_info(2) | [module_count] | names[n] (n<75) | [hashtable] | infos[n] |
+    ///           [saved] | [function_variable_info] | [inferred] | ...
     fn scope_name_slots(&self, id: ObjId) -> (Option<usize>, Option<usize>) {
-        let Some(flags) = self.smi_slot(id, 1) else {
+        let ts = self.layout.tagged_size;
+        let cfg = self.table.scope_info.clone().unwrap_or(crate::tables::ScopeInfoLayout {
+            flags_smi: true,
+            position_info_early: false,
+            max_inlined_names: 75,
+            saved_class_bit: 10,
+            function_variable_bits: [12, 13],
+            receiver_bits: [7, 8],
+            has_inferred_bit: 14,
+        });
+        let Some(flags_raw) = self.smi_slot(id, 1) else {
             return (None, None);
         };
-        let Some(n) = self.smi_slot(id, 3) else {
-            return (None, None);
-        };
-        let flags = flags as u64;
-        let receiver_var = (flags >> 7) & 0b11;
-        let has_saved = (flags >> 10) & 1 == 1;
-        let has_receiver = matches!(receiver_var, 1 | 2);
-        let mut cursor = 4 + 2 * n as usize + has_saved as usize + has_receiver as usize;
+        // flags：Smi 编码（值在高 32 位）或裸 uint32（低 32 位）
+        let flags = if cfg.flags_smi {
+            flags_raw as u32
+        } else {
+            self.cache
+                .raw_at(id, ts, 4)
+                .map(|d| u32::from_le_bytes(d.try_into().unwrap()))
+                .unwrap_or(0)
+        } as u64;
 
-        let has_func_var = ((flags >> 12) & 0b11) != 0;
-        let function_name = if has_func_var {
-            let slot = cursor;
-            cursor += 2; // name + context_or_stack_slot_index
+        let has_saved = (flags >> cfg.saved_class_bit) & 1 == 1;
+        let function_var = ((flags >> cfg.function_variable_bits[0])
+            & ((1 << (cfg.function_variable_bits[1] - cfg.function_variable_bits[0] + 1)) - 1))
+            as u32;
+        let has_inferred = (flags >> cfg.has_inferred_bit) & 1 == 1;
+        let receiver_var = ((flags >> cfg.receiver_bits[0])
+            & ((1 << (cfg.receiver_bits[1] - cfg.receiver_bits[0] + 1)) - 1)) as u32;
+        let has_receiver = matches!(receiver_var, 1 | 2);
+
+        if !cfg.position_info_early {
+            // 9.x–12.x：槽位 = 4 + 2n + saved + receiver
+            let Some(n) = self.smi_slot(id, 3) else {
+                return (None, None);
+            };
+            let mut cursor = 4 + 2 * n as usize + has_saved as usize + has_receiver as usize;
+            let function_name = if function_var != 0 {
+                let slot = cursor;
+                cursor += 2;
+                Some(slot)
+            } else {
+                None
+            };
+            let inferred = if has_inferred { Some(cursor) } else { None };
+            return (function_name, inferred);
+        }
+
+        // 13.x：flags+padding(ts+8) | parameter_count(ts+8) | context_local_count(ts+16)
+        let param_off = ts + 8;
+        let clc_off = ts + 16;
+        let _ = param_off;
+        let Some(n) = self
+            .cache
+            .raw_at(id, clc_off, ts)
+            .and_then(|d| self.decode_smi_bytes(d))
+        else {
+            return (None, None);
+        };
+        let n = n as usize;
+        let mut off = clc_off + ts; // 变长区起点（字节）
+        off += 2 * ts; // position_info（2 个 Smi）
+        let scope_type = flags & 0xF;
+        if scope_type == 3 {
+            off += ts; // module_variable_count
+        }
+        if n < cfg.max_inlined_names {
+            off += n * ts; // context_local_names
+        } else {
+            off += ts; // context_local_names_hashtable
+        }
+        off += n * ts; // context_local_infos
+        if has_saved {
+            off += ts;
+        }
+        let function_name = if function_var != 0 {
+            let slot = off / ts;
+            off += 2 * ts;
             Some(slot)
         } else {
             None
         };
-        let has_inferred = (flags >> 14) & 1 == 1;
-        let inferred = if has_inferred {
-            let slot = cursor;
-            Some(slot)
-        } else {
-            None
-        };
+        let inferred = if has_inferred { Some(off / ts) } else { None };
         (function_name, inferred)
     }
 
@@ -173,6 +280,22 @@ impl<'a> Disassembler<'a> {
         }
     }
 
+    /// 解 8/4 字节 Smi（无压缩：值在高 32 位；压缩：低 32 位带 tag）。
+    fn decode_smi_bytes(&self, d: &[u8]) -> Option<i64> {
+        if d.len() == 8 {
+            Some((read_u64(d) >> 32) as u32 as i32 as i64)
+        } else if d.len() == 4 {
+            let raw = u32::from_le_bytes(d.try_into().ok()?);
+            if raw & 1 == 0 {
+                None
+            } else {
+                Some(((raw as i32) >> 1) as i64)
+            }
+        } else {
+            None
+        }
+    }
+
     /// 读对象内某个 tagged 槽的 Smi 值（无压缩：高 32 位；压缩：低 32 位带 tag）。
     fn smi_slot(&self, id: ObjId, slot: usize) -> Option<i64> {
         let ts = self.layout.tagged_size;
@@ -186,40 +309,64 @@ impl<'a> Disassembler<'a> {
     }
 
     fn render_sfi(&self, id: ObjId, name: &str, out: &mut String) -> Result<(), String> {
-        let bca_id = match self.cache.slot_at(id, sfi::FUNCTION_DATA) {
-            Some(SlotValue::Ref(Ref::Object(b))) => *b,
-            _ => return Ok(()), // 未编译（UncompiledData）——留给 functions 子命令展示
-        };
-        if self.cache.obj(bca_id).type_name != "BytecodeArray" {
-            return Ok(());
+        // function_data 槽（9.x–12.x 单槽；13.6 起 trusted/untrusted 拆分，取指向 BCA 的那个）
+        let mut bca_id = None;
+        for slot in self.sfi_function_data_slots() {
+            if let Some(SlotValue::Ref(Ref::Object(b))) = self.cache.slot_at(id, slot) {
+                if self.cache.obj(*b).type_name == "BytecodeArray" {
+                    bca_id = Some(*b);
+                    break;
+                }
+            }
         }
-        let header = self.layout.bca_header();
+        let Some(bca_id) = bca_id else {
+            return Ok(()); // 未编译（UncompiledData）——留给 functions 子命令展示
+        };
+        let ba_layout = self
+            .table
+            .bytecode_array
+            .clone()
+            .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(self.layout.tagged_size));
+        let header = ba_layout.header_size;
         let obj = self.cache.obj(bca_id);
         let bytecode_len = self
             .cache
             .raw_at(bca_id, self.layout.tagged_size, self.layout.tagged_size)
             .map(|d| read_u64(d) >> 32)
             .unwrap_or(0) as usize;
-        let frame_size = self
-            .cache
-            .raw_at(bca_id, 5 * self.layout.tagged_size, 4)
+        let frame_size = ba_layout
+            .off("frame_size")
+            .and_then(|o| self.cache.raw_at(bca_id, o, 4))
             .map(|d| u32::from_le_bytes(d.try_into().unwrap()))
             .unwrap_or(0);
         // parameter_size 是字节数；V8 的 parameter_count() = parameter_size / kSystemPointerSize
-        let parameter_size = self
-            .cache
-            .raw_at(bca_id, 5 * self.layout.tagged_size + 4, 4)
+        let parameter_size = ba_layout
+            .off("parameter_size")
+            .and_then(|o| self.cache.raw_at(bca_id, o, 4))
             .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as i32)
             .unwrap_or(0);
-        let parameter_count = parameter_size / 8;
-        let osr = self
-            .cache
-            .raw_at(bca_id, 5 * self.layout.tagged_size + 12, 1)
+        // parameter_size 语义随版本变：≤12 存字节数，13.x 起直接是计数
+        let parameter_count = if self
+            .table
+            .parameter_count
+            .map(|c| c.direct)
+            .unwrap_or(false)
+        {
+            // 13.x：字段是 uint16，直接就是计数
+            parameter_size & 0xFFFF
+        } else {
+            parameter_size / 8
+        };
+        // osr 字段名随版本变（osr_loop_nesting_level / osr_urgency_and_install_target）；11.3+ 已移除
+        let osr = ba_layout
+            .off("osr_loop_nesting_level")
+            .or_else(|| ba_layout.off("osr_urgency_and_install_target"))
+            .and_then(|o| self.cache.raw_at(bca_id, o, 1))
             .map(|d| d[0])
             .unwrap_or(0);
-        let age = self
-            .cache
-            .raw_at(bca_id, 5 * self.layout.tagged_size + 13, 1)
+        let age = ba_layout
+            .off("bytecode_age")
+            .and_then(|o| self.cache.raw_at(bca_id, o, 1))
             .map(|d| d[0])
             .unwrap_or(0);
         let code = self
@@ -286,13 +433,13 @@ impl<'a> Disassembler<'a> {
         self.render_constant_pool(bca_id, out);
         self.render_byte_array(
             "Handler Table",
-            self.cache.slot_at(bca_id, bca::HANDLER_TABLE).and_then(|v| v.as_ref()),
+            self.cache.slot_at(bca_id, self.bca_handler_table_slot()).and_then(|v| v.as_ref()),
             out,
         );
         self.render_byte_array(
             "Source Position Table",
             self.cache
-                .slot_at(bca_id, bca::SOURCE_POSITION_TABLE)
+                .slot_at(bca_id, self.bca_source_position_slot())
                 .and_then(|v| v.as_ref()),
             out,
         );
@@ -333,7 +480,7 @@ impl<'a> Disassembler<'a> {
         // 常量池：FixedArray（map + length Smi + elements，Smi 与指针交错在 raw/ref 单元里）
         let pool = self
             .cache
-            .slot_at(bca_id, bca::CONSTANT_POOL)
+            .slot_at(bca_id, self.bca_constant_pool_slot())
             .and_then(|v| v.as_ref())
             .and_then(|r| self.cache.ref_object(r));
         let Some(pool_id) = pool else {
@@ -375,7 +522,7 @@ impl<'a> Disassembler<'a> {
         };
         let pool = self
             .cache
-            .slot_at(bca_id, bca::CONSTANT_POOL)
+            .slot_at(bca_id, self.bca_constant_pool_slot())
             .and_then(|v| v.as_ref())
             .and_then(|r| self.cache.ref_object(r))?;
         let mut out = Vec::new();

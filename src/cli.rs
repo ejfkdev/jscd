@@ -94,6 +94,8 @@ fn cache_dump(cache: &mut crate::serializer::CodeCache, table: &crate::tables::V
             }
         }
         if std::env::var("JSCD_DUMP_NAMES").is_ok() && o.type_name == "SharedFunctionInfo" {
+            let _ = writeln!(s, "SFI#{id} bytes={} slots={:?}", o.byte_size,
+                o.slots.iter().map(|x| x.index).collect::<Vec<_>>());
             let _ = writeln!(s, "SFI#{id} name_slot_target={:?}", o.slots.get(2).map(|x| format!("{:?}", x.value)));
         }
         if std::env::var("JSCD_DUMP_SCOPE").is_ok() && o.type_name == "ScopeInfo" {
@@ -180,7 +182,7 @@ fn functions_cmd(_file: &Path, _common: &Common) -> Result<(), String> {
 fn disasm_cmd(file: &Path, common: &Common, filter: Option<&str>) -> Result<(), String> {
     let data = load_input(file)?;
     let (h, table, cache) = parse_cache(&data)?;
-    let layout = crate::bytecode::FamilyLayout::new(table.tagged_size as usize);
+    let layout = crate::bytecode::FamilyLayout::from_table(&table);
     let d = crate::disasm::Disassembler::new(&cache, &table, layout)
         .with_source_len(h.source_length());
     let text = d.render_all(filter)?;
@@ -198,16 +200,16 @@ fn parse_cache(
     let h = crate::header::Header::parse_with(data, &table.header)?;
     let payload = h.payload(data);
     // tagged_size 是构建属性（压缩/非压缩），表里给默认值；解析失败时回退另一种
-    let mut err = String::new();
+    let mut errors = Vec::new();
     for ts in [table.tagged_size, if table.tagged_size == 8 { 4 } else { 8 }] {
         let mut t = table.clone();
         t.tagged_size = ts;
         match crate::serializer::parse(payload, &t) {
             Ok(c) => return Ok((h, t, c)),
-            Err(e) => err = e,
+            Err(e) => errors.push(format!("tagged_size={ts}: {e}")),
         }
     }
-    Err(format!("payload parse failed: {err}"))
+    Err(format!("payload parse failed ({})", errors.join(" | ")))
 }
 
 fn json_out(text: &str) -> String {

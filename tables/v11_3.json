@@ -1,4 +1,17 @@
 {
+ "bytecode_array": {
+  "fields": {
+   "bytecode_age": 52,
+   "constant_pool": 16,
+   "frame_size": 40,
+   "handler_table": 24,
+   "incoming_new_target_or_generator_register": 48,
+   "length": 8,
+   "parameter_size": 44,
+   "source_position_table": 32
+  },
+  "header_size": 54
+ },
  "bytecodes": [
   {
    "name": "Wide",
@@ -1453,6 +1466,14 @@
    "prefix": null
   }
  ],
+ "frame": {
+  "closure_index": -4,
+  "context_index": -5,
+  "cp_slots": 0,
+  "extra_slots": 2,
+  "first_param": -8,
+  "reg_file_start": -6
+ },
  "hash": {
   "algorithm": "right_fold"
  },
@@ -1554,6 +1575,9 @@
    "scalable": true,
    "size": 1
   }
+ },
+ "parameter_count": {
+  "direct": false
  },
  "roots": [
   "FreeSpaceMap",
@@ -2848,6 +2872,21 @@
   "JSWeakRefAddToKeptObjects",
   "ShrinkFinalizationRegistryUnregisterTokenMap"
  ],
+ "scope_info": {
+  "flags_smi": true,
+  "function_variable_bits": [
+   12,
+   13
+  ],
+  "has_inferred_bit": 14,
+  "max_inlined_names": 75,
+  "position_info_early": false,
+  "receiver_bits": [
+   7,
+   8
+  ],
+  "saved_class_bit": 10
+ },
  "serialization": {
   "tags": {
    "kApiReference": 17,
@@ -2884,6 +2923,24 @@
    "kVariableRepeat": 12,
    "kWeakPrefix": 25
   }
+ },
+ "shared_function_info": {
+  "fields": {
+   "expected_nof_properties": 46,
+   "flags": 48,
+   "flags2": 47,
+   "formal_parameter_count": 42,
+   "function_data": 8,
+   "function_literal_id": 52,
+   "function_token_offset": 44,
+   "length": 40,
+   "name_or_scope_info": 16,
+   "optional_padding": 60,
+   "outer_scope_info_or_feedback_metadata": 24,
+   "script_or_debug_info": 32,
+   "unique_id": 56
+  },
+  "header_size": 64
  },
  "source_tag": "v20.20.2",
  "tagged_size": 8,

@@ -89,19 +89,34 @@ def main():
         jscd_by_name.setdefault(b["name"], []).append(b)
 
     ok, diff, missing, extra = 0, [], [], []
+    def block_key(b):
+        return (
+            b["meta"].get("Bytecode length"),
+            b["meta"].get("Parameter count"),
+            b["meta"].get("Register count"),
+            b["meta"].get("Frame size"),
+            tuple((i, by, body) for i, by, body in b["instrs"]),
+        )
+
+    anon_node = {block_key(b): b for b in node_blocks if not b["name"]}
+    anon_matched = 0
+    anon_unmatched = []
+
     for name, jlist in jscd_by_name.items():
-        pretty = name or "<anonymous>"
+        if not name:
+            # 匿名函数（顶层包装等）：按内容精确匹配（node 侧匿名内部函数太多，无法按名配对）
+            for jb in jlist:
+                if block_key(jb) in anon_node:
+                    anon_matched += 1
+                else:
+                    anon_unmatched.append(jb)
+            continue
         if name not in node_by_name:
-            if not name:
-                # 匿名顶层包装：同样按 meta 在 node 的匿名块里找
-                node_by_name.setdefault(name, [])
-            else:
-                extra.append(pretty)
-                continue
+            extra.append(name)
+            continue
         nlist = node_by_name[name]
         used = set()
         for i, jb in enumerate(jlist):
-            # 同名多块（如多个 getter）：优先挑 meta 全等的
             nb = None
             for k, cand in enumerate(nlist):
                 if k in used:
@@ -129,7 +144,9 @@ def main():
             else:
                 for k, (ni, ji) in enumerate(zip(nb["instrs"], jb["instrs"])):
                     if ni[0] != ji[0] or ni[1] != ji[1] or ni[2] != ji[2]:
-                        problems.append(f"@{k} offset {ni[0]}/{ji[0]}\n      node: {ni[1]}  {ni[2]}\n      jscd: {ji[1]}  {ji[2]}")
+                        problems.append(
+                            f"@{k} offset {ni[0]}/{ji[0]}\n      node: {ni[1]}  {ni[2]}\n      jscd: {ji[1]}  {ji[2]}"
+                        )
                         if len(problems) > args.show:
                             break
             if problems:
@@ -142,7 +159,10 @@ def main():
             missing.append(f"{name} x{len(nlist)}")
 
     print(f"=== {args.fixture} (node {args.node_version}) ===")
-    print(f"matched: {ok}   mismatched: {len(diff)}   jscd-extra: {len(extra)}   node-only: {len(missing)}")
+    print(
+        f"matched: {ok} (+{anon_matched} anonymous by-content)   mismatched: {len(diff)}   "
+        f"jscd-extra: {len(extra)}   node-only: {len(missing)}"
+    )
     for name, problems in diff[:5]:
         print(f"\n--- MISMATCH: {name!r}")
         for p in problems:

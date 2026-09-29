@@ -3,5 +3,7 @@ pub static MANIFEST_JSON: &str = include_str!("../tables/manifest.json");
 pub static EMBEDDED_TABLE_FILES: &[(&str, &str)] = &[
     ("v10_2.json", include_str!("../tables/v10_2.json")),
     ("v11_3.json", include_str!("../tables/v11_3.json")),
+    ("v12_4.json", include_str!("../tables/v12_4.json")),
+    ("v13_6.json", include_str!("../tables/v13_6.json")),
     ("v9_4.json", include_str!("../tables/v9_4.json")),
 ];

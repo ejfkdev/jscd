@@ -38,9 +38,8 @@ pub struct FamilyLayout {
 }
 
 impl FamilyLayout {
+    /// 家族兜底（表缺 frame 段时）：9.x 布局。
     pub fn new(tagged_size: usize) -> Self {
-        // 帧常量（kCPSlotSize=0，standard frame + 2 个 interpreter 附加槽）：
-        //   kRegisterFileStartOffset = -6，context = -5，closure = -4，first param = -8
         FamilyLayout {
             tagged_size,
             reg_file_start: -6,
@@ -50,6 +49,18 @@ impl FamilyLayout {
             wide_scale: 2,
             extra_wide_scale: 4,
         }
+    }
+
+    /// 按版本表构造（帧常量随版本变：12.x+ register file 基址为 -7）。
+    pub fn from_table(table: &VersionTable) -> Self {
+        let mut l = FamilyLayout::new(table.tagged_size as usize);
+        if let Some(f) = table.frame {
+            l.reg_file_start = f.reg_file_start;
+            l.context_index = f.context_index;
+            l.closure_index = f.closure_index;
+            l.first_param = f.first_param;
+        }
+        l
     }
     /// BytecodeArray 头 = 5*ts + 14（3 个 tagged + 3×int32 + 2×int8）
     pub fn bca_header(&self) -> usize {

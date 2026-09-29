@@ -112,7 +112,8 @@ def extract_operand_types(text):
 
 def extract_serialization_tags(text):
     """提取 SerializationTag::Bytecode 枚举（显式值 + 隐式递增 + range 常量）。"""
-    m = re.search(r"enum Bytecode : byte \{(.*?)\n  \};", text, re.S)
+    # 类型拼写随版本变：V8 ≤ 11.x 用 ": byte"，12.x+ 用 ": uint8_t"
+    m = re.search(r"enum Bytecode : (?:byte|uint8_t|uint8) \{(.*?)\n  \};", text, re.S)
     if not m:
         raise RuntimeError("SerializationTag::Bytecode not found")
     body = m.group(1)
@@ -138,7 +139,7 @@ def extract_serialization_tags(text):
 
 def _grab_macro_list(text, name):
     """抓 #define NAME(V) 的宏体（到下一个 #define 或文件尾）。"""
-    m = re.search(rf"#define {name}\((\w+|V(?:, \w+)*)\)(.*?)(?=\n#define |\Z)", text, re.S)
+    m = re.search(rf"#define {name}\(([^)]*)\)(.*?)(?=\n#define |\Z)", text, re.S)
     return m.group(2) if m else None
 
 
@@ -176,7 +177,8 @@ def _expand_bytecode_entries(text, macro_name, entries, seen=None, depth=0):
             k += 1
         inner = body[j + 1:k]
         i = k + 1
-        if ident == "V":
+        if ident in ("V", "V_TSA"):
+            # V_TSA：CPU 无关的 trusted-space 变体，同样是枚举里的一个 opcode
             args = [a.strip() for a in inner.split(",")]
             name = args[0]
             m2 = re.match(r"^(\w+)$", name)
@@ -190,7 +192,7 @@ def _expand_bytecode_entries(text, macro_name, entries, seen=None, depth=0):
                 "prefix": name if is_prefix else None,
             })
         else:
-            # 子列表（如 BYTECODE_LIST_WITH_UNIQUE_HANDLERS(V) / SHORT_STAR_BYTECODE_LIST(V)）
+            # 子列表（如 BYTECODE_LIST_WITH_UNIQUE_HANDLERS(V, V_TSA) / SHORT_STAR_BYTECODE_LIST(V)）
             _expand_bytecode_entries(text, ident, entries, seen, depth + 1)
 
 
@@ -362,12 +364,17 @@ def extract_header_layout(tag):
 
 
 def _eval_expr(expr, consts):
-    expr = expr.replace("ALIGN8", f"({{}})")
-    # 简单四则 + 已知常量替换
-    def repl(m):
-        return str(consts.get(m.group(1), 0))
-    expr = re.sub(r"k\w+", repl, expr)
-    expr = re.sub(r"ALIGN8\(([^)]*)\)", r"(((\1)+7)&~7)", expr)
+    """求值 V8 头常量表达式（kX + kN 形式的链式常量，含 POINTER_SIZE_ALIGN）。"""
+    expr = expr.strip()
+    expr = expr.replace("POINTER_SIZE_ALIGN", "ALIGN8")
+    expr = re.sub(r"k\w+", lambda m: str(consts.get(m.group(0), 0)), expr)
+    m = re.match(r"^ALIGN8\((.*)\)$", expr, re.S)
+    if m:
+        inner = _eval_expr(m.group(1), consts)
+        return (inner + 7) & ~7
+    # 仅允许数字与四则运算
+    if not re.fullmatch(r"[0-9+\-*/()\s~&|]+", expr):
+        raise ValueError(f"unsupported expr: {expr!r}")
     return int(eval(expr))  # noqa: S307 受控输入（V8 源码常量表达式）
 
 
@@ -471,6 +478,260 @@ def extract_intrinsic_names(text):
     return re.findall(r"V\(\s*([A-Za-z0-9_]+)\s*,", body)
 
 
+def _tq_class(text, name):
+    """在 .tq 文本里找 `class NAME ... { ... }`，返回 (body, base_name)。"""
+    m = re.search(rf"(?:extern )?class {name}\b([^{{]*)\{{(.*?)\n\}}", text, re.S)
+    if not m:
+        return None, None
+    header, body = m.group(1), m.group(2)
+    bm = re.search(r"extends\s+(\w+)", header)
+    return body, (bm.group(1) if bm else None)
+
+
+def _parse_field_line(line):
+    """字段行 → (name, type, is_variable_array)。忽略 weak/const 等修饰符。"""
+    line = re.sub(r"^(weak|const|extern|static)\s+", "", line.strip())
+    m = re.match(r"^const\s+([a-z_][a-z0-9_]*)\s*:\s*(.+?);?$", line)
+    if not m:
+        m = re.match(r"^([a-z_][a-z0-9_]*)\s*(\[[^\]]*\])?\s*:\s*(.+?);?$", line)
+        if not m:
+            return None
+        name, bracket, ty = m.group(1), m.group(2), m.group(3)
+        return name, ty, bool(bracket)
+    return m.group(1), m.group(2), False
+
+
+def _tq_type_size(ty, sources, tagged_size, sandbox, depth=0):
+    """类型 → 字节数。sources: {file: text} 供跨文件查找 Struct 定义。"""
+    ty = ty.strip()
+    if ty in ("void", "constexpr '')"):
+        return 0
+    if "|" in ty:
+        return tagged_size
+    base = re.split(r"[<:]", ty)[0].strip()
+    simple = {"int32": 4, "uint32": 4, "int16": 2, "uint16": 2,
+              "int8": 1, "uint8": 1, "bool": 1, "Smi": tagged_size}
+    if base in simple:
+        return simple[base]
+    if base in ("ProtectedPointer", "IndirectPointer", "ProtectedPointerTagged"):
+        return 4 if sandbox else tagged_size
+    if base == "Indirect":  # 沙箱间接指针（32 位表索引）
+        return 4 if sandbox else tagged_size
+    # bitfield struct X extends uint16/... → 底层类型尺寸
+    for text in sources.values():
+        bm = re.search(rf"bitfield struct {base}\s+extends\s+(\w+)", text)
+        if bm:
+            return _tq_type_size(bm.group(1), sources, tagged_size, sandbox, depth + 1)
+    # 仅"值类型"（Struct 派生，如 BytecodeWrapper）内联展开；其余堆对象按 tagged 指针计
+    if depth < 4:
+        for text in sources.values():
+            body, base_name = _tq_class(text, base)
+            if body is None:
+                continue
+            if not _is_inline_struct(sources, base_name):
+                break  # 堆对象 → 引用
+            total = 0
+            for line, cond, _ in _tq_fields(body, tagged_size, sandbox):
+                if cond and not _cond_enabled(cond, tagged_size, sandbox):
+                    continue
+                parsed = _parse_field_line(line)
+                if parsed and not re.fullmatch(r"padding\d*", parsed[0]):
+                    total += _tq_type_size(parsed[1], sources, tagged_size, sandbox, depth + 1)
+            return total
+    return tagged_size
+
+
+def _is_inline_struct(sources, class_name, depth=0):
+    """类是否内联存储（继承 Struct 的值类型）。"""
+    if not class_name or depth > 4:
+        return False
+    if class_name == "Struct":
+        return True
+    for text in sources.values():
+        body, base = _tq_class(text, class_name)
+        if body is not None:
+            return _is_inline_struct(sources, base, depth + 1)
+    return False
+
+
+def _cond_enabled(cond, tagged_size, sandbox):
+    cond = cond.strip()
+    negate = False
+    if cond.startswith("ifnot(") or cond.startswith("ifnot ("):
+        negate = True
+        cond = cond[cond.index("(") + 1 : cond.rindex(")")]
+    elif cond.startswith("if(") or cond.startswith("if ("):
+        cond = cond[cond.index("(") + 1 : cond.rindex(")")]
+    flags = {
+        "TAGGED_SIZE_8_BYTES": tagged_size == 8,
+        "TAGGED_SIZE_4_BYTES": tagged_size == 4,
+        "V8_ENABLE_SANDBOX": sandbox,
+        "V8_EXTERNAL_CODE_SPACE": False,
+        "V8_ENABLE_LEAPTIERING": True,
+        "V8_ENABLE_WEBASSEMBLY": BUILD_DEFINES["V8_ENABLE_WEBASSEMBLY"],
+        "V8_INTL_SUPPORT": BUILD_DEFINES["V8_INTL_SUPPORT"],
+    }
+    val = flags.get(cond, True)
+    return (not val) if negate else val
+
+
+def _tq_fields(body, tagged_size, sandbox):
+    """解析类的字段行 → [(字段声明, 条件, None)]。
+
+    处理 Torque 注解：@if/@ifnot(...) 作为条件；其余 @注解（@customWeakMarking 等）
+    直接剥离；注解可与字段同行或独占一行。
+    """
+    out = []
+    pending_cond = None
+    for raw in body.splitlines():
+        line = raw.split("//")[0].strip()
+        if not line:
+            continue
+        cond = pending_cond
+        pending_cond = None
+        while line.startswith("@"):
+            cm = re.match(r"@(if|ifnot)\s*\(([^)]*)\)\s*(.*)$", line)
+            if cm:
+                c = f"{cm.group(1)}({cm.group(2)})"
+                rest = cm.group(3).strip()
+                if rest:
+                    out.append((rest, c, None))
+                    line = ""
+                else:
+                    pending_cond = c
+                    line = ""
+                break
+            am = re.match(r"@\w+\s*(.*)$", line)
+            rest = am.group(1).strip() if am else ""
+            line = rest
+            if not line:
+                break
+        if line and not line.startswith("@"):
+            out.append((line, cond, None))
+    return out
+
+
+def tq_layout(sources, class_name, tagged_size, sandbox):
+    """按继承链 + @if 条件推导类的内存布局。
+
+    sources: {file: text}；返回 {"header_size": 变长区起点, "fields": {name: offset}}。
+    """
+    chain = []
+    cur = class_name
+    guard = 0
+    while cur and guard < 8:
+        guard += 1
+        found = False
+        for text in sources.values():
+            body, base = _tq_class(text, cur)
+            if body is not None:
+                chain.append((cur, body))
+                cur = base
+                found = True
+                break
+        if not found:
+            break
+    if not chain:
+        return None
+    offset = tagged_size  # HeapObject: map
+    fields = {}
+    for name, body in reversed(chain):
+        for fname, cond, _ in _tq_fields(body, tagged_size, sandbox):
+            # 条件字段
+            if cond and not _cond_enabled(cond, tagged_size, sandbox):
+                continue
+            parsed = _parse_field_line(fname)
+            if not parsed:
+                continue
+            field, ty, is_var = parsed
+            # Struct 的显式 padding 字段（padding1/padding2）不计入（真机校准：12.4 头=64）
+            if re.fullmatch(r"padding\d*", field):
+                continue
+            if is_var:
+                # 变长数组：标记变长区起点（bytecode / 字符串内容从这里开始）
+                fields.setdefault(f"__var_{field}", offset)
+                continue
+            size = _tq_type_size(ty, sources, tagged_size, sandbox)
+            fields[field] = offset
+            offset += size
+    return {"header_size": offset, "fields": fields}
+
+
+def bytecode_array_layout(sources, tagged_size, sandbox):
+    """BytecodeArray 头布局（版本间差异大：9.4=54 / 10.2=56 / 11.3=54 / 12.4+=64）。"""
+    return tq_layout(sources, "BytecodeArray", tagged_size, sandbox)
+
+
+def extract_frame_layout(text):
+    """解释器帧常量 → 寄存器命名基址（随版本变：9.x–11.x = -6，12.x+ = -7）。
+
+    kRegisterFileStartOffset = -kFixedFrameSizeFromFp/S - 1，
+    其中 UnoptimizedFrameConstants::kFixedFrameSizeFromFp
+        = StandardFrameConstants::kFixedFrameSizeFromFp + extra*S
+        = (3*S + kCPSlotSize) + extra*S
+    派生：context = start+1，closure = start+2，first_param = start-2。
+    """
+    if text is None:
+        return None
+    m = re.search(r"class UnoptimizedFrameConstants.*?DEFINE_STANDARD_FRAME_SIZES\((\d+)\)", text, re.S)
+    if not m:
+        return None
+    extra = int(m.group(1))
+    # V8_EMBEDDED_CONSTANT_POOL 在官方 Node 构建中关闭（真机校准：9.4 start=-6、12.4 start=-7）
+    cp_slots = 0
+    standard = 3 + cp_slots          # 以 S 为单位
+    fixed = standard + extra
+    start = -(fixed + 1)             # kRegisterFileFromFp/S
+    return {
+        "reg_file_start": start,
+        "context_index": start + 1,
+        "closure_index": start + 2,
+        "first_param": start - 2,
+        "extra_slots": extra,
+        "cp_slots": cp_slots,
+    }
+
+
+def extract_parameter_count_semantics(text):
+    """parameter_count() 的语义：V8 ≤ 12 存"字节数"（需 >> log2(kSystemPointerSize)）；
+    13.x 起直接是计数（uint16）。"""
+    if text is None:
+        return {"direct": False}
+    m = re.search(r"parameter_count\(\) const \{(.*?)\n\}", text, re.S)
+    if m and re.search(r"ReadField<uint16_t>", m.group(1)):
+        return {"direct": True}
+    return {"direct": False}
+
+
+def extract_scope_info(text, globals_text):
+    """ScopeInfo 布局差异（名字取值路径随版本变）。
+
+    - flags 编码：V8 ≤ 12 = SmiTagged（值在高 32 位），13.x = 裸 uint32
+    - 变长区顺序：V8 ≤ 12 = names 在 infos 前、position_info 在后；
+      13.x = position_info 在前、names/infos 可走 hashtable（> kMaxInlinedLocalNamesSize）
+    """
+    if text is None:
+        return None
+    max_inlined = 75
+    if globals_text:
+        m = re.search(r"kScopeInfoMaxInlinedLocalNamesSize\s*=\s*(\d+)", globals_text)
+        if m:
+            max_inlined = int(m.group(1))
+    flags_smi = "SmiTagged<ScopeFlags>" in text
+    m_pos = text.find("position_info")
+    m_names = text.find("context_local_names")
+    early_position = m_pos != -1 and m_names != -1 and m_pos < m_names
+    return {
+        "flags_smi": flags_smi,
+        "position_info_early": early_position,
+        "max_inlined_names": max_inlined,
+        "saved_class_bit": 10,   # flags 位域位置（9.x–13.x 一致）
+        "function_variable_bits": [12, 13],
+        "receiver_bits": [7, 8],
+        "has_inferred_bit": 14,
+    }
+
+
 def extract_hash_fold(tag):
     """V8 ≥ 12 引入 base::Hasher（左折叠）；此前为变参递归（右折叠）。"""
     fh = git_show(tag, "src/base/functional.h")
@@ -571,6 +832,15 @@ def main():
         src_d = git_show(tag, "src/objects/objects-definitions.h")
         src_rt = git_show(tag, "src/runtime/runtime.h")
         src_intr = git_show(tag, "src/interpreter/interpreter-intrinsics.h")
+        # BytecodeArray 定义位置随版本移动：9.x–11.x 在 objects/code.tq，12.x+ 在 objects/bytecode-array.tq
+        src_code = git_show(tag, "src/objects/bytecode-array.tq") or git_show(tag, "src/objects/code.tq")
+        src_trusted = git_show(tag, "src/objects/trusted-object.tq")
+        src_fixed = git_show(tag, "src/objects/fixed-array.tq")
+        src_frame = git_show(tag, "src/execution/frame-constants.h")
+        src_sfi = git_show(tag, "src/objects/shared-function-info.tq")
+        src_scope = git_show(tag, "src/objects/scope-info.tq")
+        src_ba_inl = git_show(tag, "src/objects/bytecode-array-inl.h")
+        src_globals = git_show(tag, "src/common/globals.h")
         if not all([src_b, src_o, src_t]):
             print(f"skip {tag}: missing V8 sources", file=sys.stderr)
             continue
@@ -587,8 +857,32 @@ def main():
                 "tags": extract_serialization_tags(src_t),
             },
             "roots": extract_roots(src_r, src_s, src_d) if src_r else [],
+            "frame": extract_frame_layout(src_frame),
+            "scope_info": extract_scope_info(src_scope, src_globals),
+            "parameter_count": extract_parameter_count_semantics(src_ba_inl),
+            "shared_function_info": tq_layout(
+                {k: v for k, v in {
+                    "shared-function-info.tq": src_sfi,
+                    "trusted-object.tq": src_trusted,
+                    "exposed-trusted-object.tq": src_trusted,
+                }.items() if v},
+                "SharedFunctionInfo",
+                extract_tagged_size(tag),
+                sandbox=extract_tagged_size(tag) == 4,
+            ),
             "runtime_names": extract_runtime_names(src_rt),
             "intrinsic_names": extract_intrinsic_names(src_intr),
+            "bytecode_array": bytecode_array_layout(
+                {k: v for k, v in {
+                    "bytecode-array.tq": src_code,
+                    "code.tq": src_code,
+                    "exposed-trusted-object.tq": src_trusted,
+                    "trusted-object.tq": src_trusted,
+                    "fixed-array.tq": src_fixed,
+                }.items() if v},
+                extract_tagged_size(tag),
+                sandbox=extract_tagged_size(tag) == 4,
+            ),
         }
 
         content_key = hashlib.sha1(json.dumps(table, sort_keys=True).encode()).hexdigest()

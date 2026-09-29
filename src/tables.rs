@@ -49,6 +49,21 @@ pub struct VersionTable {
     /// IntrinsicId 顺序名表（index → Name）
     #[serde(default)]
     pub intrinsic_names: Vec<String>,
+    /// BytecodeArray 头布局（版本间会变，如 9.4=54 / 10.2=56 / 11.3=54）
+    #[serde(default)]
+    pub bytecode_array: Option<BytecodeArrayLayout>,
+    /// 解释器帧常量 → 寄存器命名基址（9.x–11.x start=-6，12.x+ start=-7）
+    #[serde(default)]
+    pub frame: Option<FrameLayout>,
+    /// SharedFunctionInfo 字段偏移（槽顺序随版本变，如 13.6 首槽为 trusted_function_data）
+    #[serde(default)]
+    pub shared_function_info: Option<StructLayout>,
+    /// ScopeInfo 布局差异（名字取值路径）
+    #[serde(default)]
+    pub scope_info: Option<ScopeInfoLayout>,
+    /// parameter_count 语义（false = parameter_size 为字节数，true = 直接是计数）
+    #[serde(default)]
+    pub parameter_count: Option<ParameterCountCfg>,
     #[serde(default)]
     pub serialization: SerializationCfg,
 }
@@ -87,6 +102,79 @@ pub struct SerializationCfg {
     pub code_items: HashMap<String, u8>,
     #[serde(default)]
     pub switches: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StructLayout {
+    pub header_size: usize,
+    #[serde(default)]
+    pub fields: HashMap<String, usize>,
+}
+
+impl StructLayout {
+    pub fn off(&self, name: &str) -> Option<usize> {
+        self.fields.get(name).copied()
+    }
+    /// 槽下标（槽从 0 = map 起算）。
+    pub fn slot(&self, tagged_size: usize, name: &str) -> Option<usize> {
+        self.off(name).map(|o| o / tagged_size)
+    }
+    /// 依次尝试多个候选字段名（跨版本改名）。
+    pub fn slot_any(&self, tagged_size: usize, names: &[&str]) -> Option<usize> {
+        names.iter().find_map(|n| self.slot(tagged_size, n))
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct ParameterCountCfg {
+    pub direct: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScopeInfoLayout {
+    /// flags 是否 Smi 编码（V8 ≤ 12）；false 时为裸 uint32（13.x）
+    pub flags_smi: bool,
+    /// position_info 是否在 names/infos 之前（13.x）
+    pub position_info_early: bool,
+    pub max_inlined_names: usize,
+    pub saved_class_bit: u32,
+    pub function_variable_bits: [u32; 2],
+    pub receiver_bits: [u32; 2],
+    pub has_inferred_bit: u32,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct FrameLayout {
+    pub reg_file_start: i32,
+    pub context_index: i32,
+    pub closure_index: i32,
+    pub first_param: i32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct BytecodeArrayLayout {
+    pub header_size: usize,
+    pub fields: HashMap<String, usize>,
+}
+
+impl BytecodeArrayLayout {
+    /// 家族兜底（表缺该字段时）：无压缩 9.x 布局。
+    pub fn fallback(tagged_size: usize) -> Self {
+        let mut fields = HashMap::new();
+        fields.insert("constant_pool".to_string(), 2 * tagged_size);
+        fields.insert("handler_table".to_string(), 3 * tagged_size);
+        fields.insert("source_position_table".to_string(), 4 * tagged_size);
+        fields.insert("frame_size".to_string(), 5 * tagged_size);
+        fields.insert("parameter_size".to_string(), 5 * tagged_size + 4);
+        fields.insert("bytecode_age".to_string(), 5 * tagged_size + 13);
+        BytecodeArrayLayout {
+            header_size: 5 * tagged_size + 14,
+            fields,
+        }
+    }
+    pub fn off(&self, name: &str) -> Option<usize> {
+        self.fields.get(name).copied()
+    }
 }
 
 /// info 子命令的版本识别结果。
