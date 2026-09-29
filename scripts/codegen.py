@@ -718,13 +718,15 @@ def extract_scope_info(text, globals_text):
         if m:
             max_inlined = int(m.group(1))
     flags_smi = "SmiTagged<ScopeFlags>" in text
+    # 只有存在 context_local_names_hashtable 的版本才用阈值分流；否则名字恒内联
+    has_table = "context_local_names_hashtable" in text
     m_pos = text.find("position_info")
     m_names = text.find("context_local_names")
     early_position = m_pos != -1 and m_names != -1 and m_pos < m_names
     return {
         "flags_smi": flags_smi,
         "position_info_early": early_position,
-        "max_inlined_names": max_inlined,
+        "max_inlined_names": max_inlined if has_table else (1 << 30),
         "saved_class_bit": 10,   # flags 位域位置（9.x–13.x 一致）
         "function_variable_bits": [12, 13],
         "receiver_bits": [7, 8],

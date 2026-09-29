@@ -2667,7 +2667,7 @@
    13
   ],
   "has_inferred_bit": 14,
-  "max_inlined_names": 75,
+  "max_inlined_names": 1073741824,
   "position_info_early": false,
   "receiver_bits": [
    7,

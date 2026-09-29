@@ -381,6 +381,8 @@ fn is_ident(s: &str) -> bool {
 #[derive(Debug, Default, Clone)]
 pub struct Scope {
     pub context_locals: Vec<String>,
+    /// 局部名过多（≥ kScopeInfoMaxInlinedLocalNamesSize）时的 NameToIndexHashTable
+    pub locals_table: Option<ObjId>,
     /// 外层作用域的 ScopeInfo 对象（用于跨作用域解析 context 槽名）
     pub outer: Option<ObjId>,
     pub param_count: u32,
@@ -449,13 +451,19 @@ pub fn read_scope<'a>(
     }
     let inlined = n < cfg.max_inlined_names;
     let names_off = off;
+    let mut locals_table = None;
     if !inlined {
-        off += ts; // names 走 hashtable（未解析 → 名字缺失）
+        // 名字在 NameToIndexHashTable 里（键=名字，值=context 槽号）
+        if let Some(Ref::Object(t)) = cache.slot_at(scope_id, off / ts).and_then(|v| v.as_ref()) {
+            locals_table = Some(t);
+        }
+        off += ts;
     } else {
         off += n * ts;
     }
 
     let mut scope = Scope {
+        locals_table,
         param_count,
         flags,
         function_kind: ((flags >> 17) & 0x1F) as u32,
@@ -697,9 +705,54 @@ impl<'a> Decompiler<'a> {
         };
         let scope_id = self.scope_id_of(sfi);
         let scope = scope_id.and_then(|id| self.scope_by_id(id));
+        if std::env::var("JSCD_DBG_SCOPE").is_ok() {
+            eprintln!(
+                "[scope] sfi={sfi} name={:?} locals={} table={:?} outer={:?} params={}",
+                self.dis.sfi_name(sfi),
+                scope.as_ref().map(|s| s.context_locals.len()).unwrap_or(0),
+                scope.as_ref().and_then(|s| s.locals_table),
+                scope.as_ref().and_then(|s| s.outer),
+                scope.as_ref().map(|s| s.param_count).unwrap_or(0),
+            );
+        }
         let mut ctx = FnCtx::new(self, sfi, bca, scope, scope_id, self.dis.sfi_name(sfi))?;
         ctx.run()?;
         Ok(ctx.finish())
+    }
+
+    /// 从 NameToIndexHashTable 里按槽号找变量名（大作用域用）。
+    pub fn name_from_locals_table(&self, table_id: ObjId, want_index: usize) -> Option<String> {
+        // HashTable: map, numberOfElements(Smi)@ts, numberOfDeleted(Smi)@2ts, capacity(Smi)@3ts,
+        //            之后每项两槽 (key, value)；kElementsStartIndex = 3
+        let n = self
+            .cache
+            .raw_at_ts(table_id, 2 * self.ts, self.ts, self.ts)
+            .and_then(crate::serializer::decode_smi_bytes)
+            .unwrap_or(0) as usize;
+        let cap = self
+            .cache
+            .raw_at_ts(table_id, 3 * self.ts, self.ts, self.ts)
+            .and_then(crate::serializer::decode_smi_bytes)
+            .unwrap_or(0) as usize;
+        // 元素区起点 = kElementsStartIndex(=3) * ts + 数据区；实际首项在 4*ts
+        for e in 0..(n.min(cap).max(cap.min(256))) {
+            let key_slot = 3 + 2 * e;
+            let val_slot = key_slot + 1;
+            let key = match self.cache.slot_at(table_id, key_slot).and_then(|v| v.as_ref()) {
+                Some(r) => crate::disasm::name_of_ref(self.cache, self.table, r),
+                None => None,
+            };
+            let val = self
+                .cache
+                .raw_at_ts(table_id, val_slot * self.ts, self.ts, self.ts)
+                .and_then(crate::serializer::decode_smi_bytes);
+            if let (Some(k), Some(v)) = (key, val) {
+                if v as usize == want_index && !k.is_empty() {
+                    return Some(k);
+                }
+            }
+        }
+        None
     }
 
     /// 沿 ScopeInfo 外层链查找 context 槽名（函数无自有上下文时，槽号属于外层作用域）。
@@ -712,6 +765,11 @@ impl<'a> Decompiler<'a> {
             if let Some(n) = scope.context_locals.get(idx) {
                 if !n.is_empty() {
                     return Some(n.clone());
+                }
+            }
+            if let Some(t) = scope.locals_table {
+                if let Some(n) = self.name_from_locals_table(t, idx) {
+                    return Some(n);
                 }
             }
             cur = scope.outer;
@@ -1825,16 +1883,19 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     spread_arg: None,
                 });
             }
+            // CallUndefinedReceiverN callable, arg0..argN-1, [feedback]
+            // 被调是**第一个寄存器操作数**（接收者为 undefined），不是累加器。
+            // 证据：`StringPrototypeIncludes(str, ch)` → LdaGlobal…Star8; LdaConstant…Star10; CallUndefinedReceiver2 r8, a0, r10
             "CallUndefinedReceiver0" | "CallUndefinedReceiver1" | "CallUndefinedReceiver2"
             | "CallUndefinedReceiver" => {
-                let callee = self.acc.clone().unwrap_or(Expr::Hole);
+                let callee = self.operand_expr(&arg(0));
                 let n = match base.as_str() {
                     "CallUndefinedReceiver0" => 0,
                     "CallUndefinedReceiver1" => 1,
                     "CallUndefinedReceiver2" => 2,
-                    _ => ops.len().saturating_sub(1),
+                    _ => ops.len().saturating_sub(2),
                 };
-                let args: Vec<Expr> = (0..n).map(|k| self.reg_expr(&arg(k))).collect();
+                let args: Vec<Expr> = (0..n).map(|k| self.operand_expr(&arg(1 + k))).collect();
                 self.acc = Some(Expr::Call {
                     callee: Box::new(callee),
                     args,
@@ -2163,22 +2224,28 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 寄存器一律按"变量"处理（V8 的字节码就是寄存器机）：
     /// 赋值发射 `rN = <expr>;`，后续读取用 rN，从而在循环/分支间保持正确。
     /// 纯字面量/单次使用的临时值直接内联，避免噪声。
+    /// 注意：V8 的 `Star` **不改变累加器**（`LdaGlobal; StarN; Call...` 依赖这一点），
+    /// 因此这里只写寄存器、不动 acc。
     fn store_reg(&mut self, r: u32, value: Option<Expr>) {
         let v = value.unwrap_or(Expr::Undefined);
         if self.regs.len() <= r as usize {
             self.regs.resize(r as usize + 1, None);
         }
         // 简单值（字面量/标识符/寄存器）内联即可，无需变量往返
-        if !v.has_effect() && matches!(v, Expr::Num(_) | Expr::Str(_) | Expr::Bool(_) | Expr::Null | Expr::Undefined | Expr::Reg(_)) && !is_lvalue(&v) {
+        if !v.has_effect()
+            && matches!(
+                v,
+                Expr::Num(_) | Expr::Str(_) | Expr::Bool(_) | Expr::Null | Expr::Undefined | Expr::Reg(_)
+            )
+            && !is_lvalue(&v)
+        {
             self.regs[r as usize] = Some(v);
-            self.acc = None;
             return;
         }
         let rhs = Self::render_stmt(&v);
         let name = format!("r{r}");
         self.line(&format!("{name} = {rhs};"));
         self.regs[r as usize] = Some(Expr::Reg(r));
-        self.acc = None;
     }
 
     /// 操作数文本 → 表达式（参数 aN、<this>、寄存器 rN、常量池 [n]、字面量）。
