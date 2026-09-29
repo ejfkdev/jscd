@@ -766,6 +766,8 @@ var __runtime = new Proxy({
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
 var __intrinsic = new Proxy({}, { get: () => () => undefined });
 var __context, __ctx = {};
+// for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
+function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
 function __anonymous() {}
 var __uncompiled = new Proxy({}, { get: () => function () {} });
 
@@ -1178,7 +1180,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         // 脚本/模块顶层：不包 function 外壳，直接出语句（原样铺在文件里才会执行）
         if self.inline_body {
             self.declare_locals();
+            let decl_at = self.out.len();
             self.emit_range(0, self.instrs.len())?;
+            if !self.phi_vars.is_empty() {
+                let decl = format!("let {};\n", self.phi_vars.join(", "));
+                self.out.insert_str(decl_at, &decl);
+            }
             self.body = std::mem::take(&mut self.out);
             return Ok(());
         }
@@ -1221,7 +1228,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
         // 声明寄存器与 context 局部名（保持语法合法、便于阅读）
         self.declare_locals();
+        let decl_at = self.out.len();
         self.emit_range(0, self.instrs.len())?;
+        // phi 统一回填到函数头（发射过程中按需产生）
+        if !self.phi_vars.is_empty() {
+            let decl = format!("let {};\n", self.phi_vars.join(", "));
+            self.out.insert_str(decl_at, &decl);
+        }
 
         self.indent = 0;
         if is_class_ctor {
@@ -1635,8 +1648,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     fn new_phi(&mut self) -> String {
         let phi = format!("phi{}", self.tmp_counter);
         self.tmp_counter += 1;
-        self.line(&format!("let {phi};"));
-        self.phi_vars.push(phi.clone());
+        // 只在函数头统一声明：phi 可能在嵌套块里创建、在外层消费，
+        // 就地 `let` 会因块作用域越界（generator 的 phi2 就是这么 undefined 的）。
+        if !self.phi_vars.contains(&phi) {
+            self.phi_vars.push(phi.clone());
+        }
         phi
     }
 
@@ -1955,7 +1971,6 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         let init = Self::render_stmt(&e);
                         let at = self.out.len();
                         self.out.insert_str(at, &format!("{indent}{phi} = {init};\n"));
-                        self.phi_vars.push(phi.clone());
                         self.acc = Some(Expr::Ident(phi));
                     }
                 }
@@ -3241,9 +3256,21 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             }
 
             // ── for-in ──
+            // for-in 的键枚举/推进协议还没重建：占位成一个会抛错的取值，
+            // 让产物**立刻**以清晰消息失败，而不是 ReferenceError 或死循环。
             "ForInEnumerate" | "ForInPrepare" | "ForInNext" | "ForInStep" | "ForInContinue"
             | "JumpIfForInDone" | "JumpIfForInDoneConstant" => {
-                self.acc = Some(Expr::Ident("__forin_keys".to_string()));
+                if base == "ForInStep" || base == "ForInContinue" {
+                    // 推进/判断：给一个"继续"的值，避免把循环卡死
+                    self.acc = Some(Expr::Bool(true));
+                } else {
+                    self.acc = Some(Expr::Call {
+                        callee: Box::new(Expr::Ident("__forin_unsupported".into())),
+                        args: Vec::new(),
+                        is_new: false,
+                        spread_arg: None,
+                    });
+                }
             }
 
             // ── 其他：安全退化 ──
