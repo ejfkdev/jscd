@@ -61,7 +61,7 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   timeZone = "UTC";
   r1 = ({ year: 1970, monthCode: "M01", day: 1, timeZone: undefined, calendar: "IsO8601" });
-  r1.IsO8601 = timeZone;
+  r1.timeZone = timeZone;
   arg = r1;
   r2 = Temporal;
   r2 = r2.ZonedDateTime;
@@ -76,7 +76,7 @@ function _anon_0(a0) {
   r5 = "Calendar is case-insensitive";
   r1.call(r2-r5);
   r1 = arg;
-  r1["/* root: InternalizedStringMap */ undefined"] = "İSO8";
+  r1.calendar = "İSO8";
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
@@ -91,7 +91,7 @@ function _anon_15(a0) {
   let r0, r1, r2;
   r1 = Temporal;
   r1 = r1.ZonedDateTime;
-  r0 = r1.ZonedDateTime;
+  r0 = r1.from;
   if (arg === undefined) throw new ReferenceError("arg");
   r2 = arg;
   return r0.call(r1, r2);

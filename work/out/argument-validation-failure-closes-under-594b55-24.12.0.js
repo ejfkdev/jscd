@@ -206,10 +206,10 @@ function ShouldNotGetValueOf(a0) {
 function _anon_63(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7;
   if (closable === undefined) throw new ReferenceError("closable");
-  r1 = __ctx.ctx4;
+  r1 = ShouldNotGetValueOf;
   r0 = r1.take;
   r2 = ({  });
-  r4 = /* root: TrustedFixedArrayMap */ undefined;
+  r4 = "";
   r5 = get_valueOf;
   r6 = null;
   r7 = 0;

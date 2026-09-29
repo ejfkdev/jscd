@@ -184,7 +184,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = JSON;
   r3 = r4.stringify;
-  r5 = /* Map(instance_type=1)(17) */ undefined;
+  r5 = ({ x: undefined, y: undefined });
   r7 = JSON;
   r6 = r7.rawJSON;
   r8 = 1;
@@ -200,8 +200,8 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = JSON;
   r3 = r4.stringify;
-  r5 = /* Map(instance_type=1)(19) */ undefined;
-  r6 = /* Map(instance_type=1)(20) */ undefined;
+  r5 = ({ x: undefined });
+  r6 = ({ x: undefined, y: undefined });
   r8 = JSON;
   r7 = r8.rawJSON;
   r9 = 1;
@@ -238,7 +238,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = JSON;
   r3 = r4.stringify;
-  r5 = /* Map(instance_type=1)(25) */ undefined;
+  r5 = [0, 0, 0, 0];
   r6 = 0;
   r8 = JSON;
   r7 = r8.rawJSON;
@@ -270,9 +270,9 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = JSON;
   r3 = r4.stringify;
-  r5 = /* Map(instance_type=1)(29) */ undefined;
+  r5 = [0];
   r6 = 0;
-  r7 = /* Map(instance_type=1)(31) */ undefined;
+  r7 = ({ x: undefined, y: undefined });
   r9 = JSON;
   r8 = r9.rawJSON;
   r10 = 1;

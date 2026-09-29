@@ -70,33 +70,33 @@ if (r1 !== 1) {
   r2 = "#2: +(+1) === -1. Actual: " + 1;
   throw new r1(r2);
 }
-_1___1_____1__Actual__ = 1;
-r1 = _1___1_____1__Actual__;
+x = 1;
+r1 = x;
 if (r1 !== 1) {
   r1 = Test262Error;
   r2 = "#3: var x = +1; -x === 1. Actual: ";
-  r2 = r2 + -_1___1_____1__Actual__;
+  r2 = r2 + -x;
   throw new r1(r2);
 }
-_1___1_____1__Actual__ = 1;
-r1 = _1___1_____1__Actual__;
+x = 1;
+r1 = x;
 if (r1 !== 1) {
   r1 = Test262Error;
   r2 = "#4: var x = 1; +(+x) === 1. Actual: ";
-  r2 = r2 + _1___1_____1__Actual__;
+  r2 = r2 + x;
   throw new r1(r2);
 }
 r1 = Object;
-_2_____1_______1__Actual__ = new r1(r0);
-r1 = _2_____1_______1__Actual__;
+object = new r1(r0);
+r1 = object;
 r1.prop = 1;
 r0 = undefined;
-r1 = _2_____1_______1__Actual__;
+r1 = object;
 r1 = r1.prop;
 if (r1 !== 1) {
   r1 = Test262Error;
   r2 = "#5: var object = new Object(); object.prop = 1; +object.prop === 1. Actual: ";
-  r3 = _2_____1_______1__Actual__;
+  r3 = object;
   r2 = r2 + r3.prop;
   throw new r1(r2);
 }

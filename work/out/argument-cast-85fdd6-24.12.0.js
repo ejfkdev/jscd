@@ -109,7 +109,7 @@ function _anon_0(a0) {
   r5 = Temporal;
   r5 = r5.Duration;
   r5 = new r5(r0);
-  r6 = /* Map(instance_type=1)(34) */ undefined;
+  r6 = ({  });
   r3 = r3.call(r4, r5, r6);
   r4 = 0;
   r5 = "second argument object";
@@ -125,8 +125,8 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.Duration;
   r3 = r4.compare;
-  r5 = /* Map(instance_type=1)(37) */ undefined;
-  r6 = /* Map(instance_type=1)(38) */ undefined;
+  r5 = ({ ErrorStackDataMap: 12 });
+  r6 = ({ ErrorStackDataMap: 12 });
   r3 = r3.call(r4, r5, r6);
   r4 = 0;
   r5 = "ignores incorrect properties";

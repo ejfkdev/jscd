@@ -65,7 +65,7 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r3 = BigInt;
-  r4 = "";
+  r4 = /* BigIntMap(6) */ undefined;
   r3 = typeof r3(r4);
   r4 = "bigint";
   r5 = "typeof BigInt(0n) === 'bigint'";
@@ -82,7 +82,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = Object;
   r4 = BigInt;
-  r5 = "";
+  r5 = /* BigIntMap(9) */ undefined;
   r4 = r4(r5);
   r3 = typeof r3(r4);
   r4 = "object";
@@ -101,7 +101,7 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r3 = Object;
-  r4 = /* Map(instance_type=1)(12) */ undefined;
+  r4 = /* BigIntMap(12) */ undefined;
   r3 = typeof r3(r4);
   r4 = "object";
   r5 = "typeof Object(0n) === 'object'";

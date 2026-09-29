@@ -99,24 +99,24 @@ while (true) {
           if (r1 !== 0) {
             r1 = decimalToHexString;
             r2 = indexP;
-            String = r1(r2);
+            hexP = r1(r2);
             r1 = decimalToHexString;
             r2 = indexO;
-            fromCharCode = r1(r2);
+            hexO = r1(r2);
             r1 = Test262Error;
             r2 = "#";
-            r2 = r2 + fromCharCode;
+            r2 = r2 + hexO;
             r2 = r2 + "-";
-            r2 = r2 + String;
+            r2 = r2 + hexP;
             r2 = r2 + "<ro0_12408>";
             throw new r1(r2);
           }
           r1 = decimalToHexString;
           r2 = indexP;
-          String = r1(r2);
+          hexP = r1(r2);
           r1 = Test262Error;
           r2 = "#";
-          r2 = r2 + String;
+          r2 = r2 + hexP;
           r2 = r2 + "<ro0_12408>";
           throw new r1(r2);
         }
@@ -137,24 +137,24 @@ if (r1 > 0) {
   if (r1 !== 0) {
     r1 = decimalToHexString;
     r2 = indexP;
-    String = r1(r2);
+    hexP = r1(r2);
     r1 = decimalToHexString;
     r2 = indexO;
-    fromCharCode = r1(r2);
+    hexO = r1(r2);
     r1 = Test262Error;
     r2 = "#";
-    r2 = r2 + fromCharCode;
+    r2 = r2 + hexO;
     r2 = r2 + "-";
-    r2 = r2 + String;
+    r2 = r2 + hexP;
     r2 = r2 + "<ro0_12408>";
     throw new r1(r2);
   }
   r1 = decimalToHexString;
   r2 = indexP;
-  String = r1(r2);
+  hexP = r1(r2);
   r1 = Test262Error;
   r2 = "#";
-  r2 = r2 + String;
+  r2 = r2 + hexP;
   r2 = r2 + "<ro0_12408>";
   throw new r1(r2);
 }

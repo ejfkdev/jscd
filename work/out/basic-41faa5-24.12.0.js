@@ -65,7 +65,7 @@ function _anon_0(a0) {
   instant2 = new r1(r2);
   r1 = Temporal;
   r1 = r1.Instant;
-  r2 = /* Map(instance_type=1)(8) */ undefined;
+  r2 = /* BigIntMap(8) */ undefined;
   __ctx_ctx4 = new r1(r2);
   r2 = Symbol_split;
   r1 = r2.throws;

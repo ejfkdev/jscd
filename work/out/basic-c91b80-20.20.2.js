@@ -79,7 +79,7 @@ function _anon_0(a0) {
   r1.call(r2-r5);
   r1 = Temporal;
   r1 = r1.Instant;
-  r2 = -/* Map(instance_type=1)(10) */ undefined;
+  r2 = -/* BigIntMap(10) */ undefined;
   beforeEpoch = new r1(r2);
   r2 = assert;
   r1 = r2.sameValue;

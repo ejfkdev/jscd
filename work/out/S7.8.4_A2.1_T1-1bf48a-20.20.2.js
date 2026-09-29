@@ -58,25 +58,25 @@ let r0, r1, r2, r3;
 r1 = ["unicode", "character", "index"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-__A____B____C____D____E____F_____ro0_13344_____H____I_____ro0_13416______ro0_13440_____L_____ro0_13488_____N____O____P____Q____R____S____T_____ro0_13680______ro0_13704______ro0_13728______ro0_13752______ro0_13776_____Z__ = ["A", "B", "C", "D", "E", "F", "<ro0_13344>", "H", "I", "<ro0_13416>", "<ro0_13440>", "L", "<ro0_13488>", "N", "O", "P", "Q", "R", "S", "T", "<ro0_13680>", "<ro0_13704>", "<ro0_13728>", "<ro0_13752>", "<ro0_13776>", "Z"];
-___FixedCOWArrayMap_5_____undefined = /* Map(instance_type=1)(6) */ undefined;
+unicode = ["A", "B", "C", "D", "E", "F", "<ro0_13344>", "H", "I", "<ro0_13416>", "<ro0_13440>", "L", "<ro0_13488>", "N", "O", "P", "Q", "R", "S", "T", "<ro0_13680>", "<ro0_13704>", "<ro0_13728>", "<ro0_13752>", "<ro0_13776>", "Z"];
+character = ["A", "B", "C", "D", "E", "F", "<ro0_13344>", "H", "I", "<ro0_13416>", "<ro0_13440>", "L", "<ro0_13488>", "N", "O", "P", "Q", "R", "S", "T", "<ro0_13680>", "<ro0_13704>", "<ro0_13728>", "<ro0_13752>", "<ro0_13776>", "Z"];
 r0 = undefined;
-___Map_instance_type_1__6_____undefined = 0;
+index = 0;
 while (true) {
-  r1 = ___Map_instance_type_1__6_____undefined;
+  r1 = index;
   if (!(r1 <= 25)) break;
   r0 = undefined;
-  r1 = __A____B____C____D____E____F_____ro0_13344_____H____I_____ro0_13416______ro0_13440_____L_____ro0_13488_____N____O____P____Q____R____S____T_____ro0_13680______ro0_13704______ro0_13728______ro0_13752______ro0_13776_____Z__;
-  r1 = r1[___Map_instance_type_1__6_____undefined];
-  r2 = ___FixedCOWArrayMap_5_____undefined;
-  if (r1 !== r2[___Map_instance_type_1__6_____undefined]) {
+  r1 = unicode;
+  r1 = r1[index];
+  r2 = character;
+  if (r1 !== r2[index]) {
     r1 = Test262Error;
     r2 = "#";
-    r3 = ___FixedCOWArrayMap_5_____undefined;
-    r2 = r2 + r3[___Map_instance_type_1__6_____undefined];
+    r3 = character;
+    r2 = r2 + r3[index];
     r2 = r2 + "<ro0_12408>";
     throw new r1(r2);
   }
-  ___Map_instance_type_1__6_____undefined = ++___Map_instance_type_1__6_____undefined;
+  index = ++index;
   continue;
 }

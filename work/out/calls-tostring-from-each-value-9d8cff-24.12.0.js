@@ -65,7 +65,7 @@ r1 = _this_function;
 r1 = r1.prototype;
 r1.toLocaleString = _anon_12;
 arr = /* ?unknown(50) */ undefined;
-r2 = /* Map(instance_type=1)(54) */ undefined;
+r2 = /* ?unknown(54) */ undefined;
 r1 = r2.join;
 r3 = separator;
 expected = r1.call(r2, r3);

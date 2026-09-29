@@ -61,7 +61,7 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   arg = "";
   r1 = ({ ["8"]: "", ["1970"]: "", M01: "years", ["1"]: "" });
-  r1.Uint8ClampedArray = arg;
+  r1[""] = arg;
   result = r1;
   r2 = Temporal;
   r2 = r2.ZonedDateTime;
@@ -76,7 +76,7 @@ function _anon_0(a0) {
   r5 = "Calendar is case-insensitive";
   r1.call(r2-r5);
   r1 = result;
-  r1["Calendar is case-insensitive"] = "İSO8";
+  r1.Uint8ClampedArray = "İSO8";
   r2 = Symbol_split;
   r1 = r2.throws;
   r3 = _anon;

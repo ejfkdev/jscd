@@ -177,7 +177,7 @@ function _anon_0(a0) {
     throw new r1(r2);
   }
   r1 = ___root__async_iterator_symbol____undefined;
-  r2 = /* Map(instance_type=1)(22) */ undefined;
+  r2 = "false\u2029";
   r6 = 0;
   r7 = 9;
   r8 = 1388;
@@ -193,7 +193,7 @@ function _anon_0(a0) {
   }
   r0 = undefined;
   r1 = ___root__async_iterator_symbol____undefined;
-  r2 = /* Map(instance_type=1)(24) */ undefined;
+  r2 = "false\t\u000b\u000c  \n\r\u2028\u2029";
   r6 = 0;
   r7 = 10;
   r8 = 1521;

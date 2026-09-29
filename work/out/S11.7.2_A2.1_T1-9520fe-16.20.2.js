@@ -64,33 +64,33 @@ if (r1 !== 0) {
   r2 = "#1: -4 >> 1 === -2. Actual: " + -2;
   throw new r1(r2);
 }
-objectx = 0;
-r1 = objectx >> 1;
+x = 0;
+r1 = x >> 1;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#2: var x = -4; x >> 1 === -2. Actual: ";
-  r2 = r2 + (objectx >> 1);
+  r2 = r2 + (x >> 1);
   throw new r1(r2);
 }
-objecty = 1;
+y = 1;
 r1 = 0;
-r1 = r1 >> objecty;
+r1 = r1 >> y;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#3: var y = 1; -4 >> y === -2. Actual: ";
   r3 = 0;
-  r2 = r2 + (r3 >> objecty);
+  r2 = r2 + (r3 >> y);
   throw new r1(r2);
 }
-objectx = 0;
-objecty = 1;
-r1 = objectx;
-r1 = r1 >> objecty;
+x = 0;
+y = 1;
+r1 = x;
+r1 = r1 >> y;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#4: var x = -4; var y = 1; x >> y === -2. Actual: ";
-  r3 = objectx;
-  r2 = r2 + (r3 >> objecty);
+  r3 = x;
+  r2 = r2 + (r3 >> y);
   throw new r1(r2);
 }
 r1 = Object;

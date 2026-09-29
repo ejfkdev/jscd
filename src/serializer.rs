@@ -210,8 +210,9 @@ struct Walker<'a> {
     pos: usize,
     tagged_size: usize,
     tags: &'a std::collections::HashMap<String, u8>,
-    /// 老族：tag 低 3 位是空间编号，比较标签前要剥掉（现代族为 0）
-    space_mask: u8,
+    /// 老族（V8 ≤ 8.4）的分配器状态：backref 用 (chunk, offset) 寻址，
+    /// 需要按 reservation 表模拟分配才能把引用映射回对象。
+    legacy: Option<LegacyAlloc>,
     objects: Vec<Object>,
     hot: HotRing,
     pending: std::collections::HashMap<u32, Vec<(ObjId, usize)>>,
@@ -278,9 +279,49 @@ impl<'a> Walker<'a> {
             return Err("ref recursion too deep".into());
         }
         let b_raw = self.byte()?;
-        // 老族（≤8.4）：tag 低 3 位是堆空间编号（kSpaceMask）→ 比较标签前先剥掉。
-        // 注意"索引类"范围（热对象环、根常量）的索引就在那 3 位里，必须用原始字节。
-        let b = b_raw & !self.space_mask;
+        // 老族（≤8.4）：只有 kNewObject / kBackref 这一对家族把空间编号压在低 3 位
+        // （0x00..0x05 / 0x08..0x0d，见 serializer-common.h 的 UNUSED_BYTE_CODES），
+        // 其余标签是扁平值 —— 早先"一律剥离低 3 位"会把 kRootArray(17) 当成 16。
+        let b = b_raw;
+        if let Some(_) = &self.legacy {
+            let t_new = self.tag("kNewObject")?;
+            let t_backref = self.tag("kBackref")?;
+            if (t_new..t_new + 6).contains(&b_raw) {
+                let space = (b_raw - t_new) as u8;
+                let id = self.parse_new_object_space(depth, space)?;
+                self.hot.add(HotEntry::Object(id));
+                return Ok(SlotValue::Ref(Ref::Object(id)));
+            }
+            if (t_backref..t_backref + 6).contains(&b_raw) {
+                let space = (b_raw - t_backref) as u8;
+                let chunk = self.putint()?;
+                let offset = self.putint()?;
+                let id = self
+                    .legacy
+                    .as_ref()
+                    .and_then(|l| l.resolve(space, chunk, offset))
+                    .ok_or_else(|| format!("legacy backref ({space},{chunk},{offset}) 未命中"))?;
+                self.hot.add(HotEntry::Object(id));
+                return Ok(SlotValue::Ref(Ref::Object(id)));
+            }
+            // 老族专有：chunk 切换 / 对齐 / 延迟内容
+            if Some(b_raw) == self.opt_tag("kNextChunk") {
+                let space = self.byte()?;
+                if let Some(l) = self.legacy.as_mut() {
+                    l.next_chunk(space);
+                }
+                return self.parse_ref(depth + 1);
+            }
+            if let Some(align) = self.opt_tag("kAlignmentPrefix") {
+                if (align..align + 3).contains(&b_raw) {
+                    let a = (b_raw - align + 1) as u32;
+                    if let Some(l) = self.legacy.as_mut() {
+                        l.align = a;
+                    }
+                    return self.parse_ref(depth + 1);
+                }
+            }
+        }
         let t_new = self.tag("kNewObject")?;
         let t_backref = self.tag("kBackref")?;
         let t_hot = self.tag("kHotObject")?;
@@ -387,6 +428,11 @@ impl<'a> Walker<'a> {
     }
 
     fn parse_new_object(&mut self, depth: usize) -> R<ObjId> {
+        self.parse_new_object_space(depth, 0)
+    }
+
+    /// size/map/slots 的读取；老族额外把分配地址记进分配器（backref 要用）。
+    fn parse_new_object_space(&mut self, depth: usize, space: u8) -> R<ObjId> {
         let tag_offset = self.pos.saturating_sub(1);
         let size_words = self.putint()? as usize;
         let byte_size = size_words * 8;
@@ -397,6 +443,9 @@ impl<'a> Walker<'a> {
             start_offset: tag_offset,
             slots: Vec::with_capacity(size_words.min(64)),
         });
+        if let Some(l) = self.legacy.as_mut() {
+            l.allocate(space, byte_size as u32, id);
+        }
         let map = self.parse_ref(depth + 1)?;
         self.push_slot(id, 0, map);
 
@@ -421,7 +470,16 @@ impl<'a> Walker<'a> {
         }
         let mut consumed = 1usize;
         let mut slot_index = 1usize;
+        let t_deferred = self.opt_tag("kDeferred");
         while consumed < size_words {
+            // 老族：`kDeferred` 出现在对象头之后 → 该对象剩下的槽在 deferred 段里
+            if t_deferred.is_some() && self.peek() == t_deferred {
+                self.byte()?;
+                if let Some(l) = self.legacy.as_mut() {
+                    l.deferred.push(id);
+                }
+                return Ok(id);
+            }
             let v = self.parse_ref(depth + 1)?;
             let n_slots = match &v {
                 SlotValue::Raw(r) => r.len / self.tagged_size,
@@ -445,8 +503,97 @@ impl<'a> Walker<'a> {
     }
 }
 
+/// 老族分配器模拟（V8 ≤ 8.4）：payload 前有 reservation 表（每空间若干 chunk 的字节尺寸），
+/// 对象按 kNewObject+space 顺序分配，backref 用 (chunk_index, chunk_offset) 指回来。
+#[derive(Default)]
+struct LegacyAlloc {
+    /// [space] → 各 chunk 的字节容量
+    chunks: Vec<Vec<u32>>,
+    /// [space] → 当前 chunk 下标
+    cur: Vec<usize>,
+    /// [space] → 当前 chunk 内已用字节
+    used: Vec<u32>,
+    /// (space, chunk_index, offset) → 对象
+    by_addr: std::collections::HashMap<(u8, u32, u32), ObjId>,
+    /// kAlignmentPrefix 提示的下一次对齐（字节，0 = 无）
+    align: u32,
+    /// 内容被延迟的对象（deferred 段按 backref 指回来补全）
+    deferred: Vec<ObjId>,
+}
+
+impl LegacyAlloc {
+    fn from_reservations(res: &[u32]) -> Self {
+        let mut me = LegacyAlloc::default();
+        let mut space = 0usize;
+        me.chunks.push(Vec::new());
+        me.cur.push(0);
+        me.used.push(0);
+        for r in res {
+            let size = r & 0x7fff_ffff;
+            me.chunks[space].push(size);
+            if r & 0x8000_0000 != 0 {
+                // is_last：该空间的 chunk 列表结束
+                space += 1;
+                me.chunks.push(Vec::new());
+                me.cur.push(0);
+                me.used.push(0);
+            }
+        }
+        if std::env::var("JSCD_DBG_ALLOC").is_ok() {
+            for (s, cs) in me.chunks.iter().enumerate() {
+                eprintln!("[res] space={s} chunks={cs:?}");
+            }
+        }
+        me
+    }
+
+    /// 分配一个对象：记录地址 → 对象 id，推进 high water。
+    fn allocate(&mut self, space: u8, size: u32, id: ObjId) -> Option<(u32, u32)> {
+        if std::env::var("JSCD_DBG_ALLOC").is_ok() {
+            eprintln!("[alloc] space={space} size={size} id={id} chunk={} used={}", self.cur[space as usize], self.used[space as usize]);
+        }
+        let s = space as usize;
+        if s >= self.cur.len() {
+            return None;
+        }
+        if self.align > 0 {
+            let a = self.align as u32;
+            let pad = (a - (self.used[s] % a)) % a;
+            self.used[s] += pad;
+            self.align = 0;
+        }
+        let off = self.used[s];
+        let idx = self.cur[s] as u32;
+        self.by_addr.insert((space, idx, off), id);
+        self.used[s] += size;
+        Some((idx, off))
+    }
+
+    fn next_chunk(&mut self, space: u8) {
+        let s = space as usize;
+        if s < self.cur.len() {
+            self.cur[s] += 1;
+            self.used[s] = 0;
+        }
+    }
+
+    fn resolve(&self, space: u8, chunk: u32, offset: u32) -> Option<ObjId> {
+        self.by_addr.get(&(space, chunk, offset)).copied()
+    }
+}
+
 /// 解析整个 payload（已解压、已去头）。
 pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
+    parse_with(payload, table, &[])
+}
+
+/// `reservations`：老族（≤8.4）payload 前的 reservation 表（每空间若干 chunk 的尺寸，
+/// 低 31 位是尺寸、最高位是该空间最后一块）。现代族传空。
+pub fn parse_with<'a>(
+    payload: &'a [u8],
+    table: &VersionTable,
+    reservations: &[u32],
+) -> R<CodeCache<'a>> {
     // 合并 tag 表：现代族用 `tags`，老族（≤8.4）的标签值在 `legacy` 里（`tags` 为空）
     let mut merged_map: std::collections::HashMap<String, u8> = table.serialization.tags.clone();
     // 老族（≤8.4）以 legacy 表为准：源码树里同时存在现代枚举，tags 会串味
@@ -472,16 +619,17 @@ pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
         }
     }
     let ts = table.tagged_size as usize;
+    let legacy_ctx = if table.serialization.legacy.contains_key("kSpaceMask") {
+        Some(LegacyAlloc::from_reservations(reservations))
+    } else {
+        None
+    };
     let mut w = Walker {
         data: payload,
         pos: 0,
         tagged_size: ts,
         tags: merged_tags,
-        space_mask: if merged_tags.contains_key("kWhereMask") || merged_tags.contains_key("kSpaceMask") {
-            7
-        } else {
-            0
-        },
+        legacy: legacy_ctx,
         objects: Vec::new(),
         hot: HotRing::default(),
         pending: std::collections::HashMap::new(),
@@ -493,17 +641,74 @@ pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
     }
     let top = w.parse_new_object(0)?;
     let t_sync = w.tag("kSynchronize")?;
+    // 老族的 deferred 段（条目/backref 编码）还没完全对齐：主 payload 已完整，
+    // 缺的只是"被延迟的对象内容"，不值得让整份解析失败 —— 记一笔后停下。
+    let legacy_tolerant = w.legacy.is_some();
     loop {
         match w.peek() {
-            None => return Err("payload ended before kSynchronize".into()),
+            None => {
+                if legacy_tolerant {
+                    break;
+                }
+                return Err("payload ended before kSynchronize".into());
+            }
             Some(b) if b == t_sync => {
                 w.byte()?;
                 break;
             }
             Some(_) => {
                 let before = w.pos;
-                w.parse_ref(0).map_err(|e| format!("deferred section: {e}"))?;
+                let outcome: R<()> = (|| {
+                    let Some(b) = w.peek() else { return Ok(()) };
+                    let t_new = w.tag("kNewObject")?;
+                    if legacy_tolerant && (t_new..t_new + 6).contains(&b) {
+                        // 老族 deferred 条目：kNewObject+space + backref(2 ints) + size + 剩余槽
+                        let space = (b - t_new) as u8;
+                        w.byte()?;
+                        let chunk = w.putint()?;
+                        let offset = w.putint()?;
+                        let size_words = w.putint()? as usize;
+                        let id = w
+                            .legacy
+                            .as_ref()
+                            .and_then(|l| l.resolve(space, chunk, offset))
+                            .ok_or_else(|| format!("deferred backref ({space},{chunk},{offset})"))?;
+                        let mut slot_index = w.objects[id].slots.len().max(1);
+                        let mut consumed = 1usize;
+                        while consumed < size_words {
+                            let v = w.parse_ref(1)?;
+                            let n = match &v {
+                                SlotValue::Raw(r) => r.len / w.tagged_size,
+                                SlotValue::Repeat(n, _) => *n,
+                                _ => 1,
+                            };
+                            for k in 0..n {
+                                let val = match &v {
+                                    SlotValue::Repeat(_, inner) => (**inner).clone(),
+                                    other => other.clone(),
+                                };
+                                w.push_slot(id, slot_index + k, val);
+                            }
+                            slot_index += n;
+                            consumed += n;
+                        }
+                        return Ok(());
+                    }
+                    w.parse_ref(0)?;
+                    Ok(())
+                })();
+                match outcome {
+                    Ok(()) => {}
+                    Err(e) if legacy_tolerant => {
+                        eprintln!("jscd: 老族 deferred 段停在 offset {}: {e}", w.pos);
+                        break;
+                    }
+                    Err(e) => return Err(format!("deferred section: {e}")),
+                }
                 if w.pos == before {
+                    if legacy_tolerant {
+                        break;
+                    }
                     return Err("deferred section made no progress".into());
                 }
             }

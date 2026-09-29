@@ -62,14 +62,14 @@ function _anon_0(a0) {
   /* createblockcontext */
   r5 = undefined /* hole */;
   r2 = A;
-  r3 = [3, /* ?unknown(8) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(10) */ undefined, /* root: ClassPositionsMap */ undefined, /* root: EmptyFixedArray */ undefined];
+  r3 = [3, /* ?unknown(8) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(10) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined];
   r4 = r2;
   r3 = __runtime.DefineClass(r3, r4, r5);
   A = r4;
   /* createblockcontext */
   r5 = A;
   r2 = B;
-  r3 = [3, /* ?unknown(25) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(27) */ undefined, /* root: class_positions_symbol */ undefined, /* root: EmptyFixedArray */ undefined];
+  r3 = [3, /* ?unknown(25) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(27) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined];
   r4 = r2;
   r3 = __runtime.DefineClass(r3, r4, r5);
   B = r4;

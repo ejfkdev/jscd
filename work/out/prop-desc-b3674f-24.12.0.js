@@ -60,9 +60,9 @@ function _anon_0(a0) {
   r2 = Symbol_replace;
   r2 = r2.prototype;
   r3 = "immutable";
-  r4 = ({ ArrayBoilerplateDescriptionMap: /* Map(instance_type=1)(8) */ undefined });
-  r4["get immutable"] = undefined;
-  r5 = /* Map(instance_type=1)(10) */ undefined;
+  r4 = ({ ArrayBoilerplateDescriptionMap: { name: "get immutable" } });
+  r4[""] = undefined;
+  r5 = ({  });
   r0 = r1(r2-r5);
   return r0;
 }

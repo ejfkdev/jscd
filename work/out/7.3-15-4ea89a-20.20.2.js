@@ -76,6 +76,6 @@ r2 = assert;
 r1 = r2.sameValue;
 r3 = prop;
 r3 = r3[1];
-r4 = "�";
+r4 = "ÿ";
 r5 = "prop[1]";
 r0 = r1.call(r2-r5);

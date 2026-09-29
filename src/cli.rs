@@ -306,12 +306,30 @@ fn parse_cache<'a>(
         let Ok(h) = crate::header::Header::parse_with(data, &table.header) else {
             continue;
         };
-        let payload = h.payload(data);
+        // 老族（≤8.4）：payload 之前还有 reservation 表 + stub keys，得先跳过；
+        // 表本身不带这个字段，按该族的头布局直接读（code-serializer.h：
+        // magic/version/source/flag/num_reservations/payload_length/checksum → 对齐到 8）
+        let legacy_family = table.serialization.legacy.contains_key("kSpaceMask");
+        let (payload, reservations) = if legacy_family {
+            let num_res = u32::from_le_bytes(
+                data.get(16..20).and_then(|b| b.try_into().ok()).unwrap_or([0; 4]),
+            ) as usize;
+            let mut res = Vec::with_capacity(num_res);
+            for i in 0..num_res {
+                let at = 32 + i * 4;
+                let v = data.get(at..at + 4).and_then(|b| b.try_into().ok()).unwrap_or([0; 4]);
+                res.push(u32::from_le_bytes(v));
+            }
+            let start = (32 + num_res * 4 + 7) & !7;
+            (data.get(start..).unwrap_or(&[]), res)
+        } else {
+            (h.payload(data), Vec::new())
+        };
         // tagged_size 是构建属性（压缩/非压缩），表里给默认值；解析失败时回退另一种
         for ts in [table.tagged_size, if table.tagged_size == 8 { 4 } else { 8 }] {
             let mut t = table.clone();
             t.tagged_size = ts;
-            match crate::serializer::parse(payload, &t) {
+            match crate::serializer::parse_with(payload, &t, &reservations) {
                 Ok(c) => return Ok((h, t, c)),
                 Err(e) => {
                     if errors.len() < 6 {

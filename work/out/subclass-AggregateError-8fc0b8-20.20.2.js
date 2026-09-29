@@ -62,7 +62,7 @@ function _anon_0(a0) {
   /* createblockcontext */
   r5 = AggregateError;
   r2 = Subclass;
-  r3 = [3, /* ?unknown(7) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(9) */ undefined, /* ClassPositionsMap(8) */ undefined, /* root: EmptyFixedArray */ undefined];
+  r3 = [3, /* ?unknown(7) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(9) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined];
   r4 = r2;
   __runtime.DefineClass(r3, r4, r5);
   Subclass = r4;

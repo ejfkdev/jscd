@@ -100,7 +100,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
         continue;
       }
       r21 = ({  });
-      r21["/* ScopeInfoMap(31) */ undefined"] = _anon_14;
+      r21[""] = _anon_14;
       r9 = r21;
       r21 = MayNeedBigInt;
       r23 = 0;
@@ -165,19 +165,19 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
         r14 = false;
         r1 = r19;
         /* createblockcontext */
-        __ctx_ctx2 = r1;
+        ctor = r1;
         /* createblockcontext */
         r21 = CreateResizableArrayBuffer;
-        r22 = __ctx.ctx2;
+        r22 = rab;
         r22 = r22.BYTES_PER_ELEMENT * 4;
-        r23 = __ctx.ctx2;
+        r23 = rab;
         r23 = r23.BYTES_PER_ELEMENT * 8;
-        __ctx_ctx2 = r21(r22, r23);
-        r21 = __ctx.ctx2;
-        r22 = __ctx.ctx2;
+        rab = r21(r22, r23);
+        r21 = rab;
+        r22 = rab;
         r4 = new r21(r22);
         r21 = ({  });
-        r21["/* ScopeInfoMap(31) */ undefined"] = _anon_24;
+        r21[""] = _anon_24;
         r5 = r21;
         r21 = MayNeedBigInt;
         r23 = 0;

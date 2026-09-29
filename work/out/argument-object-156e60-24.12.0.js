@@ -76,7 +76,7 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.PlainYearMonth;
   r3 = r4["/* root: CallableTaskMap */ undefined"];
-  r5 = /* CallableTaskMap(12) */ undefined;
+  r5 = ({ ["8"]: "" });
   r3 = r3.call(r4, r5);
   r4 = 2019;
   r5 = 11;
@@ -89,8 +89,8 @@ function _anon_0(a0) {
   r4 = _anon_15;
   r5 = "Mismatch between month and monthCode";
   r1.call(r2-r5);
-  r1 = /* ?unknown(97) */ undefined;
-  r3 = "Mismatch between month and monthCode";
+  r1 = ({ ["8"]: "", ["2019"]: "" });
+  r3 = "years";
   r4 = get_day;
   r5 = null;
   r6 = 0;
@@ -109,8 +109,8 @@ function _anon_0(a0) {
   r6 = "M11";
   r7 = "month with day";
   r1.call(r2-r7);
-  r1 = "\u0000\u0000\u0000\u0000\u0003\u0000";
-  r3 = "Mismatch between month and monthCode";
+  r1 = ({ ["8"]: "", ["2019"]: "" });
+  r3 = "years";
   r4 = get_day;
   r5 = null;
   r6 = 0;
@@ -263,7 +263,7 @@ function _anon_88(a0) {
   r1 = r1.PlainYearMonth;
   r0 = r1["/* root: CallableTaskMap */ undefined"];
   r2 = ({ ["8"]: "" });
-  r2["/* TrustedFixedArrayMap(92) */ undefined"] = undefined;
+  r2[""] = undefined;
   return r0.call(r1, r2);
 }
 

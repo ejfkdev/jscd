@@ -223,7 +223,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
     r14 = Temporal;
     r14 = r14.PlainDateTime;
     r13 = r14["/* root: CallableTaskMap */ undefined"];
-    r15 = /* Map(instance_type=1)(79) */ undefined;
+    r15 = ({ ["8"]: "", ["-271821"]: "", ["4"]: "years" });
     minCases = r13.call(r14, r15);
     __ctx_ctx6 = /* ?unknown(80) */ undefined;
     r2 = undefined;

@@ -55,252 +55,34 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
-try {
-} catch (e) {
-  try {
-  } catch (e) {
-    try {
-    } catch (e) {
-      try {
-      } catch (e) {
-        try {
-        } catch (e) {
-          try {
-          } catch (e) {
-            try {
-            } catch (e) {
-              try {
-              } catch (e) {
-                try {
-                } catch (e) {
-                  try {
-                  } catch (e) {
-                    try {
-                    } catch (e) {
-                      try {
-                      } catch (e) {
-                        try {
-                        } catch (e) {
-                          try {
-                          } catch (e) {
-                            try {
-                            } catch (e) {
-                              try {
-                              } catch (e) {
-                                try {
-                                } catch (e) {
-                                  try {
-                                  } catch (e) {
-                                    try {
-                                    } catch (e) {
-                                      try {
-                                      } catch (e) {
-                                        try {
-                                        } catch (e) {
-                                          try {
-                                          } catch (e) {
-                                            try {
-                                            } catch (e) {
-                                              try {
-                                              } catch (e) {
-                                                try {
-                                                } catch (e) {
-                                                  try {
-                                                  } catch (e) {
-                                                    try {
-                                                    } catch (e) {
-                                                      try {
-                                                      } catch (e) {
-                                                        try {
-                                                        } catch (e) {
-                                                          try {
-                                                          } catch (e) {
-                                                            try {
-                                                            } catch (e) {
-                                                              try {
-                                                              } catch (e) {
-                                                                try {
-                                                                } catch (e) {
-                                                                  try {
-                                                                  } catch (e) {
-                                                                    try {
-                                                                    } catch (e) {
-                                                                      try {
-                                                                      } catch (e) {
-                                                                        try {
-                                                                        } catch (e) {
-                                                                          try {
-                                                                          } catch (e) {
-                                                                            try {
-                                                                            } catch (e) {
-                                                                              try {
-                                                                              } catch (e) {
-                                                                                try {
-                                                                                } catch (e) {
-                                                                                  try {
-                                                                                  } catch (e) {
-                                                                                    try {
-                                                                                    } catch (e) {
-                                                                                      try {
-                                                                                      } catch (e) {
-                                                                                        try {
-                                                                                        } catch (e) {
-                                                                                          try {
-                                                                                          } catch (e) {
-                                                                                            try {
-                                                                                            } catch (e) {
-                                                                                              try {
-                                                                                              } catch (e) {
-                                                                                                try {
-                                                                                                } catch (e) {
-                                                                                                  try {
-                                                                                                  } catch (e) {
-                                                                                                    try {
-                                                                                                    } catch (e) {
-                                                                                                      try {
-                                                                                                      } catch (e) {
-                                                                                                        try {
-                                                                                                        } catch (e) {
-                                                                                                          try {
-                                                                                                          } catch (e) {
-                                                                                                            try {
-                                                                                                            } catch (e) {
-                                                                                                              try {
-                                                                                                              } catch (e) {
-                                                                                                                try {
-                                                                                                                } catch (e) {
-                                                                                                                  try {
-                                                                                                                  } catch (e) {
-                                                                                                                    try {
-                                                                                                                    } catch (e) {
-                                                                                                                      try {
-                                                                                                                      } catch (e) {
-                                                                                                                        try {
-                                                                                                                        } catch (e) {
-                                                                                                                          try {
-                                                                                                                          } catch (e) {
-                                                                                                                            try {
-                                                                                                                            } catch (e) {
-                                                                                                                              try {
-                                                                                                                              } catch (e) {
-                                                                                                                                try {
-                                                                                                                                } catch (e) {
-                                                                                                                                  try {
-                                                                                                                                  } catch (e) {
-                                                                                                                                    try {
-                                                                                                                                    } catch (e) {
-                                                                                                                                      try {
-                                                                                                                                      } catch (e) {
-                                                                                                                                        try {
-                                                                                                                                        } catch (e) {
-                                                                                                                                          try {
-                                                                                                                                          } catch (e) {
-                                                                                                                                            try {
-                                                                                                                                            } catch (e) {
-                                                                                                                                              try {
-                                                                                                                                              } catch (e) {
-                                                                                                                                                try {
-                                                                                                                                                } catch (e) {
-                                                                                                                                                  try {
-                                                                                                                                                  } catch (e) {
-                                                                                                                                                    try {
-                                                                                                                                                    } catch (e) {
-                                                                                                                                                      try {
-                                                                                                                                                      } catch (e) {
-                                                                                                                                                        try {
-                                                                                                                                                        } catch (e) {
-                                                                                                                                                          try {
-                                                                                                                                                          } catch (e) {
-                                                                                                                                                            try {
-                                                                                                                                                            } catch (e) {
-                                                                                                                                                              try {
-                                                                                                                                                              } catch (e) {
-                                                                                                                                                                try {
-                                                                                                                                                                  /* 结构化递归过深：此处降级为线性输出 */
-                                                                                                                                                                } catch (e) {
-                                                                                                                                                                  /* 结构化递归过深：此处降级为线性输出 */
-                                                                                                                                                                }
-                                                                                                                                                              }
-                                                                                                                                                            }
-                                                                                                                                                          }
-                                                                                                                                                        }
-                                                                                                                                                      }
-                                                                                                                                                    }
-                                                                                                                                                  }
-                                                                                                                                                }
-                                                                                                                                              }
-                                                                                                                                            }
-                                                                                                                                          }
-                                                                                                                                        }
-                                                                                                                                      }
-                                                                                                                                    }
-                                                                                                                                  }
-                                                                                                                                }
-                                                                                                                              }
-                                                                                                                            }
-                                                                                                                          }
-                                                                                                                        }
-                                                                                                                      }
-                                                                                                                    }
-                                                                                                                  }
-                                                                                                                }
-                                                                                                              }
-                                                                                                            }
-                                                                                                          }
-                                                                                                        }
-                                                                                                      }
-                                                                                                    }
-                                                                                                  }
-                                                                                                }
-                                                                                              }
-                                                                                            }
-                                                                                          }
-                                                                                        }
-                                                                                      }
-                                                                                    }
-                                                                                  }
-                                                                                }
-                                                                              }
-                                                                            }
-                                                                          }
-                                                                        }
-                                                                      }
-                                                                    }
-                                                                  }
-                                                                }
-                                                              }
-                                                            }
-                                                          }
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+r1 = ["trappedKey"];
+r2 = __anonymous;
+__runtime.DeclareGlobals(r1, r2);
+r1 = ({ a: undefined, b: undefined });
+r3 = "a";
+r4 = get_a;
+r5 = null;
+r6 = 0;
+r2 = r1;
+__runtime.DefineAccessorPropertyUnchecked(r2, r3, r4, r5, r6);
+r3 = "b";
+r4 = get_b;
+r5 = null;
+r6 = 0;
+__runtime.DefineAccessorPropertyUnchecked(r2, r3, r4, r5, r6);
+trappedKey = r2;
+r2 = assert;
+r1 = r2.throws;
+r3 = RangeError;
+r4 = _anon_26;
+r0 = r1.call(r2, r3, r4);
+// @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
+function get_a(a0) {
+  let r0, r1;
+  r0 = RangeError;
+  r1 = "This error should be re-thrown";
+  throw new r0(r1);
 }
-function get_a() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function get_b(a0) {
@@ -310,5 +92,13 @@ function get_b(a0) {
   throw new r0(r1);
 }
 
-function _anon_26() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
+// @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
+function _anon_26(a0) {
+  let r0, r1, r2;
+  r1 = Object;
+  r0 = r1.entries;
+  r2 = trappedKey;
+  r0.call(r1, r2);
+  return;
+}
 

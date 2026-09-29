@@ -55,7 +55,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2;
-r1 = ["hoursInDay", /* root: TrustedByteArrayMap */ undefined];
+r1 = ["hoursInDay", "hoursInDay"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 if (undefined !== undefined) {
@@ -64,7 +64,7 @@ if (undefined !== undefined) {
   r2 = r2 + undefined;
   throw new r1(r2);
 }
-_1__void_0_____undefined__Actual__ = 0;
+hoursInDay = 0;
 if (undefined !== undefined) {
   r1 = Test262Error;
   r2 = "#2: var x = 0; void x === undefined. Actual: ";
@@ -72,7 +72,7 @@ if (undefined !== undefined) {
   throw new r1(r2);
 }
 r1 = _anon;
-_1__void_0_____undefined__Actual__ = new r1(r0);
+hoursInDay = new r1(r0);
 r0 = undefined;
 if (undefined !== undefined) {
   r1 = Test262Error;

@@ -64,7 +64,7 @@ if (undefined !== undefined) {
   r2 = r2 + undefined;
   throw new r1(r2);
 }
-___root__BytecodeArrayMap____undefined = 0;
+x = 0;
 if (undefined !== undefined) {
   r1 = Test262Error;
   r2 = "#2: var x = 0; void x === undefined. Actual: ";
@@ -72,7 +72,7 @@ if (undefined !== undefined) {
   throw new r1(r2);
 }
 r1 = Object;
-___root__BytecodeArrayMap____undefined = new r1(r0);
+x = new r1(r0);
 r0 = undefined;
 if (undefined !== undefined) {
   r1 = Test262Error;

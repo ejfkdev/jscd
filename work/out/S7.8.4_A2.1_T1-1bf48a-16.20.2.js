@@ -58,15 +58,15 @@ let r0, r1, r2, r3;
 r1 = ["unicode", "character", "index"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-W = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
-character = /* Map(instance_type=1)(32) */ undefined;
+unicode = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+character = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
 r0 = undefined;
 index = 0;
 while (true) {
   r1 = index;
   if (!(r1 <= 25)) break;
   r0 = undefined;
-  r1 = W;
+  r1 = unicode;
   r1 = r1[index];
   r2 = character;
   if (r1 !== r2[index]) {

@@ -64,31 +64,31 @@ if (r1 !== 0) {
   r2 = "#1: (1 ^ 1) === 0. Actual: " + 0;
   throw new r1(r2);
 }
-objectx = 1;
-r1 = objectx ^ 1;
+x = 1;
+r1 = x ^ 1;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#2: var x = 1; (x ^ 1) === 0. Actual: ";
-  r2 = r2 + (objectx ^ 1);
+  r2 = r2 + (x ^ 1);
   throw new r1(r2);
 }
-objecty = 1;
-r1 = objecty ^ 1;
+y = 1;
+r1 = y ^ 1;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#3: var y = 1; (1 ^ y) === 0. Actual: ";
-  r2 = r2 + (objecty ^ 1);
+  r2 = r2 + (y ^ 1);
   throw new r1(r2);
 }
-objectx = 1;
-objecty = 1;
-r1 = objectx;
-r1 = r1 ^ objecty;
+x = 1;
+y = 1;
+r1 = x;
+r1 = r1 ^ y;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#4: var x = 1; var y = 1; (x ^ y) === 0. Actual: ";
-  r3 = objectx;
-  r2 = r2 + (r3 ^ objecty);
+  r3 = x;
+  r2 = r2 + (r3 ^ y);
   throw new r1(r2);
 }
 r1 = Object;

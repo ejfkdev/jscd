@@ -86,7 +86,7 @@ try {
     phi0 = phi2;
   }
   r10 = arrow;
-  ___root__EmptyFeedbackMetadata____undefined = r10;
+  arrow = r10;
 } catch (e) {
   r6 = 0;
   r5 = r6;
@@ -119,7 +119,7 @@ try {
   }
   result = r1;
   r1 = verifyProperty;
-  r2 = ___root__EmptyFeedbackMetadata____undefined;
+  r2 = arrow;
   r3 = "name";
   r4 = ({ enumerable: false, writable: false, configurable: true });
   r1(r2-r4);

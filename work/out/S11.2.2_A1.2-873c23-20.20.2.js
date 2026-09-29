@@ -177,7 +177,7 @@ function _anon_0(a0) {
     throw new r1(r2);
   }
   r1 = eval_;
-  r2 = /* Map(instance_type=1)(20) */ undefined;
+  r2 = "new\u2029Nu";
   r6 = 0;
   r7 = 0;
   r8 = 1162;
@@ -193,7 +193,7 @@ function _anon_0(a0) {
   }
   r0 = undefined;
   r1 = eval_;
-  r2 = /* Map(instance_type=1)(22) */ undefined;
+  r2 = "new\t\u000b\u000c  \n\r";
   r6 = 0;
   r7 = 0;
   r8 = 1269;

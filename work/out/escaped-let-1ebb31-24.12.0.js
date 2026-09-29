@@ -60,4 +60,4 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = _anon;
 r1[""] = 0;
-r0 = _anon;
+r0 = Float32Array;

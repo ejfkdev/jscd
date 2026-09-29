@@ -65,7 +65,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = _this_function;
-  r4 = "";
+  r4 = /* BigIntMap(8) */ undefined;
   r3 = typeof r3(r4);
   r4 = "this";
   r5 = "typeof BigInt(0n) === 'bigint'";
@@ -82,7 +82,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = _anon;
   r4 = _this_function;
-  r5 = "";
+  r5 = /* BigIntMap(11) */ undefined;
   r4 = r4(r5);
   r3 = typeof r3(r4);
   r4 = "";
@@ -101,7 +101,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = _anon;
-  r4 = /* ?unknown(14) */ undefined;
+  r4 = /* BigIntMap(14) */ undefined;
   r3 = typeof r3(r4);
   r4 = "";
   r5 = "typeof Object(0n) === 'object'";

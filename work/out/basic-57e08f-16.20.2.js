@@ -71,7 +71,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = Temporal;
   r3 = r3.ZonedDateTime;
-  r4 = "";
+  r4 = /* BigIntMap(9) */ undefined;
   r5 = "UTC";
   r3 = new r3(r4, r5);
   r3 = r3.inLeapYear;

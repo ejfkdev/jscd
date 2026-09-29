@@ -75,5 +75,5 @@ newArr = r1.call(r2, r3);
 r1 = verifyProperty;
 r2 = newArr;
 r3 = "0";
-r4 = /* Map(instance_type=1)(12) */ undefined;
+r4 = ({ value: 101, writable: true, enumerable: true, configurable: true });
 r0 = r1(r2-r4);

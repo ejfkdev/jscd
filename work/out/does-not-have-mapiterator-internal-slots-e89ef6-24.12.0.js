@@ -95,7 +95,7 @@ r3 = _anon;
 r4 = _anon_33;
 r1.call(r2, r3, r4);
 r2 = iterator;
-r2 = r2["/* root: FeedbackMetadataArrayMap */ undefined"];
+r2 = r2[""];
 r1 = r2.call;
 r4 = _anon;
 r5 = _anon;

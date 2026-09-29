@@ -58,23 +58,23 @@ let r0, r1, r2;
 r1 = ["fractionalSecondDigits"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-___root__TrustedByteArrayMap____undefined = 0;
-___root__TrustedByteArrayMap____undefined = ++___root__TrustedByteArrayMap____undefined;
-r1 = ___root__TrustedByteArrayMap____undefined;
+fractionalSecondDigits = 0;
+fractionalSecondDigits = ++fractionalSecondDigits;
+r1 = fractionalSecondDigits;
 if (r1 != 1) {
   r1 = Test262Error;
   r2 = "#1.2: else branch don`t execute";
   throw new r1(r2);
 }
-___root__TrustedByteArrayMap____undefined = ++___root__TrustedByteArrayMap____undefined;
-r1 = ___root__TrustedByteArrayMap____undefined;
+fractionalSecondDigits = ++fractionalSecondDigits;
+r1 = fractionalSecondDigits;
 if (r1 != 2) {
   r1 = Test262Error;
   r2 = "#2.2: else branch don`t execute";
   throw new r1(r2);
 }
-___root__TrustedByteArrayMap____undefined = ++___root__TrustedByteArrayMap____undefined;
-r1 = ___root__TrustedByteArrayMap____undefined;
+fractionalSecondDigits = ++fractionalSecondDigits;
+r1 = fractionalSecondDigits;
 if (r1 != 3) {
   r1 = Test262Error;
   r2 = "#3.2: else branch don`t execute";
@@ -85,15 +85,15 @@ if (undefined) {
   r2 = "#4.1: undefined in expression is evaluated to false ";
   throw new r1(r2);
 }
-___root__TrustedByteArrayMap____undefined = ++___root__TrustedByteArrayMap____undefined;
-r1 = ___root__TrustedByteArrayMap____undefined;
+fractionalSecondDigits = ++fractionalSecondDigits;
+r1 = fractionalSecondDigits;
 if (r1 != 4) {
   r1 = Test262Error;
   r2 = "#4.2: else branch don`t execute";
   throw new r1(r2);
 }
-___root__TrustedByteArrayMap____undefined = ++___root__TrustedByteArrayMap____undefined;
-r1 = ___root__TrustedByteArrayMap____undefined;
+fractionalSecondDigits = ++fractionalSecondDigits;
+r1 = fractionalSecondDigits;
 if (r1 != 5) {
   r1 = Test262Error;
   r2 = "#5.2: else branch don`t execute";
@@ -104,9 +104,9 @@ if (_anon) {
   r2 = "#6.1: NaN in expression is evaluated to false ";
   throw new r1(r2);
 }
-___root__TrustedByteArrayMap____undefined = ++___root__TrustedByteArrayMap____undefined;
+fractionalSecondDigits = ++fractionalSecondDigits;
 r0 = undefined;
-r1 = ___root__TrustedByteArrayMap____undefined;
+r1 = fractionalSecondDigits;
 if (r1 != 6) {
   r1 = Test262Error;
   r2 = "#6.2: else branch don`t execute";

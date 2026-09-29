@@ -73,7 +73,7 @@ function _anon_0(a0) {
   r3 = __ctx.ctx3;
   r3 = new r3(r0);
   r3 = r3.Float32Array;
-  r4 = "Float32Array";
+  r4 = ".brand";
   r5 = "The value of `new C().a` is `'A'`";
   r0 = r1.call(r2-r5);
   return r0;

@@ -97,7 +97,7 @@ r0 = r1.call(r2, r3, r4);
 function _anon_8(a0) {
   let r0;
   r0 = arguments;
-  ___TrustedByteArrayMap_11_____undefined = r0[""];
+  argumentCount = r0[""];
   returnCalled = true;
   return {  };
 }

@@ -63,7 +63,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10;
   r6 = Temporal;
   r6 = r6.PlainTime;
   instance = new r6(r0);
-  cases = [/* BytecodeArrayMap(7) */ undefined, /* Map(instance_type=1)(13) */ undefined];
+  cases = [[{ milliseconds: 4503599627370497000, microseconds: 4503599627370495000000 }, "case where floating point inaccuracy brings total below limit, positive"], [{ milliseconds: -4503599627370497000, microseconds: -4503599627370495000000 }, "case where floating point inaccuracy brings total below limit, negative"]];
   r1 = undefined;
   r8 = cases;
   r7 = r8[Symbol.iterator]();

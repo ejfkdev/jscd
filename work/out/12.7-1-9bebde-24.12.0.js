@@ -59,11 +59,11 @@ r1 = ["sum", "Generator"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 sum = 0;
-sum = 1;
+Generator = 1;
 while (true) {
-  r1 = sum;
+  r1 = Generator;
   if (!(r1 <= 10)) break;
-  sum = ++sum;
+  Generator = ++Generator;
   continue;
 }
 r2 = Symbol_split;

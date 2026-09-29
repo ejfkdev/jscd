@@ -72,7 +72,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = __ctx.ctx4;
   r3 = r3["/* root: template_literal_slot_id_symbol */ undefined"];
-  r4 = /* Map(instance_type=1)(9) */ undefined;
+  r4 = /* BigIntMap(9) */ undefined;
   r5 = "Instant is copied";
   r1.call(r2-r5);
   r2 = Symbol_split;

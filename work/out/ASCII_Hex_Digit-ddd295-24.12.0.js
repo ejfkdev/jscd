@@ -73,7 +73,7 @@ function _anon_0(a0) {
   r4 = "\\p{AHex}";
   r1(r2-r4);
   r1 = buildString;
-  r2 = /* Map(instance_type=1)(23) */ undefined;
+  r2 = ({ loneCodePoints: /* ?unknown(24) */ undefined });
   __ctx_ctx4 = r1(r2);
   r1 = testPropertyEscapes;
   r2 = new RegExp("^\\P{ASCII_Hex_Digit}+$", "s");

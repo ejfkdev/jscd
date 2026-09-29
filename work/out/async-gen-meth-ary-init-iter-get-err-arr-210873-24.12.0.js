@@ -72,7 +72,7 @@ __runtime.DefineClass(r3, r4, r5, r6);
 _default = r4;
 r1 = _default;
 r1 = r1.prototype;
-___Script_17_____undefined = r1["/* Script(17) */ undefined"];
+method = r1.method;
 r2 = Symbol_split;
 r1 = r2.throws;
 r3 = _anon;

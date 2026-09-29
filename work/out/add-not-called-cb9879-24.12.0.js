@@ -63,9 +63,9 @@ function _anon_0(a0) {
   r2 = /* ?unknown(5) */ undefined;
   s2 = new r1(r2);
   r1 = _anon;
-  r2 = /* Map(instance_type=1)(7) */ undefined;
+  r2 = /* ?unknown(7) */ undefined;
   expected = new r1(r2);
-  originalAdd = /* Map(instance_type=1)(9) */ undefined;
+  originalAdd = /* ?unknown(9) */ undefined;
   r1 = _anon;
   r1 = r1.prototype;
   __ctx_ctx6 = r1.stackTraceLimit;

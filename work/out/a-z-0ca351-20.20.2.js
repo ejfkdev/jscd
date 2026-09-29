@@ -71,7 +71,7 @@ function _anon_0(a0) {
       r7 = String;
       r6 = r7.fromCharCode;
       r8 = Number;
-      r9 = r2 + "";
+      r9 = r2 + /* BigIntMap(6) */ undefined;
       r8 = r8(r9);
       r6 = r6.call(r7, r8);
       r0 = r3.call(r4, r5, r6);

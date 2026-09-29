@@ -85,11 +85,11 @@ if (r1 !== true) {
   throw new r1(r2);
 }
 r1 = Object;
-_3__var_x___true___x_____false = new r1(r0);
-r1 = _3__var_x___true___x_____false;
+object = new r1(r0);
+r1 = object;
 r1.prop = true;
 r0 = undefined;
-r1 = _3__var_x___true___x_____false;
+r1 = object;
 r1 = !r1.prop;
 if (r1 !== false) {
   r1 = Test262Error;

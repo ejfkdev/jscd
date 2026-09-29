@@ -63,7 +63,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r13 = Temporal;
   r13 = r13.Duration;
   instance = new r13(r0);
-  maxCases = [/* BytecodeArrayMap(7) */ undefined, /* Map(instance_type=1)(11) */ undefined, "", /* Map(instance_type=1)(21) */ undefined, /* Map(instance_type=1)(27) */ undefined, /* Map(instance_type=1)(31) */ undefined, /* Map(instance_type=1)(37) */ undefined, /* Map(instance_type=1)(41) */ undefined];
+  maxCases = [["P104249991374DT7H36M31.999999999S", "string with max days"], [{ days: 104249991374, nanoseconds: 27391999999999 }, "property bag with max days"], ["PT2501999792983H36M31.999999999S", "string with max hours"], [{ hours: 2501999792983, nanoseconds: 2191999999999 }, "property bag with max hours"], ["PT150119987579016M31.999999999S", "string with max minutes"], [{ minutes: 150119987579016, nanoseconds: 31999999999 }, "property bag with max minutes"], ["PT9007199254740991.999999999S", "string with max seconds"], [{ seconds: 9007199254740991, nanoseconds: 999999999 }, "property bag with max seconds"]];
   r15 = maxCases;
   r14 = r15[Symbol.iterator]();
   r13 = r14[""];
@@ -169,7 +169,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         r20 = assert;
         r19 = r20.sameValue;
         r21 = r12.total;
-        r23 = "done";
+        r23 = "seconds";
         r21 = r21.call(r12, r23);
         r22 = 9007199254740992;
         r23 = "operation succeeds with ";
@@ -216,7 +216,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   if (r16 === 0) {
     if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
   }
-  minCases = [/* Map(instance_type=1)(51) */ undefined, /* Map(instance_type=1)(55) */ undefined, /* Map(instance_type=1)(61) */ undefined, /* Map(instance_type=1)(65) */ undefined, "", "", /* Map(instance_type=1)(81) */ undefined, /* Map(instance_type=1)(85) */ undefined];
+  minCases = [["-P104249991374DT7H36M31.999999999S", "string with min days"], [{ days: -104249991374, nanoseconds: -27391999999999 }, "property bag with min days"], ["-PT2501999792983H36M31.999999999S", "string with min hours"], [{ hours: -2501999792983, nanoseconds: -2191999999999 }, "property bag with min hours"], ["-PT150119987579016M31.999999999S", "string with min minutes"], [{ minutes: -150119987579016, nanoseconds: -31999999999 }, "property bag with min minutes"], ["-PT9007199254740991.999999999S", "string with min seconds"], [{ seconds: -9007199254740991, nanoseconds: -999999999 }, "property bag with min seconds"]];
   r2 = undefined;
   r15 = minCases;
   r14 = r15[Symbol.iterator]();
@@ -323,7 +323,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         r20 = assert;
         r19 = r20.sameValue;
         r21 = r7.total;
-        r23 = "done";
+        r23 = "seconds";
         r21 = r21.call(r7, r23);
         r22 = -9007199254740992;
         r23 = "operation succeeds with ";

@@ -70,26 +70,26 @@ if (r1 !== true) {
   r2 = "#2: !(!true) === true";
   throw new r1(r2);
 }
-_1___true_____false = true;
-r1 = !_1___true_____false;
+x = true;
+r1 = !x;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#3: var x = true; !x === false";
   throw new r1(r2);
 }
-_1___true_____false = true;
-r1 = _1___true_____false;
+x = true;
+r1 = x;
 if (r1 !== true) {
   r1 = Test262Error;
   r2 = "#4: var x = true; !(!x) === true";
   throw new r1(r2);
 }
 r1 = Object;
-_2_____true______true = new r1(r0);
-r1 = _2_____true______true;
+object = new r1(r0);
+r1 = object;
 r1.prop = true;
 r0 = undefined;
-r1 = _2_____true______true;
+r1 = object;
 r1 = !r1.prop;
 if (r1 !== false) {
   r1 = Test262Error;

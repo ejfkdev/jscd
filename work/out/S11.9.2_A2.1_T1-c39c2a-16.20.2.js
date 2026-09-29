@@ -65,26 +65,26 @@ if (r1 !== false) {
   r2 = "#1: (1 != 1) === false";
   throw new r1(r2);
 }
-objectx = 1;
-r1 = objectx;
+x = 1;
+r1 = x;
 r1 = r1 != 1;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#2: var x = 1; (x != 1) === false";
   throw new r1(r2);
 }
-objecty = 1;
+y = 1;
 r1 = 1;
-r1 = r1 != objecty;
+r1 = r1 != y;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#3: var y = 1; (1 != y) === false";
   throw new r1(r2);
 }
-objectx = 1;
-objecty = 1;
-r1 = objectx;
-r1 = r1 != objecty;
+x = 1;
+y = 1;
+r1 = x;
+r1 = r1 != y;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#4: var x = 1; var y = 1; (x != y) === false";

@@ -54,7 +54,7 @@ function __anonymous() {}
 var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // 共享绑定（闭包捕获的变量被摊平为文件级 var，便于直接运行）
-var _default, _gen, error_start_pos_symbol;
+var _default, fractionalSecondDigits, _gen, error_start_pos_symbol;
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
@@ -73,15 +73,15 @@ r3 = /* ?unknown(15) */ undefined;
 r6 = get_gen;
 r4 = r2;
 __runtime.DefineClass(r3, r4, r5, r6);
-_gen = r4;
-r1 = _gen;
+fractionalSecondDigits = r4;
+r1 = fractionalSecondDigits;
 __ctx_ctx4 = new r1(r0);
 r1 = Symbol_split;
 r3 = _anon;
 r3 = r3.prototype;
 r3 = r3["<ro0_54152>"];
 r2 = r3.call;
-r4 = _gen;
+r4 = fractionalSecondDigits;
 r4 = r4.prototype;
 r5 = "#gen";
 r2 = !r2.call(r3, r4, r5);
@@ -92,7 +92,7 @@ r3 = _anon;
 r3 = r3.prototype;
 r3 = r3["<ro0_54152>"];
 r2 = r3.call;
-r4 = _gen;
+r4 = fractionalSecondDigits;
 r5 = "#gen";
 r2 = !r2.call(r3, r4, r5);
 r3 = "Private field '#gen' does not appear as an own property on C constructor";
@@ -145,7 +145,7 @@ r3 = _anon;
 r3 = r3.prototype;
 r3 = r3["<ro0_54152>"];
 r2 = r3.call;
-r4 = _gen;
+r4 = fractionalSecondDigits;
 r4 = r4.prototype;
 r5 = "#gen";
 r2 = !r2.call(r3, r4, r5);
@@ -156,7 +156,7 @@ r3 = _anon;
 r3 = r3.prototype;
 r3 = r3["<ro0_54152>"];
 r2 = r3.call;
-r4 = _gen;
+r4 = fractionalSecondDigits;
 r5 = "#gen";
 r2 = !r2.call(r3, r4, r5);
 r3 = "Private field '#gen' does not appear as an own property on C constructor";

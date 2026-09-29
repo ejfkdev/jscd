@@ -56,15 +56,15 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
 let phi0, phi1;
-r1 = ["errorCount", "count", "indexP", "indexO", /* root: PrototypeInfoMap */ undefined, "hexP", "hexO", "hexP", "indexO", "hexO", "indexO"];
+r1 = ["errorCount", "count", "indexP", "indexO", /* root: PrototypeInfoMap */ undefined, "hexP", "hexO", "hexP", "hexP", "hexO", "hexP"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 errorCount = 0;
 count = 0;
 indexO = 0;
-indexO = 56320;
+___root__PrototypeInfoMap____undefined = 56320;
 while (true) {
-  r1 = indexO;
+  r1 = ___root__PrototypeInfoMap____undefined;
   if (r1 <= 57343) break;
   count = ++count;
   r1 = __context;
@@ -72,7 +72,7 @@ while (true) {
     r2 = ++count;
     r4 = _anon;
     r3 = r4.fromCharCode;
-    r5 = indexO;
+    r5 = ___root__PrototypeInfoMap____undefined;
     r6 = 65;
     r3 = r3.call(r4, r5, r6);
   } catch (e) {
@@ -88,10 +88,10 @@ while (true) {
       r1 = indexO;
       phi1 = r1 === 0;
       if (r1 === 0) {
-        indexO = indexO;
-        phi1 = indexO;
+        indexO = ___root__PrototypeInfoMap____undefined;
+        phi1 = ___root__PrototypeInfoMap____undefined;
       } else {
-        r1 = indexO;
+        r1 = ___root__PrototypeInfoMap____undefined;
         r1 = r1 - indexP;
         if (r1 !== 1) {
           r1 = indexP;
@@ -99,33 +99,33 @@ while (true) {
           if (r1 !== 0) {
             r1 = decimalToHexString;
             r2 = indexP;
-            _anon = r1(r2);
+            hexP = r1(r2);
             r1 = decimalToHexString;
             r2 = indexO;
-            ___ScopeInfoMap_12_____undefined = r1(r2);
+            hexO = r1(r2);
             r1 = Test262Error;
             r2 = "caller";
-            r2 = r2 + ___ScopeInfoMap_12_____undefined;
+            r2 = r2 + hexO;
             r2 = r2 + "current";
-            r2 = r2 + _anon;
+            r2 = r2 + hexP;
             r2 = r2 + "CompileError";
             throw new r1(r2);
           }
           r1 = decimalToHexString;
           r2 = indexP;
-          _anon = r1(r2);
+          hexP = r1(r2);
           r1 = Test262Error;
           r2 = "caller";
-          r2 = r2 + _anon;
+          r2 = r2 + hexP;
           r2 = r2 + "CompileError";
           throw new r1(r2);
         }
       }
-      indexP = indexO;
+      indexP = ___root__PrototypeInfoMap____undefined;
       errorCount = ++errorCount;
       phi0 = ++errorCount;
     }
-    indexO = ++indexO;
+    ___root__PrototypeInfoMap____undefined = ++___root__PrototypeInfoMap____undefined;
   }
   continue;
 }
@@ -137,24 +137,24 @@ if (r1 > 0) {
   if (r1 !== 0) {
     r1 = decimalToHexString;
     r2 = indexP;
-    _anon = r1(r2);
+    hexP = r1(r2);
     r1 = decimalToHexString;
     r2 = indexO;
-    ___ScopeInfoMap_12_____undefined = r1(r2);
+    hexO = r1(r2);
     r1 = Test262Error;
     r2 = "caller";
-    r2 = r2 + ___ScopeInfoMap_12_____undefined;
+    r2 = r2 + hexO;
     r2 = r2 + "current";
-    r2 = r2 + _anon;
+    r2 = r2 + hexP;
     r2 = r2 + "CompileError";
     throw new r1(r2);
   }
   r1 = decimalToHexString;
   r2 = indexP;
-  _anon = r1(r2);
+  hexP = r1(r2);
   r1 = Test262Error;
   r2 = "caller";
-  r2 = r2 + _anon;
+  r2 = r2 + hexP;
   r2 = r2 + "CompileError";
   throw new r1(r2);
 }

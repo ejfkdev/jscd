@@ -61,7 +61,7 @@ let r0, r1, r2, r3, r4, r5, r6;
 r1 = ["hoursInDay", "callCount"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-___root__TrustedByteArrayMap____undefined = 0;
+hoursInDay = 0;
 callCount = 0;
 /* createblockcontext */
 r5 = undefined /* hole */;

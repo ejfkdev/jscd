@@ -71,7 +71,7 @@ function _anon_0(a0) {
       r7 = _anon;
       r6 = r7.fromCharCode;
       r8 = _anon;
-      r9 = r2 + /* Map(instance_type=1)(7) */ undefined;
+      r9 = r2 + /* BigIntMap(7) */ undefined;
       r8 = r8(r9);
       r6 = r6.call(r7, r8);
       r0 = r3.call(r4, r5, r6);

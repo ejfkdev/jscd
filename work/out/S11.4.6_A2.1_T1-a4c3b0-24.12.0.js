@@ -55,7 +55,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3;
-r1 = ["hoursInDay", /* root: TrustedByteArrayMap */ undefined, ""];
+r1 = ["hoursInDay", "hoursInDay", ""];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = 1;
@@ -70,33 +70,33 @@ if (r1 !== 1) {
   r2 = "#2: +(+1) === -1. Actual: " + 1;
   throw new r1(r2);
 }
-Test262Error = 1;
-r1 = Test262Error;
+hoursInDay = 1;
+r1 = hoursInDay;
 if (r1 !== 1) {
   r1 = Test262Error;
   r2 = "#3: var x = +1; -x === 1. Actual: ";
-  r2 = r2 + -Test262Error;
+  r2 = r2 + -hoursInDay;
   throw new r1(r2);
 }
-Test262Error = 1;
-r1 = Test262Error;
+hoursInDay = 1;
+r1 = hoursInDay;
 if (r1 !== 1) {
   r1 = Test262Error;
   r2 = "#4: var x = 1; +(+x) === 1. Actual: ";
-  r2 = r2 + Test262Error;
+  r2 = r2 + hoursInDay;
   throw new r1(r2);
 }
 r1 = _anon;
-_1___1_____1__Actual__ = new r1(r0);
-r1 = _1___1_____1__Actual__;
+_anon = new r1(r0);
+r1 = _anon;
 r1.prop = 1;
 r0 = undefined;
-r1 = _1___1_____1__Actual__;
+r1 = _anon;
 r1 = r1.prop;
 if (r1 !== 1) {
   r1 = Test262Error;
   r2 = "#5: var object = new Object(); object.prop = 1; +object.prop === 1. Actual: ";
-  r3 = _1___1_____1__Actual__;
+  r3 = _anon;
   r2 = r2 + r3.prop;
   throw new r1(r2);
 }

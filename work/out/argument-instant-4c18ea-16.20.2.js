@@ -72,7 +72,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = result;
   r3 = r3.epochNanoseconds;
-  r4 = "";
+  r4 = /* BigIntMap(8) */ undefined;
   r5 = "Instant is copied";
   r1.call(r2-r5);
   r2 = assert;

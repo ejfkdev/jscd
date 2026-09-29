@@ -92,7 +92,7 @@ function _anon_0(a0) {
   r7 = 123;
   r8 = 456;
   r9 = 789;
-  r10 = ({ hour: 3 });
+  r10 = "hour";
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
@@ -107,7 +107,7 @@ function _anon_0(a0) {
   r7 = 123;
   r8 = 456;
   r9 = 789;
-  r10 = "hour";
+  r10 = "minute";
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
@@ -122,7 +122,7 @@ function _anon_0(a0) {
   r7 = 123;
   r8 = 456;
   r9 = 789;
-  r10 = ({ minute: 3 });
+  r10 = "second";
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
@@ -137,11 +137,11 @@ function _anon_0(a0) {
   r7 = 3;
   r8 = 456;
   r9 = 789;
-  r10 = "minute";
+  r10 = "millisecond";
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
-  r3 = "\u0000\u0000\u0000";
+  r3 = ({ microsecond: 3 });
   microsecond = r1.call(r2, r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
@@ -152,11 +152,11 @@ function _anon_0(a0) {
   r7 = 123;
   r8 = 3;
   r9 = 789;
-  r10 = ({ second: 3 });
+  r10 = "microsecond";
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
-  r3 = "\u0000\u0000\u0000";
+  r3 = ({ nanosecond: 3 });
   nanosecond = r1.call(r2, r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
@@ -167,11 +167,11 @@ function _anon_0(a0) {
   r7 = 123;
   r8 = 456;
   r9 = 3;
-  r10 = "second";
+  r10 = "nanosecond";
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
-  r3 = "\u0000\u0000\u0000\u0000\u0008";
+  r3 = ({ minute: 8, nanosecond: 3 });
   combined = r1.call(r2, r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
@@ -186,7 +186,7 @@ function _anon_0(a0) {
   r1.call(r2-r10);
   r2 = plainTime;
   r1 = r2.with;
-  r3 = "\u0000\u0000\u0000\u0000\u0008";
+  r3 = ({ minutes: 8, nanosecond: 3 });
   plural = r1.call(r2, r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;

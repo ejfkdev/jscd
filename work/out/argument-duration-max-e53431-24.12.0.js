@@ -165,7 +165,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10;
           r21 = Symbol_split;
           r20 = r21.sameValue;
           r22 = r12[""];
-          r24 = "sameValue";
+          r24 = "";
           r22 = r22.call(r12, r24);
           r23 = 9007199254740992;
           r24 = "operation succeeds with ";

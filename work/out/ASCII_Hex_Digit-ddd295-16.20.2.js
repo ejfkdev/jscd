@@ -60,7 +60,7 @@ var matchSymbols, nonMatchSymbols;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = buildString;
-  r2 = ({ loneCodePoints: [], ranges: /* Map(instance_type=1)(8) */ undefined });
+  r2 = ({ loneCodePoints: [], ranges: [[48, 57], [65, 70], [97, 102]] });
   matchSymbols = r1(r2);
   r1 = testPropertyEscapes;
   r2 = new RegExp("^\\p{ASCII_Hex_Digit}+$", "s");
@@ -73,7 +73,7 @@ function _anon_0(a0) {
   r4 = "\\p{AHex}";
   r1(r2-r4);
   r1 = buildString;
-  r2 = /* Map(instance_type=1)(21) */ undefined;
+  r2 = ({ loneCodePoints: [], ranges: [[56320, 57343], [0, 47], [58, 64], [71, 96], [103, 56319], [57344, 1114111]] });
   nonMatchSymbols = r1(r2);
   r1 = testPropertyEscapes;
   r2 = new RegExp("^\\P{ASCII_Hex_Digit}+$", "s");
