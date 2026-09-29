@@ -332,6 +332,9 @@ fn decompile_cmd(
     let d = crate::decompile::Decompiler::new(&cache, &table).with_ro_map(rmap);
     let mut text = String::new();
     d.render_all(&mut text, None)?;
+    // 摊平后的函数是文件级定义 → 把 `__uncompiled.<name>` 占位换成真名字
+    // （码缓存里引用 SFI 常量很常见：模块的 CI、类方法表、导出表…）
+    let text = crate::decompile::link_flat_functions(text);
     // 内置门禁：括号/花括号配平（保证不会输出结构性语法错误）
     syntax_check(&text)?;
     if verify {
