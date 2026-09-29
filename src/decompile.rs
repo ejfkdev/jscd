@@ -629,6 +629,10 @@ struct FnCtx<'a, 'b> {
     acc_stored_reg: Option<u32>,
     /// 上一条已输出的语句文本（折叠完全重复的无副作用语句）
     last_line: String,
+    /// 最近一次 context 槽读取的槽号（供紧随其后的 TDZ 检查反推变量名）
+    last_ctx_slot: Option<usize>,
+    /// 槽号 → 变量名（由 TDZ 检查常量池反推，弥补外层 ScopeInfo 缺失）
+    slot_aliases: HashMap<usize, String>,
     /// 已生成的语句
     out: String,
     indent: usize,
@@ -1004,6 +1008,54 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .and_then(|r| d.cache.ref_object(r));
         let handlers = read_handler_table(d, bca);
 
+        // 预扫：V8 的 TDZ 检查（`X; ThrowReferenceErrorIfHole [池索引]`）紧跟在 context 槽
+        // 读取之后 → 用它把槽号绑到变量名。模块/外层 ScopeInfo 不在链上时，这是拿到真名的
+        // 唯一线索（否则满屏 `__ctx.ctx25`）。
+        let mut slot_aliases: HashMap<usize, String> = HashMap::new();
+        for (k, ins) in instrs.iter().enumerate() {
+            let b = ins.name.split('.').next().unwrap_or(&ins.name);
+            let is_ctx_load = matches!(
+                b,
+                "LdaContextSlot"
+                    | "LdaImmutableContextSlot"
+                    | "LdaScriptContextSlot"
+                    | "LdaCurrentContextSlot"
+                    | "LdaImmutableCurrentContextSlot"
+            );
+            if !is_ctx_load {
+                continue;
+            }
+            let ops_n = ins.operands.len();
+            let slot_idx = if ops_n >= 3 { ops_n - 2 } else { 0 };
+            let slot = match ins.operands.get(slot_idx) {
+                Some(Operand::Idx(v)) => *v as usize,
+                Some(Operand::Imm(v)) => *v as usize,
+                _ => continue,
+            };
+            for nxt in instrs.iter().skip(k + 1).take(2) {
+                let nb = nxt.name.split('.').next().unwrap_or(&nxt.name);
+                if nb != "ThrowReferenceErrorIfHole" {
+                    continue;
+                }
+                let Some(Operand::Idx(ci)) = nxt.operands.first() else {
+                    continue;
+                };
+                let name = pool
+                    .and_then(|p| d.cache.array_elem(p, *ci as usize))
+                    .and_then(|e| e.as_ref())
+                    .and_then(|r| d.cache.ref_object(r))
+                    .filter(|o| d.cache.obj(*o).ty.is_string(d.table))
+                    .and_then(|o| d.dis.string_value(o));
+                if let Some(n) = name {
+                    let v = sanitize_var(&n.replace(['<', '>'], "").replace('/', "_"));
+                    if !v.is_empty() {
+                        slot_aliases.entry(slot).or_insert(v);
+                    }
+                }
+                break;
+            }
+        }
+
         Ok(FnCtx {
             d,
             sfi,
@@ -1018,6 +1070,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             acc_stored: false,
             acc_stored_reg: None,
             last_line: String::new(),
+            last_ctx_slot: None,
+            slot_aliases,
             out: String::new(),
             indent: 0,
             loops: Vec::new(),
@@ -1418,6 +1472,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// context 槽名（ScopeInfo 的 context_local_names；不可得时回落 ctxN）。
     fn context_name(&self, slot: usize) -> String {
+        // 由 TDZ 检查反推出的别名最可靠（外层/模块 ScopeInfo 常常不在链上）
+        if let Some(n) = self.slot_aliases.get(&slot) {
+            return n.clone();
+        }
         // 块/catch 作用域优先（其 context 的槽 0 为该作用域的 ScopeInfo）
         if let Some(Some(sid)) = self.ctx_scopes.last().copied() {
             if let Some(s) = self.d.scope_by_id(sid) {
@@ -1855,13 +1913,36 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     continue;
                 }
                 if let Some(&t_idx) = self.idx_of.get(&target) {
+                    // ③b 冷块在 fallthrough 侧：`JumpIfTrue L`（L 是主流程）+ 紧跟其后的
+                    //     短块以 throw/return 收尾。V8 对 `if (!cond) throw X` 就是这么排的
+                    //     （跳过去 = 继续正常流程，掉下来 = 抛错）。真实代码里到处是这种守卫。
+                    if t_idx > i + 1 && self.block_terminates(t_idx - 1) {
+                        let not_taken = Expr::Un {
+                            op: "!",
+                            e: Box::new(cond_e.clone()),
+                            postfix: false,
+                        }
+                        .render();
+                        self.line(&format!("if ({not_taken}) {{"));
+                        self.indent += 1;
+                        let r = self.emit_range(i + 1, t_idx);
+                        self.indent -= 1;
+                        self.line("}");
+                        if let Err(e) = r {
+                            return Err(e);
+                        }
+                        // acc 在冷块之后保持跳转前的值（冷块必然离开控制流）
+                        i = t_idx;
+                        continue;
+                    }
                     // ③a guard 子句：跳转目标块是"只进不落"且以 return/throw 收尾的冷块
                     //     （V8 对 switch 分支和提前 return 的典型布局）→ 直接展开成
                     //     `if (cond) { <冷块> }`，主流程线性继续，避免整段逻辑被嵌进 if/else。
                     if t_idx > i && self.is_detached(t_idx) {
                         let (ext_raw, tail_shared) = self.detached_extent(t_idx, end);
                         let ext = ext_raw.min(end);
-                        if ext > t_idx && self.block_terminates(ext - 1) {
+                        if ext > t_idx && self.block_terminates(ext - 1) && self.self_contained(t_idx, ext)
+                        {
                             let acc_save = self.acc.clone();
                             let acc_stored_save = self.acc_stored;
                             let acc_stored_reg_save = self.acc_stored_reg;
@@ -2119,6 +2200,29 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         s
     }
 
+    /// 区间 [start, end) 是否"自包含"：内部没有跳向区间外的跳转。
+    /// 冷块必须是单入口单出口，否则会把流程里别的分支一起吞进来
+    /// （曾把 `if (!cond) throw` 后面整段正常流程当成冷块，输出的 throw 跑到 if 外面）。
+    fn self_contained(&self, start: usize, end: usize) -> bool {
+        for k in start..end {
+            let ins = &self.instrs[k];
+            let target = self
+                .cond_jump_target(ins)
+                .or_else(|| self.uncond_jump_target(ins));
+            if let Some(t) = target {
+                match self.idx_of.get(&t) {
+                    Some(&ti) => {
+                        if ti < start || ti > end {
+                            return false;
+                        }
+                    }
+                    None => return false,
+                }
+            }
+        }
+        true
+    }
+
     /// 循环检测：本指令（i）是否为某个后向跳转的目标；返回 (回边下标, 循环退出目标)。
     fn find_loop(&self, i: usize, end: usize) -> Option<(usize, usize)> {
         let head = self.instrs[i].offset;
@@ -2374,6 +2478,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             "LdaContextSlot" | "LdaScriptContextSlot" | "LdaImmutableContextSlot" => {
                 let i = ops.len().saturating_sub(2);
                 let slot = idx_num(&arg(i)).unwrap_or(0);
+                self.last_ctx_slot = Some(slot);
                 self.acc = Some(Expr::Ident(self.context_name(slot)));
             }
             "StaCurrentContextSlot" | "StaCurrentScriptContextSlot" | "StaContextSlot" | "StaScriptContextSlot" => {
@@ -2967,6 +3072,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     .unwrap_or_default();
                 // 名字可能来自未建表的 ro 引用（形如 <ro0_31880>）→ 变量名安全化
                 let vname = sanitize_var(&name.replace(['<', '>'], "").replace('/', "_"));
+                // V8 的 TDZ 检查紧跟在 context 槽读取之后 → 用它把槽号对应到真名字。
+                // 模块级代码大量走外层 context，ScopeInfo 拿不到名字时会退化成 ctxN。
                 self.line(&format!(
                     "if ({vname} === undefined) throw new ReferenceError({});",
                     js_string(&name)
