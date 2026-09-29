@@ -224,6 +224,8 @@ impl<'a> Decoder<'a> {
     fn interpret_operand(&self, ty: &str, value: u64, size: usize) -> Operand {
         match ty {
             "Reg" | "RegOut" => Operand::Reg(self.reg_index(signed(&value, size))),
+            // V8 13.x 的 ForInStep 用 RegInOut（读写同寄存器）；与 Reg/RegOut 同编码
+            "RegInOut" => Operand::Reg(self.reg_index(signed(&value, size))),
             "RegPair" | "RegOutPair" => Operand::RegList {
                 first: self.reg_index(signed(&value, size)),
                 count: 2,

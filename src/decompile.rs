@@ -2408,32 +2408,64 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             Some(Operand::Reg(r)) if *r >= 0 => *r as u32,
             _ => return None,
         };
-        // 找 ForInContinue + JumpIfFalse EXIT
+        // 循环判定有两代形态：
+        //   ≤12.x：`ForInContinue idx, len` + `JumpIfFalse EXIT`
+        //   13.x ：合并成 `JumpIfForInDone idx, len`（自带跳转）
         let mut j = i + 2;
-        while j < end && base_of(j) != "ForInContinue" {
-            if j > i + 6 {
-                return None;
+        let mut test_idx = None;
+        while j < end && j <= i + 8 {
+            match base_of(j).as_str() {
+                "ForInContinue" if base_of(j + 1) == "JumpIfFalse" => {
+                    test_idx = Some(j + 1);
+                    break;
+                }
+                "JumpIfForInDone" => {
+                    test_idx = Some(j);
+                    break;
+                }
+                _ => j += 1,
             }
-            j += 1;
         }
-        if base_of(j) != "ForInContinue" || base_of(j + 1) != "JumpIfFalse" {
-            return None;
+        let test_idx = test_idx?;
+        if std::env::var("JSCD_DBG_FORIN").is_ok() {
+            let t = &self.instrs[test_idx];
+            eprintln!(
+                "[forin] i={i} j={j} test={test_idx} name={} off={} scale={} ops={:?} -> {:?}",
+                t.name,
+                t.offset,
+                t.scale,
+                t.operands,
+                self.cond_jump_target(t)
+            );
         }
-        let exit_off = self.cond_jump_target(&self.instrs[j + 1].clone())?;
+        let exit_off = self.cond_jump_target(&self.instrs[test_idx].clone())?;
         let exit_idx = *self.idx_of.get(&exit_off)?;
-        // 回边：跳到 ForInContinue 的无条件跳转
+        // 回边：跳到循环判定处的无条件跳转
         let head_off = self.instrs[j].offset;
-        let back_idx = (j + 2..exit_idx).find(|k| {
+        if std::env::var("JSCD_DBG_FORIN").is_ok() {
+            for k in j..exit_idx.min(self.instrs.len()) {
+                let b = self.instrs[k].name.split('.').next().unwrap_or("").to_string();
+                eprintln!(
+                    "[forin]  k={k} off={} {b} uncond={:?} cond={:?}",
+                    self.instrs[k].offset,
+                    self.uncond_jump_target(&self.instrs[k].clone()),
+                    self.cond_jump_target(&self.instrs[k].clone())
+                );
+            }
+        }
+        // 体区起点：判定指令之后（13.x 的判定在 ForInNext 之前，用 j+2 会把它跳过去）
+        let body_lo = test_idx + 1;
+        let back_idx = (body_lo..exit_idx).find(|k| {
             self.uncond_jump_target(&self.instrs[*k].clone())
                 .map(|t| t == head_off)
                 .unwrap_or(false)
         })?;
         // 循环体：[ForInNext 的 undefined 守卫之后, ForInStep)
         // ForInStep 紧贴回边之前（`ForInStep; Star idx; JumpLoop`）→ 从后往前找最稳
-        let step_idx = (j + 2..back_idx)
+        let step_idx = (body_lo..back_idx)
             .rev()
             .find(|k| base_of(*k) == "ForInStep")?;
-        let next_idx = (j + 2..step_idx).find(|k| base_of(*k) == "ForInNext")?;
+        let next_idx = (body_lo..step_idx).find(|k| base_of(*k) == "ForInNext")?;
         let mut body_start = next_idx + 1;
         // `JumpIfUndefined STEP`：键被删掉时跳过本轮
         let mut guard: Option<String> = None;
