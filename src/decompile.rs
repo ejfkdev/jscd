@@ -661,6 +661,12 @@ impl<'a> Decompiler<'a> {
 
     /// 遍历全部已编译函数并流式写出（低内存：逐函数生成后立即写出）。
     pub fn render_all<W: FmtWrite>(&self, w: &mut W, filter: Option<&str>) -> Result<(), String> {
+        // 前言：把各作用域的 context 变量提升为文件级 var。
+        // 我们的输出把嵌套函数摊平成顶层函数，捕获变量只能靠共享的全局绑定才可运行。
+        let preamble = self.shared_bindings();
+        if !preamble.is_empty() {
+            let _ = w.write_str(&preamble);
+        }
         for id in 0..self.cache.objects.len() {
             if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
                 continue;
@@ -675,6 +681,55 @@ impl<'a> Decompiler<'a> {
             w.write_str(&text).map_err(|_| "write failed".to_string())?;
         }
         Ok(())
+    }
+
+    /// 所有作用域的 context 变量名（去重）→ 文件级声明。
+    fn shared_bindings(&self) -> String {
+        let mut names: Vec<String> = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        for id in 0..self.cache.objects.len() {
+            if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
+                continue;
+            }
+            let Some(sid) = self.scope_id_of(id) else {
+                continue;
+            };
+            let Some(scope) = self.scope_by_id(sid) else {
+                continue;
+            };
+            for n in &scope.context_locals {
+                if n.is_empty() {
+                    continue;
+                }
+                let v = sanitize_var(n);
+                if seen.insert(v.clone()) {
+                    names.push(v);
+                }
+            }
+            // 顺着 outer 链一并收集
+            let mut cur = scope.outer;
+            for _ in 0..8 {
+                let Some(next) = cur else { break };
+                let Some(sc) = self.scope_by_id(next) else { break };
+                for n in &sc.context_locals {
+                    if n.is_empty() {
+                        continue;
+                    }
+                    let v = sanitize_var(n);
+                    if seen.insert(v.clone()) {
+                        names.push(v);
+                    }
+                }
+                cur = sc.outer;
+            }
+        }
+        if names.is_empty() {
+            return String::new();
+        }
+        format!(
+            "// 共享绑定（闭包捕获的变量被摊平为文件级 var，便于直接运行）\nvar {};\nvar __context;\n\n",
+            names.join(", ")
+        )
     }
 
     /// 反编译单个函数。
@@ -1017,22 +1072,14 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let names: Vec<String> = (0..=m).map(|i| format!("r{i}")).collect();
             self.line(&format!("let {};", names.join(", ")));
         }
+        // context 变量已在文件级 `var` 声明（供摊平后的内层函数共享）→ 此处不再重复 let
         if let Some(s) = &self.scope {
-            let mut declared: Vec<String> = Vec::new();
-            for n in &s.context_locals {
-                if n.is_empty() {
-                    continue;
-                }
-                let v = sanitize_var(n);
-                if declared.contains(&v) {
-                    continue;
-                }
-                declared.push(v);
-            }
-            if !declared.is_empty() {
-                self.ctx_names = declared.clone();
-                self.line(&format!("let {};", declared.join(", ")));
-            }
+            self.ctx_names = s
+                .context_locals
+                .iter()
+                .filter(|n| !n.is_empty())
+                .map(|n| sanitize_var(n))
+                .collect();
         }
     }
 
@@ -1325,7 +1372,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 self.flush_acc_before(&base);
                 let in_break = self.loops.iter().any(|l| l.break_target == target);
                 if in_break {
-                    // cond_of 已按跳转类型带好极性（JumpIfFalse → !(acc)），此处不要再次取反
+                    // 跳转发生 ⇔ 退出循环 → 条件原样
                     self.line(&format!("if ({cond}) break;"));
                     i += 1;
                     continue;
@@ -1360,7 +1407,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                             i += 1;
                             continue;
                         }
-                        self.line(&format!("if ({cond}) {{"));
+                        self.line(&format!("if (!({cond})) {{"));
                         self.indent += 1;
                         self.emit_range(i + 1, t_idx.min(end))?;
                         self.indent -= 1;
@@ -1555,9 +1602,31 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
     }
 
+    /// 会**保留** acc 的指令（既不读也不写）。其余默认视为"写 acc"。
+    /// 只有"下一条会覆盖 acc 且不读它"时，当前 acc 才算死（否则 `Mov`/`Star` 之间会丢值）。
+    fn preserves_acc(name: &str) -> bool {
+        matches!(
+            name,
+            "Star" | "Mov" | "PushContext" | "PopContext" | "Jump" | "JumpLoop" | "Nop"
+                | "Debugger" | "SetPendingMessage" | "ThrowReferenceErrorIfHole"
+                | "ThrowSuperNotCalledIfHole" | "ThrowSuperAlreadyCalledIfNotHole"
+                | "ThrowIfNotSuperConstructor" | "ReThrow" | "CreateBlockContext"
+                | "CreateFunctionContext" | "CreateCatchContext" | "CreateWithContext"
+                | "CreateEvalContext" | "CreateScriptContext" | "SwitchOnGeneratorState"
+                | "SuspendGenerator" | "ResumeGenerator" | "IncBlockCounter"
+                | "StaCurrentContextSlot" | "StaContextSlot" | "StaCurrentScriptContextSlot"
+                | "StaScriptContextSlot" | "StaGlobal" | "StaLookupSlot"
+                | "StaNamedProperty" | "SetNamedProperty" | "StaNamedOwnProperty"
+                | "DefineNamedOwnProperty" | "StaKeyedProperty" | "SetKeyedProperty"
+                | "StaDataPropertyInLiteral" | "DefineKeyedOwnPropertyInLiteral"
+                | "StaInArrayLiteral" | "DefineKeyedOwnProperty" | "CollectTypeProfile"
+        ) || name.starts_with("Star") && name[4..].chars().all(|c| c.is_ascii_digit())
+    }
+
     /// acc 若已死且带副作用 → 单独成句。
     fn flush_acc_before(&mut self, next_base: &str) {
-        if Self::reads_acc(next_base) {
+        // 只有"覆盖 acc 且不读 acc"才说明旧值已死；保留 acc 的指令（Mov/Star/Jump/存储…）不能 flush
+        if Self::reads_acc(next_base) || Self::preserves_acc(next_base) {
             return;
         }
         if let Some(e) = self.acc.take() {
@@ -2241,19 +2310,18 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         if self.regs.len() <= r as usize {
             self.regs.resize(r as usize + 1, None);
         }
-        // 简单值（字面量/标识符/寄存器）内联即可，无需变量往返
-        if !v.has_effect()
-            && matches!(
-                v,
-                Expr::Num(_) | Expr::Str(_) | Expr::Bool(_) | Expr::Null | Expr::Undefined | Expr::Reg(_)
-            )
-            && !is_lvalue(&v)
-        {
-            self.regs[r as usize] = Some(v);
-            return;
+        // 寄存器一律落成变量：内联字面量会在寄存器被改写后失真
+        // （曾导致 `i++` 变成 `r1 = 0 + 1` 的死循环）。寄存器机语义 = 变量语义。
+        let name = format!("r{r}");
+        // `r = r++` / `r = r--` 是自赋值（保持原值 → 死循环），折叠为 `r++` / `r--`
+        if let Expr::Un { op, e, postfix: true } = &v {
+            if matches!(&**e, Expr::Reg(x2) if *x2 == r) {
+                self.line(&format!("{name}{op};"));
+                self.regs[r as usize] = Some(Expr::Reg(r));
+                return;
+            }
         }
         let rhs = Self::render_stmt(&v);
-        let name = format!("r{r}");
         self.line(&format!("{name} = {rhs};"));
         self.regs[r as usize] = Some(Expr::Reg(r));
     }

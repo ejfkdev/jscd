@@ -1,0 +1,13 @@
+{
+  "arith":        {"cases": [[3, 4], [10, 2], [-5, 5], [0, 7]]},
+  "branch":       {"cases": [[-3], [0], [5], [100]]},
+  "loop_for":     {"cases": [[0], [1], [5], [10]]},
+  "loop_while":   {"cases": [[0], [3], [60]]},
+  "strings":      {"cases": [["x", 1], ["hello", 42]]},
+  "array_ops":    {"cases": [[7], [0], [-2]]},
+  "object_ops":   {"cases": [[5], [0]]},
+  "switch_case":  {"cases": [[0], [1], [2], [7], [-7]]},
+  "try_catch":    {"cases": [[5], [-5], [0]]},
+  "recursion":    {"cases": [[0], [1], [5], [8]]},
+  "closure":      {"cases": [[0], [10], [-3]]}
+}
