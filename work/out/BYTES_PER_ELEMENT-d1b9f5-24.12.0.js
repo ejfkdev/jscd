@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r1 = verifyProperty;
   r2 = throw_;
   r2 = r2.prototype;
-  r3 = "<ro0_65192>";
+  r3 = "BYTES_PER_ELEMENT";
   r4 = ({ value: 8, writable: false, enumerable: false });
   r0 = r1(r2-r4);
   return r0;

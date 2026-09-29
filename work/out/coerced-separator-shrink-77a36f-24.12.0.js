@@ -83,9 +83,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
       /* createblockcontext */
       r18 = CreateResizableArrayBuffer;
       r19 = rab;
-      r19 = r19["<ro0_65192>"] * 4;
+      r19 = r19.BYTES_PER_ELEMENT * 4;
       r20 = rab;
-      r20 = r20["<ro0_65192>"] * 8;
+      r20 = r20.BYTES_PER_ELEMENT * 8;
       rab = r18(r19, r20);
       r18 = rab;
       r19 = rab;
@@ -97,7 +97,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
       r8 = r18;
       r19 = Symbol_split;
       r18 = r19.sameValue;
-      r20 = r7["<ro0_42784>"];
+      r20 = r7.join;
       r20 = r20.call(r7, r8);
       r21 = "...";
       /* 回边 @21（未识别的循环结构） */
@@ -153,9 +153,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
         /* createblockcontext */
         r18 = CreateResizableArrayBuffer;
         r19 = __ctx.ctx2;
-        r19 = r19["<ro0_65192>"] * 4;
+        r19 = r19.BYTES_PER_ELEMENT * 4;
         r20 = __ctx.ctx2;
-        r20 = r20["<ro0_65192>"] * 8;
+        r20 = r20.BYTES_PER_ELEMENT * 8;
         __ctx_ctx2 = r18(r19, r20);
         r18 = __ctx.ctx2;
         r19 = __ctx.ctx2;
@@ -165,7 +165,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
         r5 = r18;
         r19 = Symbol_split;
         r18 = r19.sameValue;
-        r20 = r4["<ro0_42784>"];
+        r20 = r4.join;
         r20 = r20.call(r4, r5);
         r21 = "0.0..";
         r2 = r18.call(r19, r20, r21);
@@ -221,10 +221,10 @@ function _anon_13(a0) {
   let r0, r1, r2;
   if (rab === undefined) throw new ReferenceError("rab");
   r1 = rab;
-  r0 = r1["<ro0_64504>"];
+  r0 = r1["<ro0_64464>"];
   if (ctor === undefined) throw new ReferenceError("ctor");
   r2 = rab;
-  r2 = r2["<ro0_65192>"] * 2;
+  r2 = r2.BYTES_PER_ELEMENT * 2;
   r0.call(r1, r2);
   return "Date";
 }
@@ -234,10 +234,10 @@ function _anon_23(a0) {
   let r0, r1, r2;
   if (rab === undefined) throw new ReferenceError("rab");
   r1 = rab;
-  r0 = r1["<ro0_64504>"];
+  r0 = r1["<ro0_64464>"];
   if (ctor === undefined) throw new ReferenceError("ctor");
   r2 = rab;
-  r2 = r2["<ro0_65192>"] * 2;
+  r2 = r2.BYTES_PER_ELEMENT * 2;
   r0.call(r1, r2);
   return "Date";
 }

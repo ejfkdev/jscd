@@ -76,8 +76,8 @@ function _anon_16(a0) {
   let r0, r1, r2, r3;
   r1 = _anon;
   r0 = new r1(r0);
-  r2 = r0["<ro0_54024>"];
-  r1 = r2["<ro0_54424>"];
+  r2 = r0.entries;
+  r1 = r2.call;
   r3 = _anon;
   r3 = new r3(r0);
   r1.call(r2, r3);

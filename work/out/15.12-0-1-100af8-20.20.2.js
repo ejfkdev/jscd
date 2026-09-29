@@ -55,13 +55,13 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["getPrototypeOf"];
+r1 = ["o"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-getPrototypeOf = _ro0_61080_;
-r2 = Symbol_split;
+o = JSON;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = typeof getPrototypeOf;
-r4 = "";
+r3 = typeof o;
+r4 = "object";
 r5 = "typeof(o)";
 r0 = r1.call(r2-r5);

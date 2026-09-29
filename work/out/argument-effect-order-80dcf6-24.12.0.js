@@ -89,8 +89,8 @@ function _anon_0(a0) {
   __ctx_ctx3 = [];
   r2 = _anon;
   r2 = r2.prototype;
-  r2 = r2["<ro0_55048>"];
-  r1 = r2["<ro0_54424>"];
+  r2 = r2.includes;
+  r1 = r2.call;
   r3 = ({  });
   r5 = /* Map(instance_type=1)(99) */ undefined;
   r6 = get_next;
@@ -116,8 +116,8 @@ function _anon_18(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7;
   r1 = _anon;
   r1 = r1.prototype;
-  r1 = r1["<ro0_55048>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.includes;
+  r0 = r1.call;
   r2 = ({ ["8"]: "" });
   r2[""] = _anon_24;
   r4 = "";
@@ -137,7 +137,7 @@ function _anon_24(a0) {
   let r0, r1, r2;
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = /* TrustedByteArrayMap(27) */ undefined;
   r0.call(r1, r2);
   return {  };
@@ -148,8 +148,8 @@ function get_next(a0) {
   let r0, r1, r2;
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54880>"];
-  r2 = "<ro0_62744>";
+  r0 = r1.push;
+  r2 = "<ro0_62704>";
   r0.call(r1, r2);
   return _anon_36;
 }
@@ -161,8 +161,8 @@ function _anon_49(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7;
   r1 = _anon;
   r1 = r1.prototype;
-  r1 = r1["<ro0_55048>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.includes;
+  r0 = r1.call;
   r2 = ({ ["8"]: "" });
   r2[""] = _anon_55;
   r4 = "";
@@ -173,7 +173,7 @@ function _anon_49(a0) {
   __runtime.DefineAccessorPropertyUnchecked(r3, r4, r5, r6, r7);
   r3 = 0;
   r4 = _anon;
-  r4 = r4["<ro0_55808>"] + 1;
+  r4 = r4.MAX_SAFE_INTEGER + 1;
   r0.call(r1-r4);
   return;
 }
@@ -183,7 +183,7 @@ function _anon_55(a0) {
   let r0, r1, r2;
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = "";
   r0.call(r1, r2);
   return {  };
@@ -194,8 +194,8 @@ function get_next(a0) {
   let r0, r1, r2;
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54880>"];
-  r2 = "<ro0_62744>";
+  r0 = r1.push;
+  r2 = "<ro0_62704>";
   r0.call(r1, r2);
   return _anon_67;
 }
@@ -207,8 +207,8 @@ function get_next(a0) {
   let r0, r1, r2;
   if (effects === undefined) throw new ReferenceError("effects");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54880>"];
-  r2 = "<ro0_62744>";
+  r0 = r1.push;
+  r2 = "<ro0_62704>";
   r0.call(r1, r2);
   return _anon_85;
 }

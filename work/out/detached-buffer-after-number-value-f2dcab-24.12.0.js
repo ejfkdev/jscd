@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 r1 = Symbol_replace;
 r2 = 8;
 hour = new r1(r2);
-r1 = _ro0_65232_;
+r1 = _ro0_65192_;
 r2 = hour;
 r3 = 0;
 sample = new r1(r2, r3);
@@ -87,7 +87,7 @@ function _anon_8(a0) {
 function _anon_19(a0) {
   let r0, r1, r2, r3;
   r1 = sample;
-  r0 = r1["<ro0_65432>"];
+  r0 = r1["<ro0_65392>"];
   r2 = 0;
   r3 = hour;
   r0.call(r1, r2, r3);

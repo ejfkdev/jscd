@@ -63,7 +63,7 @@ function _anon_0(a0) {
   r5 = Temporal;
   r5 = r5.ZonedDateTime;
   r5 = r5.prototype;
-  r5 = r5["<ro0_42752>"];
+  r5 = r5.toLocaleString;
   r3 = r3.call(r4, r5);
   r4 = true;
   r5 = "Built-in objects must be extensible.";
@@ -73,14 +73,14 @@ function _anon_0(a0) {
   r4 = _anon;
   r4 = r4.prototype;
   r4 = r4[""];
-  r3 = r4["<ro0_54424>"];
+  r3 = r4.call;
   r5 = Temporal;
   r5 = r5.ZonedDateTime;
   r5 = r5.prototype;
-  r5 = r5["<ro0_42752>"];
+  r5 = r5.toLocaleString;
   r3 = r3.call(r4, r5);
   r4 = /* root: AccessorPairMap */ undefined;
-  r5 = "<ro0_39984>";
+  r5 = "<ro0_39944>";
   r1.call(r2-r5);
   r2 = Symbol_split;
   r1 = r2.sameValue;
@@ -89,7 +89,7 @@ function _anon_0(a0) {
   r5 = Temporal;
   r5 = r5.ZonedDateTime;
   r5 = r5.prototype;
-  r5 = r5["<ro0_42752>"];
+  r5 = r5.toLocaleString;
   r3 = r3.call(r4, r5);
   r4 = ___root__CallbackTaskMap____undefined;
   r4 = r4.prototype;
@@ -100,8 +100,8 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.ZonedDateTime;
   r4 = r4.prototype;
-  r4 = r4["<ro0_42752>"];
-  r3 = r4["<ro0_54192>"];
+  r4 = r4.toLocaleString;
+  r3 = r4["<ro0_54152>"];
   r5 = "prototype";
   r3 = r3.call(r4, r5);
   r4 = false;

@@ -64,7 +64,7 @@ r1["/* root: ArrayBoilerplateDescriptionMap */ undefined"] = getLen;
 ___ScopeInfoMap_29_____undefined = r1;
 r2 = _anon;
 r1 = r2["/* root: class_fields_symbol */ undefined"];
-r3 = _ro0_41008_;
+r3 = _ro0_40968_;
 r3 = r3.prototype;
 r4 = "";
 r5 = ___ScopeInfoMap_29_____undefined;
@@ -98,7 +98,7 @@ function _anon_20(a0, a1) {
   r5 = desc;
   r3 = r0;
   r1.call(r2-r5);
-  r1 = r0["<ro0_54904>"];
+  r1 = r0.reverse;
   r1.call(r0);
   r2 = Symbol_split;
   r1 = r2.sameValue;

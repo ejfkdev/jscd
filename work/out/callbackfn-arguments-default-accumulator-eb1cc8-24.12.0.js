@@ -74,7 +74,7 @@ function _anon_18(a0) {
   accumulator = a0;
   r0 = arguments;
   r3 = accumulator;
-  r2 = r3["<ro0_54880>"];
+  r2 = r3.push;
   r2.call(r3, r0);
   r2 = accumulator;
   return r2 - /* Map(instance_type=1)(25) */ undefined;

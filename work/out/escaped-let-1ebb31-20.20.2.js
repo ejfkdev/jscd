@@ -55,9 +55,9 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2;
-r1 = ["Float32Array"];
+r1 = ["a"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r1 = _anon;
-r1[""] = 0;
-r0 = Float32Array;
+r1 = this_;
+r1.let = 0;
+r0 = a;

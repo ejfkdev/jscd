@@ -57,12 +57,12 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r1 = verifyPrimordialAccessorProperty;
-  r2 = Symbol_replace;
+  r2 = ArrayBuffer;
   r2 = r2.prototype;
   r3 = "immutable";
-  r4 = ({ ArrayBoilerplateDescriptionMap: /* Map(instance_type=1)(8) */ undefined });
-  r4["get immutable"] = undefined;
-  r5 = /* Map(instance_type=1)(10) */ undefined;
+  r4 = ({ get: /* Map(instance_type=1)(6) */ undefined, set: undefined });
+  r4.set = undefined;
+  r5 = /* Map(instance_type=1)(8) */ undefined;
   r0 = r1(r2-r5);
   return r0;
 }

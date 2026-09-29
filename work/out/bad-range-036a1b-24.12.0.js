@@ -61,15 +61,15 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = Symbol_split;
   r1 = r2.sameValue;
-  r3 = _ro0_64680_;
-  r3 = typeof r3["<ro0_64936>"];
+  r3 = _ro0_64640_;
+  r3 = typeof r3["<ro0_64896>"];
   r4 = /* root: AccessCheckInfoMap */ undefined;
   r5 = "The value of `typeof Atomics.waitAsync` is \"function\"";
   r1.call(r2-r5);
   r1 = ___root__StackTraceInfoMap____undefined;
   r2 = _anon;
   r3 = ___root__StackTraceInfoMap____undefined;
-  r3 = r3["<ro0_65192>"] * 8;
+  r3 = r3.BYTES_PER_ELEMENT * 8;
   r2 = new r2(r3);
   __ctx_ctx3 = new r1(r2);
   r1 = testWithAtomicsOutOfBoundsIndices;

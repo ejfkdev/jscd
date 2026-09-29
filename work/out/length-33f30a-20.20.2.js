@@ -60,8 +60,8 @@ function _anon_0(a0) {
   r2 = Temporal;
   r2 = r2.Now;
   r2 = r2.plainDateISO;
-  r3 = "";
-  r4 = ({ value: 0, writable: false, enumerable: false });
+  r3 = "length";
+  r4 = ({ value: 0, writable: false, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

@@ -58,8 +58,8 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = Symbol_split;
   r1 = r2.sameValue;
-  r4 = _ro0_61168_;
-  r3 = r4["<ro0_61792>"];
+  r4 = Math;
+  r3 = r4["<ro0_61752>"];
   r5 = _anon;
   r3 = r3.call(r4, r5);
   r4 = _anon;

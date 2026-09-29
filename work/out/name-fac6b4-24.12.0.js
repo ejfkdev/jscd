@@ -59,9 +59,9 @@ function _anon_0(a0) {
   r1 = verifyProperty;
   r2 = _anon;
   r2 = r2.prototype;
-  r2 = r2["<ro0_42752>"];
+  r2 = r2.toLocaleString;
   r3 = "name";
-  r4 = ({ value: "<ro0_42752>", writable: false, enumerable: false });
+  r4 = ({ value: "toLocaleString", writable: false, enumerable: false });
   r0 = r1(r2-r4);
   return r0;
 }

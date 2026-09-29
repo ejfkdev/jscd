@@ -55,22 +55,22 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["<ro0_57296>"];
+r1 = ["<ro0_57256>"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = Symbol_iterator;
 r1 = r1.prototype;
 r2 = _anon;
-_ro0_57296_ = r1[r2["<ro0_57296>"]];
+_ro0_57256_ = r1[r2["<ro0_57256>"]];
 r2 = Symbol_split;
 r1 = r2.sameValue;
-r3 = _ro0_57296_;
-r3 = r3["<ro0_54608>"];
+r3 = _ro0_57256_;
+r3 = r3["<ro0_54568>"];
 r4 = true;
 r5 = "`at` property value";
 r1.call(r2-r5);
 r1 = verifyProperty;
-r2 = _ro0_57296_;
-r3 = "<ro0_54608>";
+r2 = _ro0_57256_;
+r3 = "<ro0_54568>";
 r4 = ({ writable: true, enumerable: true });
 r0 = r1(r2-r4);

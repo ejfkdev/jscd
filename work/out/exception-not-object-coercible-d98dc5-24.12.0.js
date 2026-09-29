@@ -75,7 +75,7 @@ function _anon_6() { /* 未编译（UncompiledData）：源码不在 code cache 
 function _anon_16(a0) {
   let r0, r1, r2;
   r1 = _anon;
-  r0 = r1["<ro0_54080>"];
+  r0 = r1.values;
   r2 = undefined;
   r0.call(r1, r2);
   return;

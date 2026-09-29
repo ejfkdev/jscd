@@ -70,11 +70,11 @@ function _anon_0(a0) {
   r8 = 987;
   r9 = 654;
   r10 = 321;
-  __ctx_ctx3 = new r1(r2, r3, r4, r5, r6, r7, r8, r9, r10);
-  r2 = Symbol_split;
+  instance = new r1(r2, r3, r4, r5, r6, r7, r8, r9, r10);
+  r2 = assert;
   r1 = r2.sameValue;
-  r3 = __ctx.ctx3;
-  r3 = r3["/* root: EnumCacheMap */ undefined"];
+  r3 = instance;
+  r3 = r3.hour;
   r4 = 12;
   r0 = r1.call(r2, r3, r4);
   return r0;

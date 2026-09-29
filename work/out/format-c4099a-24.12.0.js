@@ -65,7 +65,7 @@ function _anon_0(a0) {
   r4 = weekOfYear;
   r5 = 0;
   r4 = new r4(r5);
-  r3 = r4["<ro0_57632>"];
+  r3 = r4["<ro0_57592>"];
   r3 = r3.call(r4);
   __ctx_ctx4 = r1.call(r2, r3);
   r2 = Symbol_split;
@@ -79,7 +79,7 @@ function _anon_0(a0) {
   r5 = weekOfYear;
   r6 = "0020-01-01T00:00:00Z";
   r5 = new r5(r6);
-  r4 = r5["<ro0_57632>"];
+  r4 = r5["<ro0_57592>"];
   r4 = r4.call(r5);
   r0 = r1.call(r2, r3, r4);
   return r0;

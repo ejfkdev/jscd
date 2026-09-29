@@ -61,18 +61,21 @@ function _anon_0(a0) {
   try {
     throw r1;
   } catch (e) {
-    r5 = Symbol_split;
+    r3 = undefined;
+    /* createcatchcontext */
+    r2 = r3;
+    r5 = assert;
     r4 = r5.sameValue;
     r6 = __ctx.ctx2;
     r7 = "stuff2";
     r4.call(r5, r6, r7);
     __ctx_ctx2 = 4;
-    r5 = Symbol_split;
+    r5 = assert;
     r4 = r5.sameValue;
     r6 = __ctx.ctx2;
     r7 = 4;
-    /* TODO PopContext r3 */
-    r3 = Symbol_split;
+    r4.call(r5, r6, r7);
+    r3 = assert;
     r2 = r3.sameValue;
     r5 = 3;
     r0 = r2.call(r3, r1, r5);

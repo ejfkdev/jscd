@@ -57,11 +57,11 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = _anon;
+  r2 = String;
   r2 = r2.prototype;
-  r2 = r2["<ro0_56200>"];
-  r3 = "";
-  r4 = ({ configurable: true, enumerable: false, writable: false });
+  r2 = r2.isWellFormed;
+  r3 = "length";
+  r4 = ({ configurable: true, enumerable: false, writable: false, value: 0 });
   r0 = r1(r2-r4);
   return r0;
 }

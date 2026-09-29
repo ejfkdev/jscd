@@ -57,12 +57,12 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = testWithBigIntTypedArrayConstructors;
-  r2 = _anon_6;
+  r2 = _anon_4;
   r3 = null;
-  r4 = /* ?unknown(17) */ undefined;
+  r4 = ["arraybuffer"];
   r0 = r1(r2-r4);
   return r0;
 }
 
-function _anonymous() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
+function _anon_4() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
 

@@ -57,11 +57,11 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = weekOfYear;
+  r2 = Date;
   r2 = r2.prototype;
-  r2 = r2["<ro0_58272>"];
+  r2 = r2.getUTCDay;
   r3 = "name";
-  r4 = ({ value: "<ro0_58272>", writable: false, enumerable: false });
+  r4 = ({ value: "getUTCDay", writable: false, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

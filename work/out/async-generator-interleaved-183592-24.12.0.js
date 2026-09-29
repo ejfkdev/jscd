@@ -232,7 +232,7 @@ function _anon_42(a0) {
   let r0, r1, r2;
   if (actual === undefined) throw new ReferenceError("actual");
   r1 = actual;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 1;
   r0.call(r1, r2);
   a0();
@@ -244,7 +244,7 @@ function _anon_49(a0) {
   let r0, r1, r2;
   if (actual === undefined) throw new ReferenceError("actual");
   r1 = actual;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 2;
   r0.call(r1, r2);
   return;

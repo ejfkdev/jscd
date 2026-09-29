@@ -58,11 +58,11 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = Symbol_split;
   r1 = r2.sameValue;
-  r3 = _ro0_67128_;
+  r3 = _ro0_67088_;
   r4 = Symbol_iterator;
   r4 = r4.prototype;
   r5 = _anon;
-  r4 = r4[r5["<ro0_57184>"]];
+  r4 = r4[r5.iterator];
   r3 = r3(r4);
   r4 = false;
   r5 = "isConstructor(Array.prototype[Symbol.iterator]) must return false";
@@ -81,7 +81,7 @@ function _anon_8(a0) {
   r0 = Symbol_iterator;
   r0 = r0.prototype;
   r1 = _anon;
-  r0 = r0[r1["<ro0_57184>"]];
+  r0 = r0[r1.iterator];
   new r0(r0);
   return;
 }

@@ -118,7 +118,7 @@ function _anon_28(a0) {
   let r0, r1;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = __ctx.ctx4;
-  r0 = r1["<ro0_54712>"];
+  r0 = r1.find;
   r0.call(r1);
   return;
 }
@@ -128,7 +128,7 @@ function _anon_35(a0) {
   let r0, r1, r2;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = __ctx.ctx4;
-  r0 = r1["<ro0_54712>"];
+  r0 = r1.find;
   r2 = ({  });
   r0.call(r1, r2);
   return;

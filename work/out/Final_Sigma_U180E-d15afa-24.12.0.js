@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = "A\u000e";
-  r3 = r4["<ro0_56904>"];
+  r3 = r4.toLowerCase;
   r3 = r3.call(r4);
   r4 = /* Map(instance_type=1)(7) */ undefined;
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR";
@@ -67,7 +67,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = /* Map(instance_type=1)(9) */ undefined;
-  r3 = r4["<ro0_56904>"];
+  r3 = r4.toLowerCase;
   r3 = r3.call(r4);
   r4 = /* Map(instance_type=1)(10) */ undefined;
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR, followed by LATIN CAPITAL LETTER B";
@@ -75,7 +75,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = /* Map(instance_type=1)(12) */ undefined;
-  r3 = r4["<ro0_56904>"];
+  r3 = r4.toLowerCase;
   r3 = r3.call(r4);
   r4 = /* Map(instance_type=1)(13) */ undefined;
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, followed by MONGOLIAN VOWEL SEPARATOR";
@@ -83,7 +83,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = /* Map(instance_type=1)(15) */ undefined;
-  r3 = r4["<ro0_56904>"];
+  r3 = r4.toLowerCase;
   r3 = r3.call(r4);
   r4 = /* Map(instance_type=1)(16) */ undefined;
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, followed by MONGOLIAN VOWEL SEPARATOR, LATIN CAPITAL LETTER B";
@@ -91,7 +91,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = /* Map(instance_type=1)(18) */ undefined;
-  r3 = r4["<ro0_56904>"];
+  r3 = r4.toLowerCase;
   r3 = r3.call(r4);
   r4 = /* Map(instance_type=1)(19) */ undefined;
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR, followed by MONGOLIAN VOWEL SEPARATOR";
@@ -99,7 +99,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = /* Map(instance_type=1)(21) */ undefined;
-  r3 = r4["<ro0_56904>"];
+  r3 = r4.toLowerCase;
   r3 = r3.call(r4);
   r4 = /* Map(instance_type=1)(22) */ undefined;
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR, followed by MONGOLIAN VOWEL SEPARATOR, LATIN CAPITAL LETTER B";

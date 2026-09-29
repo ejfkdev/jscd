@@ -58,7 +58,7 @@ let r0, r1, r2, r3, r4, r5;
 r1 = ["getPrototypeOf"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-___root__TrustedByteArrayMap____undefined = _ro0_61080_;
+___root__TrustedByteArrayMap____undefined = JSON;
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r3 = typeof ___root__TrustedByteArrayMap____undefined;

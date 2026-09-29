@@ -59,9 +59,9 @@ function _anon_0(a0) {
   r1 = verifyProperty;
   r2 = weekOfYear;
   r2 = r2.prototype;
-  r2 = r2["<ro0_58752>"];
+  r2 = r2["<ro0_58712>"];
   r3 = "name";
-  r4 = ({ value: "<ro0_58752>", writable: false, enumerable: false });
+  r4 = ({ value: "<ro0_58712>", writable: false, enumerable: false });
   r0 = r1(r2-r4);
   return r0;
 }

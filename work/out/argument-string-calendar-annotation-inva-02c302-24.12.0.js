@@ -65,7 +65,7 @@ function _anon_0(a0) {
   r2 = /* BigIntMap(21) */ undefined;
   __ctx_ctx4 = new r1(r2);
   r2 = instance;
-  r1 = r2["<ro0_55096>"];
+  r1 = r2.forEach;
   r3 = _anon_22;
   r0 = r1.call(r2, r3);
   return r0;

@@ -58,13 +58,13 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r2 = Symbol_split;
   r1 = r2.sameValue;
-  r3 = _ro0_61168_;
+  r3 = Math;
   r3 = typeof r3[".generator_object"];
   r4 = "";
   r1.call(r2, r3, r4);
   r2 = Symbol_split;
   r1 = r2.notSameValue;
-  r3 = _ro0_61168_;
+  r3 = Math;
   r3 = r3[".generator_object"];
   r4 = _anon;
   r0 = r1.call(r2, r3, r4);

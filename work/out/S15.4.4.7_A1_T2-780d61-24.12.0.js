@@ -55,7 +55,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6, r7;
-r1 = ["hoursInDay", "<ro0_54880>"];
+r1 = ["hoursInDay", "push"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 ___root__TrustedByteArrayMap____undefined = [];
@@ -72,19 +72,19 @@ r1 = ___root__TrustedByteArrayMap____undefined;
 r2 = 0;
 r1[r2] = 0;
 r2 = ___root__TrustedByteArrayMap____undefined;
-r1 = r2["<ro0_54880>"];
+r1 = r2.push;
 r3 = true;
 r4 = _anon;
-r4 = r4.MAX_SAFE_INTEGER;
+r4 = r4["<ro0_55728>"];
 r5 = "";
 r6 = "dateFromFields";
 r7 = 0;
-_ro0_54880_ = r1.call(r2-r7);
-r1 = _ro0_54880_;
+push = r1.call(r2-r7);
+r1 = push;
 if (r1 !== 6) {
   r1 = Test262Error;
   r2 = "#2: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1) === 6. Actual: ";
-  r2 = r2 + _ro0_54880_;
+  r2 = r2 + push;
   throw new r1(r2);
 }
 r1 = ___root__TrustedByteArrayMap____undefined;
@@ -108,7 +108,7 @@ if (r1 !== true) {
 r1 = ___root__TrustedByteArrayMap____undefined;
 r1 = r1[2];
 r2 = _anon;
-if (r1 !== r2.MAX_SAFE_INTEGER) {
+if (r1 !== r2["<ro0_55728>"]) {
   r1 = Test262Error;
   r2 = "#5: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[2] === Number.POSITIVE_INFINITY. Actual: ";
   r3 = ___root__TrustedByteArrayMap____undefined;

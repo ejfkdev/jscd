@@ -57,7 +57,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = _ro0_66416_;
+  r2 = _ro0_66376_;
   r3 = /* root: Tuple2Map */ undefined;
   r4 = ({ writable: true, enumerable: false });
   r0 = r1(r2-r4);

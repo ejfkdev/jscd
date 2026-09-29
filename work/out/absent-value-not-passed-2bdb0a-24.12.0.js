@@ -60,7 +60,7 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = /* root: EmptyObjectBoilerplateDescription */ undefined;
 r3 = _anon;
-r2 = r3["<ro0_57184>"];
+r2 = r3.iterator;
 r1[r2] = _anon_8;
 r2 = /* Script(13) */ undefined;
 r1[r2] = _anon_16;

@@ -61,7 +61,7 @@ function _anon_0(a0) {
   r4 = _anon;
   r4 = r4.prototype;
   r4 = r4[""];
-  r3 = r4["<ro0_54424>"];
+  r3 = r4.call;
   r5 = _anon_6;
   r5 = r5();
   r3 = r3.call(r4, r5);

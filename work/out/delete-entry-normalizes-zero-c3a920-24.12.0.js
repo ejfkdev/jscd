@@ -69,7 +69,7 @@ r4 = 1;
 r5 = "The value of `s.size` is `1`";
 r1.call(r2-r5);
 r2 = _anon;
-r1 = r2["<ro0_65832>"];
+r1 = r2.delete;
 r3 = 0;
 result = r1.call(r2, r3);
 r2 = Symbol_split;

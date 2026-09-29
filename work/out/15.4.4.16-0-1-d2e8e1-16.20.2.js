@@ -55,15 +55,15 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["function () { [native code] }"];
+r1 = ["f"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r1 = Symbol_iterator;
+r1 = Array;
 r1 = r1.prototype;
-function_______native_code___ = r1["<ro0_55216>"];
-r2 = Symbol_split;
+f = r1.every;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = typeof function_______native_code___;
-r4 = /* root: AccessCheckInfoMap */ undefined;
+r3 = typeof f;
+r4 = "function";
 r5 = "typeof(f)";
 r0 = r1.call(r2-r5);

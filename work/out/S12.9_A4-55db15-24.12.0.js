@@ -62,19 +62,19 @@ r1 = [/* function evalmachine.<anonymous> */ evalmachine__anonymous_, 0, "DDsin"
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = DD_operator;
-r2 = _ro0_61168_;
-r2 = r2["<ro0_61816>"];
+r2 = Math;
+r2 = r2["<ro0_61776>"];
 r3 = 0.00001;
 DDsin = r1(r2, r3);
 r0 = undefined;
 r1 = DDsin;
-r2 = _ro0_61168_;
-r2 = r2["<ro0_62032>"] / 2;
+r2 = Math;
+r2 = r2["<ro0_61992>"] / 2;
 r1 = r1(r2);
-r3 = _ro0_61168_;
-r2 = r3["<ro0_61816>"];
-r4 = _ro0_61168_;
-r4 = r4["<ro0_62032>"] / 2;
+r3 = Math;
+r2 = r3["<ro0_61776>"];
+r4 = Math;
+r4 = r4["<ro0_61992>"] / 2;
 r1 = r1 + r2.call(r3, r4);
 if (r1 > 0.00001) {
   r1 = Test262Error;

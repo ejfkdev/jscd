@@ -158,7 +158,7 @@ function _anon_29(a0) {
   let r0, r1;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = ShouldNotGetValueOf;
-  r0 = r1["<ro0_66336>"];
+  r0 = r1.take;
   r0.call(r1);
   return;
 }
@@ -168,7 +168,7 @@ function _anon_36(a0) {
   let r0, r1, r2;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = ShouldNotGetValueOf;
-  r0 = r1["<ro0_66336>"];
+  r0 = r1.take;
   r2 = _anon;
   r0.call(r1, r2);
   return;
@@ -179,9 +179,9 @@ function _anon_43(a0) {
   let r0, r1, r2;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = ShouldNotGetValueOf;
-  r0 = r1["<ro0_66336>"];
+  r0 = r1.take;
   r2 = _anon;
-  r2 = r2["<ro0_55808>"] + 1;
+  r2 = r2.MAX_SAFE_INTEGER + 1;
   r0.call(r1, r2);
   return;
 }
@@ -191,7 +191,7 @@ function _anon_50(a0) {
   let r0, r1, r2;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = ShouldNotGetValueOf;
-  r0 = r1["<ro0_66336>"];
+  r0 = r1.take;
   r2 = 0;
   r0.call(r1, r2);
   return;
@@ -207,7 +207,7 @@ function _anon_63(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7;
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = __ctx.ctx4;
-  r0 = r1["<ro0_66336>"];
+  r0 = r1.take;
   r2 = ({  });
   r4 = /* root: TrustedFixedArrayMap */ undefined;
   r5 = get_valueOf;

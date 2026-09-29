@@ -63,7 +63,7 @@ r2 = "Catch me.";
 thrownError = new r1(r2);
 r1 = /* root: EmptyObjectBoilerplateDescription */ undefined;
 r3 = _anon;
-r2 = r3["<ro0_57184>"];
+r2 = r3.iterator;
 r1[r2] = _anon_20;
 obj = r1;
 r1 = asyncg;
@@ -74,7 +74,7 @@ r3 = r3.call(r4);
 r2 = r3[""];
 r4 = _anon_52;
 r2 = r2.call(r3, r4);
-r1 = r2["<ro0_58920>"];
+r1 = r2.catch;
 r3 = $DONE;
 r0 = r1.call(r2, r3);
 function asyncg() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
@@ -121,7 +121,7 @@ function _anon_52(a0) {
   r3 = _anon_58;
   r4 = _anon_67;
   r1 = r1.call(r2, r3, r4);
-  r0 = r1["<ro0_58920>"];
+  r0 = r1.catch;
   r2 = $DONE;
   r0.call(r1, r2);
   return;

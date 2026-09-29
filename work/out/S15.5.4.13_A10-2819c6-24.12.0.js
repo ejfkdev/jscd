@@ -61,8 +61,8 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = _anon;
 r2 = r2.prototype;
-r2 = r2["<ro0_54976>"];
-r1 = r2["<ro0_54192>"];
+r2 = r2.slice;
+r1 = r2["<ro0_54152>"];
 r3 = "";
 phi0 = r1.call(r2, r3);
 if (!phi0) {
@@ -70,20 +70,20 @@ if (!phi0) {
   r2 = "#1: String.prototype.slice.hasOwnProperty('length') return true. Actual: ";
   r4 = _anon;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54976>"];
-  r3 = r4["<ro0_54192>"];
+  r4 = r4.slice;
+  r3 = r4["<ro0_54152>"];
   r5 = "";
   r2 = r2 + r3.call(r4, r5);
   throw new r1(r2);
 }
 r1 = _anon;
 r1 = r1.prototype;
-r1 = r1["<ro0_54976>"];
+r1 = r1.slice;
 __obj = r1[""];
 r1 = verifyNotWritable;
 r2 = _anon;
 r2 = r2.prototype;
-r2 = r2["<ro0_54976>"];
+r2 = r2.slice;
 r3 = "";
 r4 = null;
 r5 = _anon_10;
@@ -91,14 +91,14 @@ r1(r2-r5);
 r0 = undefined;
 r1 = _anon;
 r1 = r1.prototype;
-r1 = r1["<ro0_54976>"];
+r1 = r1.slice;
 r1 = r1[""];
 if (r1 !== __obj) {
   r1 = Test262Error;
   r2 = "#2: __obj = String.prototype.slice.length; String.prototype.slice.length = function(){return \"shifted\";}; String.prototype.slice.length === __obj. Actual: ";
   r3 = _anon;
   r3 = r3.prototype;
-  r3 = r3["<ro0_54976>"];
+  r3 = r3.slice;
   r2 = r2 + r3[""];
   throw new r1(r2);
 }

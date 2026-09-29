@@ -55,19 +55,19 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["getPrototypeOf"];
+r1 = ["o"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-getPrototypeOf = {  };
-r2 = _ro0_66416_;
-r1 = r2["/* root: class_positions_symbol */ undefined"];
-r3 = getPrototypeOf;
+o = { prop: 42 };
+r2 = Reflect;
+r1 = r2.deleteProperty;
+r3 = o;
 r4 = "prop";
 r1.call(r2, r3, r4);
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.sameValue;
-r4 = getPrototypeOf;
-r3 = r4["<ro0_54192>"];
+r4 = o;
+r3 = r4.hasOwnProperty;
 r5 = "prop";
 r3 = r3.call(r4, r5);
 r4 = false;

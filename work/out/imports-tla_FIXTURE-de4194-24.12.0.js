@@ -71,7 +71,7 @@ function* _anon_0(a0) {
     case 0:
       r2 = ___root__CallSiteInfoMap____undefined;
       r2 = r2.evaluations;
-      r1 = r2["<ro0_54880>"];
+      r1 = r2.push;
       r3 = "imports-tla";
       r1.call(r2, r3);
       return;
@@ -81,7 +81,7 @@ function* _anon_0(a0) {
   return r1;
   r2 = ___root__CallSiteInfoMap____undefined;
   r2 = r2.evaluations;
-  r1 = r2["<ro0_54880>"];
+  r1 = r2.push;
   r3 = "imports-tla";
   r1.call(r2, r3);
   return;

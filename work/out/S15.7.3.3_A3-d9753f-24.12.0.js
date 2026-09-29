@@ -59,14 +59,14 @@ function _anon_0(a0) {
 let t0;
   r1 = verifyNotConfigurable;
   r2 = _anon;
-  r3 = "<ro0_55696>";
+  r3 = "<ro0_55656>";
   t0 = r1(r2, r3);
   r1 = __context;
   try {
     r3 = t0;
     r2 = r3.sameValue;
     r4 = _anon;
-    delete r4["<ro0_55696>"];
+    delete r4["<ro0_55656>"];
     r4 = undefined;
     r5 = false;
     r0 = r2.call(r3, r4, r5);

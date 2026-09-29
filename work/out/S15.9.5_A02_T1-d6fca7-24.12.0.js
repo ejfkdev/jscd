@@ -60,7 +60,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = weekOfYear;
   r4 = r4.prototype;
-  r3 = r4["<ro0_54192>"];
+  r3 = r4["<ro0_54152>"];
   r5 = "";
   r3 = r3.call(r4, r5);
   r4 = true;

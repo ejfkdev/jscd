@@ -57,37 +57,37 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
 let phi0;
-  r1 = _anon;
-  if (typeof r1["<ro0_55896>"] !== "function") {
+  r1 = String;
+  if (typeof r1.fromCharCode !== "function") {
     r1 = Test262Error;
     r2 = "#1: typeof String.fromCharCode === \"function\". Actual: typeof String.fromCharCode ===";
-    r3 = _anon;
-    r2 = r2 + typeof r3["<ro0_55896>"];
+    r3 = String;
+    r2 = r2 + typeof r3.fromCharCode;
     throw new r1(r2);
   }
-  r2 = _anon;
-  r1 = r2["<ro0_54192>"];
-  r3 = "<ro0_55896>";
+  r2 = String;
+  r1 = r2.hasOwnProperty;
+  r3 = "fromCharCode";
   phi0 = r1.call(r2, r3);
   if (!phi0) {
     r1 = Test262Error;
     r2 = "#2: String.hasOwnProperty(\"fromCharCode\") return true. Actual: ";
-    r4 = _anon;
-    r3 = r4["<ro0_54192>"];
-    r5 = "<ro0_55896>";
+    r4 = String;
+    r3 = r4.hasOwnProperty;
+    r5 = "fromCharCode";
     r2 = r2 + r3.call(r4, r5);
     throw new r1(r2);
   }
   r0 = undefined;
-  r1 = _anon;
-  r1 = r1["<ro0_55896>"];
-  r1 = r1[""];
+  r1 = String;
+  r1 = r1.fromCharCode;
+  r1 = r1.length;
   if (r1 !== 1) {
     r1 = Test262Error;
     r2 = "#3: String.fromCharCode.length === 1. Actual: String.fromCharCode.length ===";
-    r3 = _anon;
-    r3 = r3["<ro0_55896>"];
-    r2 = r2 + r3[""];
+    r3 = String;
+    r3 = r3.fromCharCode;
+    r2 = r2 + r3.length;
     throw new r1(r2);
   }
   return r0;

@@ -61,7 +61,7 @@ function _anon_0(a0) {
   r2 = r3["/* root: Tuple2Map */ undefined"];
   r4 = Symbol_replace;
   r4 = r4.prototype;
-  r4 = r4["<ro0_64528>"];
+  r4 = r4.transfer;
   r2 = r2.call(r3, r4);
   r0 = r1(r2);
   return r0;

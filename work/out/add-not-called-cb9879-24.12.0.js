@@ -74,7 +74,7 @@ function _anon_0(a0) {
   r1 = r1.prototype;
   r1.stackTraceLimit = _anon_11;
   r2 = s2;
-  r1 = r2["<ro0_66152>"];
+  r1 = r2["<ro0_66112>"];
   r3 = expected;
   __ctx_ctx8 = r1.call(r2, r3);
   r2 = Symbol_split;
@@ -108,7 +108,7 @@ function _anon_11(a0) {
   let r0, r1, r2, r3;
   r1 = ([].slice).call(arguments, 0);
   r0 = r1;
-  if (ro0_67840 === undefined) throw new ReferenceError("<ro0_67840>");
+  if (count === undefined) throw new ReferenceError("count");
   __ctx_ctx7 = ++__ctx.ctx7;
   if (originalAdd === undefined) throw new ReferenceError("originalAdd");
   r3 = originalAdd;

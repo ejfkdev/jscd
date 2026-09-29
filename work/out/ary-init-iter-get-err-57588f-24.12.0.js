@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 ___ScopeInfoMap_31_____undefined = {  };
 r1 = ___ScopeInfoMap_31_____undefined;
 r2 = _anon;
-r2 = r2["<ro0_57184>"];
+r2 = r2.iterator;
 r1[r2] = _anon_18;
 r2 = Symbol_split;
 r1 = r2.throws;

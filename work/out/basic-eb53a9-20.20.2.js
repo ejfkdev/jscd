@@ -67,9 +67,9 @@ function _anon_0(a0) {
     r6 = 14;
     r6 = r6 + r1;
     r2 = new r3(r4, r5, r6);
-    r4 = Symbol_split;
+    r4 = assert;
     r3 = r4.sameValue;
-    r5 = r2["/* root: not_mapped_symbol */ undefined"];
+    r5 = r2.dayOfWeek;
     r7 = r2;
     r7 = r7 + " should be on day ";
     r7 = r7 + r1;

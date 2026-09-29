@@ -58,7 +58,7 @@ let r0, r1, r2, r3, r4;
 r1 = ["TypedArrayPrototype"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r1 = _ro0_41008_;
+r1 = _ro0_40968_;
 TypedArrayPrototype = r1.prototype;
 r2 = Symbol_split;
 r1 = r2.throws;

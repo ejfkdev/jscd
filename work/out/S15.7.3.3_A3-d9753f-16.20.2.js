@@ -58,19 +58,30 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
 let t0;
   r1 = verifyNotConfigurable;
-  r2 = _anon;
-  r3 = "<ro0_55696>";
+  r2 = Number;
+  r3 = "MIN_VALUE";
   t0 = r1(r2, r3);
   r1 = __context;
   try {
     r3 = t0;
     r2 = r3.sameValue;
-    r4 = _anon;
-    delete r4["<ro0_55696>"];
+    r4 = Number;
+    delete r4["MIN_VALUE"];
     r4 = undefined;
     r5 = false;
     r0 = r2.call(r3, r4, r5);
   } catch (e) {
+    r2 = r0;
+    /* createcatchcontext */
+    r1 = r2;
+    r3 = __ctx.ctx2;
+    if (r3 instanceof Test262Error) {
+      throw __ctx.ctx2;
+    }
+    r3 = assert;
+    r4 = __ctx.ctx2;
+    r4 = r4 instanceof TypeError;
+    r0 = r3(r4);
     return r0;
   }
 }

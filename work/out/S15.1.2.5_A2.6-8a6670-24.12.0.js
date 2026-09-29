@@ -58,7 +58,7 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = Symbol_split;
   r1 = r2.sameValue;
-  r3 = _ro0_55496_;
+  r3 = _ro0_55456_;
   r3 = r3.prototype;
   r4 = undefined;
   r5 = "The value of isFinite.prototype is expected to equal undefined";

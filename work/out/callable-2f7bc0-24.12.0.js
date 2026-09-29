@@ -63,15 +63,15 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = _anon;
 r2 = r2.prototype;
-r2 = r2["<ro0_66208>"];
-r1 = r2["<ro0_54424>"];
+r2 = r2.toArray;
+r1 = r2.call;
 r3 = prototype;
 r3 = r3();
 r1.call(r2, r3);
 r1 = prototype;
 __ctx_ctx3 = r1();
 r2 = __ctx.ctx3;
-r1 = r2["<ro0_66208>"];
+r1 = r2.toArray;
 r0 = r1.call(r2);
 function function_() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
 

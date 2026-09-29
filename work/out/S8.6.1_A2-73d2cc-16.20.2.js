@@ -56,32 +56,32 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
 let phi0, phi1;
-r1 = ["<ro0_67840>"];
+r1 = ["count"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-_ro0_67840_ = 0;
-if (_anon == null) {
+count = 0;
+if (Number == null) {
   r0 = undefined;
-  r1 = _ro0_67840_;
+  r1 = count;
   if (r1 > 0) {
     r1 = Test262Error;
     r2 = "#1: count=0; for (p in Number) count++; count > 0. Actual: ";
-    r2 = r2 + _ro0_67840_;
+    r2 = r2 + count;
     throw new r1(r2);
   }
 }
-r1 = _anon;
-__forin_unsupported();
+r1 = Number;
 __forin_unsupported();
 r5 = 0;
 while (true) {
-  __forin_unsupported();
+  if (!true) break;
   phi0 = __forin_unsupported();
   phi1 = phi0;
   if (phi0 !== undefined) {
-    global = phi0;
-    _ro0_67840_ = ++_ro0_67840_;
-    phi1 = ++_ro0_67840_;
+    p = phi0;
+    count = ++count;
+    phi1 = ++count;
   }
+  r5 = true;
   continue;
 }

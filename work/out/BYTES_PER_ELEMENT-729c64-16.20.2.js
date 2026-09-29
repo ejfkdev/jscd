@@ -57,9 +57,9 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = timed_out;
-  r3 = "<ro0_65192>";
-  r4 = ({ value: 8, writable: false, enumerable: false });
+  r2 = BigUint64Array;
+  r3 = "BYTES_PER_ELEMENT";
+  r4 = ({ value: 8, writable: false, enumerable: false, configurable: false });
   r0 = r1(r2-r4);
   return r0;
 }

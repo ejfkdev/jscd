@@ -22,9 +22,14 @@ _NODE_BIN = {}
 
 def node_bin(version):
     if version not in _NODE_BIN:
-        r = subprocess.run(['mise', 'which', 'node', '--', f'node@{version}'],
+        r = subprocess.run(['mise', 'exec', f'node@{version}', '--', 'which', 'node'],
                            capture_output=True, text=True, cwd=ROOT)
         path = (r.stdout or '').strip().splitlines()[-1] if r.stdout else ''
+        # 兜底：从 mise 的安装目录直接拼（避免误用系统 node —— 曾导致编译挂死）
+        if not path:
+            r2 = subprocess.run(['mise', 'where', f'node@{version}'], capture_output=True, text=True, cwd=ROOT)
+            base = (r2.stdout or '').strip().splitlines()[-1] if r2.stdout else ''
+            path = f'{base}/bin/node' if base else ''
         _NODE_BIN[version] = path or 'node'
     return _NODE_BIN[version]
 

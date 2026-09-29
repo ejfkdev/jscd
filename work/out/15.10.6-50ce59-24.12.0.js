@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 r2 = _anon;
 r2 = r2.prototype;
 r2 = r2[""];
-r1 = r2["<ro0_54424>"];
+r1 = r2.call;
 r3 = _anon;
 r3 = r3.prototype;
 prototype = r1.call(r2, r3);

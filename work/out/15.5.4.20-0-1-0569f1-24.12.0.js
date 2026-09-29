@@ -60,7 +60,7 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = _anon;
 r1 = r1.prototype;
-prototype = r1["<ro0_56688>"];
+prototype = r1.trim;
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r3 = typeof prototype;

@@ -61,14 +61,14 @@ function _anon_0(a0) {
   r3 = _anon;
   r3 = r3.prototype;
   r4 = _anon;
-  r3 = r3[r4["<ro0_57264>"]];
+  r3 = r3[r4.toStringTag];
   r4 = "";
   r1.call(r2, r3, r4);
   r1 = verifyProperty;
   r2 = _anon;
   r2 = r2.prototype;
   r3 = _anon;
-  r3 = r3["<ro0_57264>"];
+  r3 = r3.toStringTag;
   r4 = ({ writable: false, enumerable: false });
   r0 = r1(r2-r4);
   return r0;

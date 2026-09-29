@@ -55,7 +55,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["counter", "", "<ro0_55192>"];
+r1 = ["counter", "", "map"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 counter = 0;
@@ -67,18 +67,18 @@ r1 = r1.prototype;
 r1.counter = _anon_7;
 r1 = _anon;
 r2 = [];
-_ro0_55192_ = new r1(r2);
+map = new r1(r2);
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r4 = _anon;
 r3 = r4["/* root: BreakPointInfoMap */ undefined"];
-r5 = _ro0_55192_;
+r5 = map;
 r3 = r3.call(r4, r5);
 r4 = _anon;
 r4 = r4.prototype;
 r1.call(r2, r3, r4);
 r1 = Symbol_split;
-r2 = _ro0_55192_;
+r2 = map;
 r2 = r2 instanceof _anon;
 r1(r2);
 r2 = Symbol_split;
@@ -92,7 +92,7 @@ function _anon_7(a0) {
   let r0, r1;
   counter = ++counter;
   r1 = _anon;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   return r0.call(r1, this, a0);
 }
 

@@ -60,23 +60,23 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = ___root__TemplateObjectDescriptionMap____undefined;
   r3 = r3.prototype;
-  r3 = r3["<ro0_65192>"];
+  r3 = r3.BYTES_PER_ELEMENT;
   r4 = 1;
   r1.call(r2, r3, r4);
   r1 = verifyNotEnumerable;
   r2 = ___root__TemplateObjectDescriptionMap____undefined;
   r2 = r2.prototype;
-  r3 = "<ro0_65192>";
+  r3 = "BYTES_PER_ELEMENT";
   r1(r2, r3);
   r1 = verifyNotWritable;
   r2 = ___root__TemplateObjectDescriptionMap____undefined;
   r2 = r2.prototype;
-  r3 = "<ro0_65192>";
+  r3 = "BYTES_PER_ELEMENT";
   r1(r2, r3);
   r1 = verifyNotConfigurable;
   r2 = ___root__TemplateObjectDescriptionMap____undefined;
   r2 = r2.prototype;
-  r3 = "<ro0_65192>";
+  r3 = "BYTES_PER_ELEMENT";
   r0 = r1(r2, r3);
   return r0;
 }

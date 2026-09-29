@@ -73,7 +73,7 @@ function* _anon_0(a0) {
       case 0:
         r3 = ___root__CallSiteInfoMap____undefined;
         r3 = r3.evaluations;
-        r2 = r3["<ro0_54880>"];
+        r2 = r3.push;
         r4 = "2.1.1 start";
         r2.call(r3, r4);
         r3 = _anon;
@@ -90,7 +90,7 @@ function* _anon_0(a0) {
         }
         r3 = ___root__CallSiteInfoMap____undefined;
         r3 = r3.evaluations;
-        r2 = r3["<ro0_54880>"];
+        r2 = r3.push;
         r4 = "2.1.1 end";
         r2.call(r3, r4);
         r3 = undefined;
@@ -105,7 +105,7 @@ function* _anon_0(a0) {
     return r2;
     r3 = ___root__CallSiteInfoMap____undefined;
     r3 = r3.evaluations;
-    r2 = r3["<ro0_54880>"];
+    r2 = r3.push;
     r4 = "2.1.1 start";
     r2.call(r3, r4);
     r3 = _anon;
@@ -122,7 +122,7 @@ function* _anon_0(a0) {
     }
     r3 = ___root__CallSiteInfoMap____undefined;
     r3 = r3.evaluations;
-    r2 = r3["<ro0_54880>"];
+    r2 = r3.push;
     r4 = "2.1.1 end";
     r2.call(r3, r4);
     r3 = undefined;

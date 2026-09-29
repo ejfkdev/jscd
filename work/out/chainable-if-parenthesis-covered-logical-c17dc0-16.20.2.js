@@ -56,68 +56,68 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
 let phi0, phi1, phi2;
-r1 = ["hoursInDay"];
+r1 = ["x"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-hoursInDay = undefined;
+x = undefined;
 phi0 = 42;
 if (!42) {
   phi0 = 43;
 }
-hoursInDay = phi0;
-r2 = Symbol_split;
+x = phi0;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = hoursInDay;
+r3 = x;
 r4 = 42;
 r5 = "(null ?? 42) || 43";
 r1.call(r2-r5);
-hoursInDay = undefined;
-hoursInDay = 42;
-r2 = Symbol_split;
+x = undefined;
+x = 42;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = hoursInDay;
+r3 = x;
 r4 = 42;
 r5 = "null ?? (42 || 43)`";
 r1.call(r2-r5);
-hoursInDay = undefined;
+x = undefined;
 phi1 = 42;
 if (42 != null) {
 } else {
   phi1 = 43;
 }
-hoursInDay = phi1;
-r2 = Symbol_split;
+x = phi1;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = hoursInDay;
+r3 = x;
 r4 = 42;
 r5 = "(null || 42) ?? 43";
 r1.call(r2-r5);
-hoursInDay = undefined;
-hoursInDay = 42;
-r2 = Symbol_split;
+x = undefined;
+x = 42;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = hoursInDay;
+r3 = x;
 r4 = 42;
 r5 = "null || (42 ?? 43)`";
 r1.call(r2-r5);
-hoursInDay = undefined;
+x = undefined;
 phi2 = 42;
 if (42 != null) {
 } else {
   phi2 = null;
 }
-hoursInDay = phi2;
-r2 = Symbol_split;
+x = phi2;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = hoursInDay;
+r3 = x;
 r4 = 42;
 r5 = "(42 || 43) ?? null";
 r1.call(r2-r5);
-hoursInDay = undefined;
-hoursInDay = 42;
-r2 = Symbol_split;
+x = undefined;
+x = 42;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = hoursInDay;
+r3 = x;
 r4 = 42;
 r5 = "42 || (null ?? 43)";
 r0 = r1.call(r2-r5);

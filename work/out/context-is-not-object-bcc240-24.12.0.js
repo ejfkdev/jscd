@@ -102,8 +102,8 @@ function _anon_16(a0) {
   let r0, r1, r2;
   r1 = Symbol_replace;
   r1 = r1.prototype;
-  r1 = r1["<ro0_54976>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.slice;
+  r0 = r1.call;
   r2 = null;
   r0.call(r1, r2);
   return;
@@ -114,8 +114,8 @@ function _anon_23(a0) {
   let r0, r1, r2;
   r1 = Symbol_replace;
   r1 = r1.prototype;
-  r1 = r1["<ro0_54976>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.slice;
+  r0 = r1.call;
   r2 = true;
   r0.call(r1, r2);
   return;
@@ -126,8 +126,8 @@ function _anon_30(a0) {
   let r0, r1, r2;
   r1 = Symbol_replace;
   r1 = r1.prototype;
-  r1 = r1["<ro0_54976>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.slice;
+  r0 = r1.call;
   r2 = "";
   r0.call(r1, r2);
   return;
@@ -138,8 +138,8 @@ function _anon_37(a0) {
   let r0, r1, r2;
   r1 = Symbol_replace;
   r1 = r1.prototype;
-  r1 = r1["<ro0_54976>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.slice;
+  r0 = r1.call;
   r2 = _anon;
   r2 = r2();
   r0.call(r1, r2);
@@ -151,8 +151,8 @@ function _anon_44(a0) {
   let r0, r1, r2;
   r1 = Symbol_replace;
   r1 = r1.prototype;
-  r1 = r1["<ro0_54976>"];
-  r0 = r1["<ro0_54424>"];
+  r1 = r1.slice;
+  r0 = r1.call;
   r2 = 1;
   r0.call(r1, r2);
   return;

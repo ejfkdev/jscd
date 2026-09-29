@@ -62,10 +62,10 @@ function _anon_0(a0) {
   /* createblockcontext */
   r5 = undefined /* hole */;
   r2 = await_;
-  r3 = /* ?unknown(8) */ undefined;
+  r3 = [3, /* ?unknown(6) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined, /* ?unknown(8) */ undefined, /* root: EmptySlowElementDictionary */ undefined, /* root: EmptyFixedArray */ undefined];
   r4 = r2;
   __runtime.DefineClass(r3, r4, r5);
-  __ctx_ctx3 = r4;
+  await_ = r4;
   return;
 }
 

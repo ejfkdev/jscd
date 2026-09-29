@@ -69,7 +69,7 @@ function _anon_0(a0) {
       r5 = r2[""];
       r5 = r5.call(r2, r1);
       r7 = _anon;
-      r6 = r7["<ro0_55896>"];
+      r6 = r7.fromCharCode;
       r8 = _anon;
       r9 = r2 + /* Map(instance_type=1)(7) */ undefined;
       r8 = r8(r9);

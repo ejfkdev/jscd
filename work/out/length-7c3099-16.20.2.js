@@ -60,8 +60,8 @@ function _anon_0(a0) {
   r2 = DisposableStack;
   r2 = r2.prototype;
   r2 = r2.defer;
-  r3 = "";
-  r4 = ({ value: 1, writable: false, enumerable: false });
+  r3 = "length";
+  r4 = ({ value: 1, writable: false, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

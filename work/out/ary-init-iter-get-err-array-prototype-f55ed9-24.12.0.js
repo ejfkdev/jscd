@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 r1 = Symbol_iterator;
 r1 = r1.prototype;
 r2 = _anon;
-delete r1[r2["<ro0_57184>"]];
+delete r1[r2.iterator];
 r2 = Symbol_split;
 r1 = r2.throws;
 r3 = _anon;

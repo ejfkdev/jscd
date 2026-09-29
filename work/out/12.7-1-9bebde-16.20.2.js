@@ -55,18 +55,18 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["sum", "Generator"];
+r1 = ["sum", "i"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 sum = 0;
-Generator = 1;
+i = 1;
 while (true) {
-  r1 = Generator;
+  r1 = i;
   if (!(r1 <= 10)) break;
-  Generator = ++Generator;
+  i = ++i;
   continue;
 }
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.sameValue;
 r3 = sum;
 r4 = 0;

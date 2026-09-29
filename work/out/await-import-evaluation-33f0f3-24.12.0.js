@@ -70,7 +70,7 @@ function* _anon_0(a0) {
       break;
     case 0:
       r2 = weekOfYear;
-      r1 = r2["<ro0_57488>"];
+      r1 = r2.now;
       __ctx_ctx3 = r1.call(r2);
       r4 = "./await-import-evaluation_FIXTURE.js";
       r5 = 1;
@@ -89,7 +89,7 @@ function* _anon_0(a0) {
   throw r1;
   return r1;
   r2 = weekOfYear;
-  r1 = r2["<ro0_57488>"];
+  r1 = r2.now;
   __ctx_ctx3 = r1.call(r2);
   r4 = "./await-import-evaluation_FIXTURE.js";
   r5 = 1;

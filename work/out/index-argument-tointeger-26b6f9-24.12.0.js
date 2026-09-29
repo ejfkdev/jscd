@@ -63,7 +63,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = Symbol_iterator;
   r3 = r3.prototype;
-  r3 = typeof r3["<ro0_54608>"];
+  r3 = typeof r3["<ro0_54568>"];
   r4 = /* root: AccessCheckInfoMap */ undefined;
   r5 = "The value of `typeof Array.prototype.at` is expected to be \"function\"";
   r1.call(r2-r5);
@@ -75,7 +75,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = __ctx.ctx5;
-  r3 = r4["<ro0_54608>"];
+  r3 = r4["<ro0_54568>"];
   r5 = Float32Array;
   r3 = r3.call(r4, r5);
   r4 = 1;

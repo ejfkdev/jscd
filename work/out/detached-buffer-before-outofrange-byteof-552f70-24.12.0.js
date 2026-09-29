@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 r1 = Symbol_replace;
 r2 = 12;
 Symbol_replace = new r1(r2);
-r1 = _ro0_65232_;
+r1 = _ro0_65192_;
 r2 = Symbol_replace;
 r3 = 0;
 sample = new r1(r2, r3);
@@ -78,7 +78,7 @@ r0 = r1.call(r2-r5);
 function _anon_9(a0) {
   let r0, r1, r2;
   r1 = sample;
-  r0 = r1["<ro0_65704>"];
+  r0 = r1["<ro0_65664>"];
   r2 = 13;
   return r0.call(r1, r2);
 }

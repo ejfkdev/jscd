@@ -127,7 +127,7 @@ function _anon_10(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = undefined;
   return r0.call(r1, r2);
 }
@@ -137,7 +137,7 @@ function _anon_21(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = null;
   return r0.call(r1, r2);
 }
@@ -147,7 +147,7 @@ function _anon_28(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = true;
   return r0.call(r1, r2);
 }
@@ -157,7 +157,7 @@ function _anon_35(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = "";
   return r0.call(r1, r2);
 }
@@ -167,7 +167,7 @@ function _anon_42(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = _anon;
   r2 = r2();
   return r0.call(r1, r2);
@@ -178,7 +178,7 @@ function _anon_49(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = 1;
   return r0.call(r1, r2);
 }
@@ -188,7 +188,7 @@ function _anon_56(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = ({  });
   return r0.call(r1, r2);
 }
@@ -198,7 +198,7 @@ function _anon_63(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = Temporal;
   r2 = r2.PlainDate;
   return r0.call(r1, r2);
@@ -209,7 +209,7 @@ function _anon_70(a0) {
   let r0, r1, r2;
   if (toPlainYearMonth === undefined) throw new ReferenceError("toPlainYearMonth");
   r1 = toPlainYearMonth;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = Temporal;
   r2 = r2.PlainDate;
   r2 = r2.prototype;

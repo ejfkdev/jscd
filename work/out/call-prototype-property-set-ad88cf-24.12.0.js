@@ -55,10 +55,10 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["args", "<ro0_67840>", "_this", "proto", "", "result"];
+r1 = ["args", "count", "_this", "proto", "", "result"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-_ro0_67840_ = 0;
+count = 0;
 proto = {  };
 r2 = _anon;
 r1 = r2["/* root: class_fields_symbol */ undefined"];
@@ -68,10 +68,10 @@ r5 = ({  });
 r5["/* WeakFixedArrayMap(20) */ undefined"] = _anon_11;
 r1.call(r2-r5);
 r2 = _anon;
-r1 = r2["<ro0_53896>"];
+r1 = r2.create;
 r3 = proto;
 _anon = r1.call(r2, r3);
-r2 = _ro0_66416_;
+r2 = _ro0_66376_;
 r1 = r2["/* WeakFixedArrayMap(20) */ undefined"];
 r3 = _anon;
 r4 = "global";
@@ -105,7 +105,7 @@ r5 = "prototype `set` called with target as `this`";
 r1.call(r2-r5);
 r2 = Symbol_split;
 r1 = r2.sameValue;
-r3 = _ro0_67840_;
+r3 = count;
 r4 = 1;
 r5 = "prototype `set` called once";
 r0 = r1.call(r2-r5);
@@ -115,7 +115,7 @@ function _anon_11(a0) {
   r0 = arguments;
   _this = this;
   args = r0;
-  _ro0_67840_ = ++_ro0_67840_;
+  count = ++count;
   return;
 }
 

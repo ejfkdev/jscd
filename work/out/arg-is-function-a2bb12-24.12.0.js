@@ -90,7 +90,7 @@ function _anon_21(a0) {
   r3 = r3.call(r4, a0);
   r4 = null;
   r1.call(r2, r3, r4);
-  r2 = _ro0_66416_;
+  r2 = _ro0_66376_;
   r1 = r2[""];
   r0 = r1.call(r2, a0);
   r2 = Symbol_split;
@@ -112,8 +112,8 @@ function _anon_21(a0) {
   r1 = r2.sameValue;
   r4 = _anon;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54192>"];
-  r3 = r4["<ro0_54424>"];
+  r4 = r4["<ro0_54152>"];
+  r3 = r4.call;
   r6 = "name";
   r3 = r3.call(r4, a0, r6);
   r4 = false;
@@ -122,8 +122,8 @@ function _anon_21(a0) {
   r1 = r2.sameValue;
   r4 = _anon;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54192>"];
-  r3 = r4["<ro0_54424>"];
+  r4 = r4["<ro0_54152>"];
+  r3 = r4.call;
   r6 = "";
   r3 = r3.call(r4, a0, r6);
   r4 = false;
@@ -132,8 +132,8 @@ function _anon_21(a0) {
   r1 = r2.sameValue;
   r4 = _anon;
   r4 = r4.prototype;
-  r4 = r4["<ro0_54192>"];
-  r3 = r4["<ro0_54424>"];
+  r4 = r4["<ro0_54152>"];
+  r3 = r4.call;
   r6 = "prototype";
   r3 = r3.call(r4, a0, r6);
   r4 = false;

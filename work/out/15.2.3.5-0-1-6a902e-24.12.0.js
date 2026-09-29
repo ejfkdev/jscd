@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = _anon;
-  r3 = typeof r3["<ro0_53896>"];
+  r3 = typeof r3.create;
   r4 = /* root: AccessCheckInfoMap */ undefined;
   r5 = "typeof(Object.create)";
   r0 = r1.call(r2-r5);

@@ -59,9 +59,9 @@ function _anon_0(a0) {
   r1 = verifyProperty;
   r2 = DisposableStack;
   r2 = r2.prototype;
-  r3 = _anon;
-  r3 = r3["<ro0_57264>"];
-  r4 = ({ value: "DisposableStack", writable: false, enumerable: false });
+  r3 = Symbol;
+  r3 = r3.toStringTag;
+  r4 = ({ value: "DisposableStack", writable: false, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

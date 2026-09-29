@@ -57,14 +57,14 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = ___root__async_iterator_symbol____undefined;
-  r1 = r2["<ro0_54192>"];
+  r1 = r2["<ro0_54152>"];
   r3 = "";
   r1 = r1.call(r2, r3);
   if (r1 !== true) {
     r1 = Test262Error;
     r2 = "#1: eval.hasOwnProperty('length') === true. Actual: ";
     r4 = ___root__async_iterator_symbol____undefined;
-    r3 = r4["<ro0_54192>"];
+    r3 = r4["<ro0_54152>"];
     r5 = "";
     r2 = r2 + r3.call(r4, r5);
     throw new r1(r2);
@@ -72,14 +72,14 @@ function _anon_0(a0) {
   r1 = ___root__async_iterator_symbol____undefined;
   delete r1[""];
   r2 = ___root__async_iterator_symbol____undefined;
-  r1 = r2["<ro0_54192>"];
+  r1 = r2["<ro0_54152>"];
   r3 = "";
   r1 = r1.call(r2, r3);
   if (r1 !== false) {
     r1 = Test262Error;
     r2 = "#2: delete eval.length; eval.hasOwnProperty('length') === false. Actual: ";
     r4 = ___root__async_iterator_symbol____undefined;
-    r3 = r4["<ro0_54192>"];
+    r3 = r4["<ro0_54152>"];
     r5 = "";
     r2 = r2 + r3.call(r4, r5);
     throw new r1(r2);

@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r4 = "";
-  r3 = r4["<ro0_55048>"];
+  r3 = r4.includes;
   r5 = "getPrototypeOf";
   r6 = 3;
   r3 = r3.call(r4, r5, r6);

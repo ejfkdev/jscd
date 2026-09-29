@@ -60,10 +60,10 @@ function _anon_0(a0) {
   r2 = Temporal;
   r2 = r2.PlainYearMonth;
   r2 = r2.prototype;
-  r3 = "";
-  r4 = ({ value: undefined, writable: true, enumerable: false });
+  r3 = "constructor";
+  r4 = ({ value: undefined, writable: true, enumerable: false, configurable: true });
   r5 = Temporal;
-  r4.value = r5.PlainYearMonth;
+  r4.writable = r5.PlainYearMonth;
   r0 = r1(r2-r4);
   return r0;
 }

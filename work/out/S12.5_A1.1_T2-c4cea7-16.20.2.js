@@ -55,26 +55,26 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2;
-r1 = ["fractionalSecondDigits"];
+r1 = ["c"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-fractionalSecondDigits = 0;
-fractionalSecondDigits = ++fractionalSecondDigits;
-r1 = fractionalSecondDigits;
+c = 0;
+c = ++c;
+r1 = c;
 if (r1 != 1) {
   r1 = Test262Error;
   r2 = "#1.2: else branch don`t execute";
   throw new r1(r2);
 }
-fractionalSecondDigits = ++fractionalSecondDigits;
-r1 = fractionalSecondDigits;
+c = ++c;
+r1 = c;
 if (r1 != 2) {
   r1 = Test262Error;
   r2 = "#2.2: else branch don`t execute";
   throw new r1(r2);
 }
-fractionalSecondDigits = ++fractionalSecondDigits;
-r1 = fractionalSecondDigits;
+c = ++c;
+r1 = c;
 if (r1 != 3) {
   r1 = Test262Error;
   r2 = "#3.2: else branch don`t execute";
@@ -85,28 +85,28 @@ if (undefined) {
   r2 = "#4.1: undefined in expression is evaluated to false ";
   throw new r1(r2);
 }
-fractionalSecondDigits = ++fractionalSecondDigits;
-r1 = fractionalSecondDigits;
+c = ++c;
+r1 = c;
 if (r1 != 4) {
   r1 = Test262Error;
   r2 = "#4.2: else branch don`t execute";
   throw new r1(r2);
 }
-fractionalSecondDigits = ++fractionalSecondDigits;
-r1 = fractionalSecondDigits;
+c = ++c;
+r1 = c;
 if (r1 != 5) {
   r1 = Test262Error;
   r2 = "#5.2: else branch don`t execute";
   throw new r1(r2);
 }
-if (_anon) {
+if (NaN) {
   r1 = Test262Error;
   r2 = "#6.1: NaN in expression is evaluated to false ";
   throw new r1(r2);
 }
-fractionalSecondDigits = ++fractionalSecondDigits;
+c = ++c;
 r0 = undefined;
-r1 = fractionalSecondDigits;
+r1 = c;
 if (r1 != 6) {
   r1 = Test262Error;
   r2 = "#6.2: else branch don`t execute";

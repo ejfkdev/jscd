@@ -56,23 +56,23 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
 let phi0, phi1;
-r1 = ["errorCount", "<ro0_67840>", "indexP", "indexO", /* root: PrototypeInfoMap */ undefined, "hexP", "hexO", "hexP", "hexP", "hexO", "hexP"];
+r1 = ["errorCount", "count", "indexP", "indexO", "index", "hexP", "hexO", "hexP", "hexP", "hexO", "hexP"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 errorCount = 0;
-_ro0_67840_ = 0;
+count = 0;
 indexO = 0;
-___root__PrototypeInfoMap____undefined = 56320;
+index = 56320;
 while (true) {
-  r1 = ___root__PrototypeInfoMap____undefined;
+  r1 = index;
   if (r1 <= 57343) break;
-  _ro0_67840_ = ++_ro0_67840_;
+  count = ++count;
   r1 = __context;
   try {
-    r2 = ++_ro0_67840_;
-    r4 = _anon;
-    r3 = r4["<ro0_55896>"];
-    r5 = ___root__PrototypeInfoMap____undefined;
+    r2 = ++count;
+    r4 = String;
+    r3 = r4.fromCharCode;
+    r5 = index;
     r6 = 65;
     r3 = r3.call(r4, r5, r6);
   } catch (e) {
@@ -80,7 +80,7 @@ while (true) {
     /* createcatchcontext */
     r1 = r2;
     r3 = __ctx.ctx2;
-    r3 = r3 instanceof _anon;
+    r3 = r3 instanceof URIError;
     phi0 = r3 === true;
     if (r3 === true) {
     } else {
@@ -88,10 +88,10 @@ while (true) {
       r1 = indexO;
       phi1 = r1 === 0;
       if (r1 === 0) {
-        indexO = ___root__PrototypeInfoMap____undefined;
-        phi1 = ___root__PrototypeInfoMap____undefined;
+        indexO = index;
+        phi1 = index;
       } else {
-        r1 = ___root__PrototypeInfoMap____undefined;
+        r1 = index;
         r1 = r1 - indexP;
         if (r1 !== 1) {
           r1 = indexP;
@@ -99,33 +99,33 @@ while (true) {
           if (r1 !== 0) {
             r1 = decimalToHexString;
             r2 = indexP;
-            hexP = r1(r2);
+            String = r1(r2);
             r1 = decimalToHexString;
             r2 = indexO;
-            hexO = r1(r2);
+            fromCharCode = r1(r2);
             r1 = Test262Error;
-            r2 = "caller";
-            r2 = r2 + hexO;
-            r2 = r2 + "current";
-            r2 = r2 + hexP;
-            r2 = r2 + "CompileError";
+            r2 = "#";
+            r2 = r2 + fromCharCode;
+            r2 = r2 + "-";
+            r2 = r2 + String;
+            r2 = r2 + "<ro0_36552>";
             throw new r1(r2);
           }
           r1 = decimalToHexString;
           r2 = indexP;
-          hexP = r1(r2);
+          String = r1(r2);
           r1 = Test262Error;
-          r2 = "caller";
-          r2 = r2 + hexP;
-          r2 = r2 + "CompileError";
+          r2 = "#";
+          r2 = r2 + String;
+          r2 = r2 + "<ro0_36552>";
           throw new r1(r2);
         }
       }
-      indexP = ___root__PrototypeInfoMap____undefined;
+      indexP = index;
       errorCount = ++errorCount;
       phi0 = ++errorCount;
     }
-    ___root__PrototypeInfoMap____undefined = ++___root__PrototypeInfoMap____undefined;
+    index = ++index;
   }
   continue;
 }
@@ -137,24 +137,24 @@ if (r1 > 0) {
   if (r1 !== 0) {
     r1 = decimalToHexString;
     r2 = indexP;
-    hexP = r1(r2);
+    String = r1(r2);
     r1 = decimalToHexString;
     r2 = indexO;
-    hexO = r1(r2);
+    fromCharCode = r1(r2);
     r1 = Test262Error;
-    r2 = "caller";
-    r2 = r2 + hexO;
-    r2 = r2 + "current";
-    r2 = r2 + hexP;
-    r2 = r2 + "CompileError";
+    r2 = "#";
+    r2 = r2 + fromCharCode;
+    r2 = r2 + "-";
+    r2 = r2 + String;
+    r2 = r2 + "<ro0_36552>";
     throw new r1(r2);
   }
   r1 = decimalToHexString;
   r2 = indexP;
-  hexP = r1(r2);
+  String = r1(r2);
   r1 = Test262Error;
-  r2 = "caller";
-  r2 = r2 + hexP;
-  r2 = r2 + "CompileError";
+  r2 = "#";
+  r2 = r2 + String;
+  r2 = r2 + "<ro0_36552>";
   throw new r1(r2);
 }

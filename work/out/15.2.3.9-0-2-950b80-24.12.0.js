@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = _anon;
-  r3 = r3["<ro0_53952>"];
+  r3 = r3.freeze;
   r3 = r3[""];
   r4 = 1;
   r5 = "Object.freeze.length";

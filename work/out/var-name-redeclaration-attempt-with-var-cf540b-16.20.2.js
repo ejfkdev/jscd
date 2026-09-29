@@ -55,6 +55,6 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2;
-r1 = ["function () { [native code] }", "function () { [native code] }"];
+r1 = ["f", "f"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);

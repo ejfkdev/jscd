@@ -79,8 +79,8 @@ __runtime.DefineAccessorPropertyUnchecked(r2, r3, r4, r5, r6);
 arrayLike = r2;
 r2 = Symbol_iterator;
 r2 = r2.prototype;
-r2 = r2["<ro0_55320>"];
-r1 = r2["<ro0_54424>"];
+r2 = r2["<ro0_55280>"];
+r1 = r2.call;
 r3 = arrayLike;
 r1.call(r2, r3);
 r2 = Symbol_split;
@@ -113,8 +113,8 @@ r5["/* root: ArrayBoilerplateDescriptionMap */ undefined"] = _anon_51;
 r1.call(r2-r5);
 r2 = Symbol_iterator;
 r2 = r2.prototype;
-r2 = r2["<ro0_55320>"];
-r1 = r2["<ro0_54424>"];
+r2 = r2["<ro0_55280>"];
+r1 = r2.call;
 r3 = arr;
 r1.call(r2, r3);
 r2 = Symbol_split;
@@ -126,7 +126,7 @@ r0 = r1.call(r2, r3, r4);
 function get_0(a0) {
   let r0, r1, r2;
   r1 = order;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 0;
   r0.call(r1, r2);
   return;
@@ -136,7 +136,7 @@ function get_0(a0) {
 function get_1(a0) {
   let r0, r1, r2;
   r1 = order;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 1;
   r0.call(r1, r2);
   return;
@@ -146,7 +146,7 @@ function get_1(a0) {
 function get_2(a0) {
   let r0, r1, r2;
   r1 = order;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 2;
   r0.call(r1, r2);
   return;
@@ -156,7 +156,7 @@ function get_2(a0) {
 function ArrayBoilerplateDescriptionMap(a0) {
   let r0, r1, r2;
   r1 = order;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 0;
   r0.call(r1, r2);
   return;
@@ -166,7 +166,7 @@ function ArrayBoilerplateDescriptionMap(a0) {
 function ArrayBoilerplateDescriptionMap(a0) {
   let r0, r1, r2;
   r1 = order;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 1;
   r0.call(r1, r2);
   return;
@@ -176,7 +176,7 @@ function ArrayBoilerplateDescriptionMap(a0) {
 function ArrayBoilerplateDescriptionMap(a0) {
   let r0, r1, r2;
   r1 = order;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = 2;
   r0.call(r1, r2);
   return;

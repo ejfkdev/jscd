@@ -57,10 +57,10 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = Symbol_replace;
+  r2 = ArrayBuffer;
   r2 = r2.prototype;
-  r3 = "<ro0_64552>";
-  r4 = ({ enumerable: false, writable: true });
+  r3 = "transferToFixedLength";
+  r4 = ({ enumerable: false, writable: true, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

@@ -606,6 +606,8 @@ pub struct Decompiler<'a> {
     ro_map: Option<RoMap>,
     /// 字节码 → (读 acc, 写 acc)：来自版本表（codegen 从 bytecodes.h 提取）
     acc_use: HashMap<String, (bool, bool)>,
+    /// object_constant 递归深度（对象图可能成环 → 护栏）
+    const_depth: std::cell::Cell<usize>,
 }
 
 /// 循环上下文（break/continue 目标）。
@@ -645,6 +647,8 @@ struct FnCtx<'a, 'b> {
     slot_aliases: HashMap<usize, String>,
     /// 已被 try/finally 规则消费的 handler 起点（旧 try/catch 规则不再重复包）
     used_handler_starts: Vec<usize>,
+    /// emit_range 递归深度（护栏，防栈溢出）
+    emit_depth: usize,
     /// 已生成的语句
     out: String,
     indent: usize,
@@ -690,6 +694,7 @@ impl<'a> Decompiler<'a> {
             ts: table.tagged_size as usize,
             scope_cache: std::cell::RefCell::new(HashMap::new()),
             ro_map: None,
+            const_depth: std::cell::Cell::new(0),
             acc_use: table
                 .bytecodes
                 .iter()
@@ -1135,6 +1140,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             last_ctx_slot: None,
             slot_aliases,
             used_handler_starts: Vec::new(),
+            emit_depth: 0,
             out: String::new(),
             indent: 0,
             loops: Vec::new(),
@@ -1529,7 +1535,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let k = match key {
                 Some(k) if is_ident(&k) => k,
                 Some(k) => format!("[{}]", js_string(&k)),
-                None => "[/*computed*/]".to_string(),
+                // 空 computed 键是语法错误 → 落到已声明的命名空间对象（求值为 undefined）
+                None => "[__ctx.__computed]".to_string(),
             };
             parts.push((k, val));
         }
@@ -2151,6 +2158,19 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// - JumpLoop → `continue;`；前向无条件跳转到 break 目标 → `break;`
     /// - 循环头（本指令是后向跳转的目标）→ 包成 `while (true) { … }`
     fn emit_range(&mut self, mut i: usize, end: usize) -> Result<(), String> {
+        // 结构化规则之间可能互相重入（try/switch/guard 的区间重叠）→ 加护栏，
+        // 宁可输出一条注释也不要栈溢出把整个进程带走。
+        if self.emit_depth > 80 {
+            self.line("/* 结构化递归过深：此处降级为线性输出 */");
+            return Ok(());
+        }
+        self.emit_depth += 1;
+        let r = self.emit_range_inner(i, end);
+        self.emit_depth -= 1;
+        r
+    }
+
+    fn emit_range_inner(&mut self, mut i: usize, end: usize) -> Result<(), String> {
         while i < end {
             let ins = self.instrs[i].clone();
             let base = ins.name.split('.').next().unwrap_or(&ins.name).to_string();

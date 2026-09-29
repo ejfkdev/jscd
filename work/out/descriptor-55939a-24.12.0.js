@@ -57,8 +57,8 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = _ro0_64680_;
-  r3 = "<ro0_64704>";
+  r2 = _ro0_64640_;
+  r3 = "load";
   r4 = ({ enumerable: false, writable: true });
   r0 = r1(r2-r4);
   return r0;

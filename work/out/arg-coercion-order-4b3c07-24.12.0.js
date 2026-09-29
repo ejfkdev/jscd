@@ -75,7 +75,7 @@ r1 = /* Map(instance_type=1)(52) */ undefined;
 r1["/* ScopeInfoMap(48) */ undefined"] = _anon_42;
 argMs = r1;
 r2 = date;
-r1 = r2["<ro0_58400>"];
+r1 = r2["<ro0_58360>"];
 r3 = argHour;
 r4 = argMin;
 r5 = argSec;
@@ -96,7 +96,7 @@ r1.call(r2-r5);
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r4 = date;
-r3 = r4["<ro0_58120>"];
+r3 = r4["<ro0_58080>"];
 r3 = r3.call(r4);
 r4 = _anon;
 r5 = "argument is ignored when `this` is an invalid date";
@@ -105,7 +105,7 @@ r0 = r1.call(r2-r5);
 function _anon_15(a0) {
   let r0, r1, r2;
   r1 = effects;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = "valueOf hour";
   r0.call(r1, r2);
   return 0;
@@ -115,7 +115,7 @@ function _anon_15(a0) {
 function _anon_26(a0) {
   let r0, r1, r2;
   r1 = effects;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = "valueOf min";
   r0.call(r1, r2);
   return 0;
@@ -125,7 +125,7 @@ function _anon_26(a0) {
 function _anon_34(a0) {
   let r0, r1, r2;
   r1 = effects;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = "valueOf sec";
   r0.call(r1, r2);
   return 0;
@@ -135,7 +135,7 @@ function _anon_34(a0) {
 function _anon_42(a0) {
   let r0, r1, r2;
   r1 = effects;
-  r0 = r1["<ro0_54880>"];
+  r0 = r1.push;
   r2 = "valueOf ms";
   r0.call(r1, r2);
   return 0;

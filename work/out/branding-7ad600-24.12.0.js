@@ -127,7 +127,7 @@ function _anon_9(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = undefined;
   return r0.call(r1, r2);
 }
@@ -137,7 +137,7 @@ function _anon_20(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = null;
   return r0.call(r1, r2);
 }
@@ -147,7 +147,7 @@ function _anon_27(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = true;
   return r0.call(r1, r2);
 }
@@ -157,7 +157,7 @@ function _anon_34(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = "";
   return r0.call(r1, r2);
 }
@@ -167,7 +167,7 @@ function _anon_41(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = _anon;
   r2 = r2();
   return r0.call(r1, r2);
@@ -178,7 +178,7 @@ function _anon_48(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = 1;
   return r0.call(r1, r2);
 }
@@ -188,7 +188,7 @@ function _anon_55(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = ({  });
   return r0.call(r1, r2);
 }
@@ -198,7 +198,7 @@ function _anon_62(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = Temporal;
   r2 = r2.PlainDate;
   return r0.call(r1, r2);
@@ -209,7 +209,7 @@ function _anon_69(a0) {
   let r0, r1, r2;
   if (_anon === undefined) throw new ReferenceError("");
   r1 = __ctx.ctx3;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = Temporal;
   r2 = r2.PlainDate;
   r2 = r2.prototype;

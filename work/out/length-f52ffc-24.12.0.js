@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r1 = verifyProperty;
   r2 = _anon;
   r2 = r2.prototype;
-  r2 = r2["<ro0_56200>"];
+  r2 = r2["<ro0_56160>"];
   r3 = "";
   r4 = ({ configurable: true, enumerable: false, writable: false });
   r0 = r1(r2-r4);

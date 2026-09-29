@@ -95,7 +95,7 @@ r0 = r1.call(r2-r5);
 function _anon_11(a0) {
   let r0, r1, r2;
   r1 = _anon;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = otherRegExpProto;
   r0.call(r1, r2);
   return;
@@ -105,7 +105,7 @@ function _anon_11(a0) {
 function _anon_21(a0) {
   let r0, r1, r2;
   r1 = otherRegExpGetter;
-  r0 = r1["<ro0_54424>"];
+  r0 = r1.call;
   r2 = _anon;
   r2 = r2.prototype;
   r0.call(r1, r2);

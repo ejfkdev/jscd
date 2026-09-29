@@ -69,8 +69,8 @@ AsyncGeneratorPrototype = r1.call(r2, r3);
 r1 = verifyProperty;
 r2 = AsyncGeneratorPrototype;
 r3 = _anon;
-r3 = r3["<ro0_57264>"];
-r4 = ({ value: "<ro0_53608>", enumerable: false, writable: false });
+r3 = r3.toStringTag;
+r4 = ({ value: "<ro0_53568>", enumerable: false, writable: false });
 r0 = r1(r2-r4);
 function _anon_7() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
 

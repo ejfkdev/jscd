@@ -56,22 +56,22 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
 let phi0, phi1;
-r1 = ["errorCount", "<ro0_67840>", "indexP", "indexO", /* root: PrototypeInfoMap */ undefined, "hexP", "hexO", "hexP", "indexO", "hexO", "indexO"];
+r1 = ["errorCount", "count", "indexP", "indexO", /* root: PrototypeInfoMap */ undefined, "hexP", "hexO", "hexP", "indexO", "hexO", "indexO"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 errorCount = 0;
-_ro0_67840_ = 0;
+count = 0;
 indexO = 0;
 indexO = 56320;
 while (true) {
   r1 = indexO;
   if (r1 <= 57343) break;
-  _ro0_67840_ = ++_ro0_67840_;
+  count = ++count;
   r1 = __context;
   try {
-    r2 = ++_ro0_67840_;
+    r2 = ++count;
     r4 = _anon;
-    r3 = r4["<ro0_55896>"];
+    r3 = r4.fromCharCode;
     r5 = indexO;
     r6 = 65;
     r3 = r3.call(r4, r5, r6);

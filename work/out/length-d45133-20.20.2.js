@@ -57,10 +57,10 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = _ro0_66416_;
-  r2 = r2["/* root: Tuple2Map */ undefined"];
-  r3 = "";
-  r4 = ({ value: 1, writable: false, enumerable: false });
+  r2 = Reflect;
+  r2 = r2.isExtensible;
+  r3 = "length";
+  r4 = ({ value: 1, writable: false, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

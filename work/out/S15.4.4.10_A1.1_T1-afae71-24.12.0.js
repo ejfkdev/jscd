@@ -60,7 +60,7 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 _anon = /* ?unknown(7) */ undefined;
 r2 = _anon;
-r1 = r2["<ro0_54976>"];
+r1 = r2.slice;
 r3 = 0;
 r4 = 3;
 arr = r1.call(r2, r3, r4);

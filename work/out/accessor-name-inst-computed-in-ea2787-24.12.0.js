@@ -59,7 +59,7 @@ r1 = ["empty", ".default", "value"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = _anon;
-r1 = r2["<ro0_53896>"];
+r1 = r2.create;
 r3 = null;
 empty = r1.call(r2, r3);
 /* createblockcontext */

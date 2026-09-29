@@ -59,13 +59,13 @@ r1 = ["callCount"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 callCount = 0;
-r1 = (function_______native_code___);
+r1 = _anon_5;
 r2 = $MAX_ITERATIONS;
 r1(r2);
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.sameValue;
 r3 = callCount;
 r4 = 1;
 r0 = r1.call(r2, r3, r4);
-function function_______native_code___() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
+function _anon_5() { /* 未编译（UncompiledData）：源码不在 code cache 中 */ }
 

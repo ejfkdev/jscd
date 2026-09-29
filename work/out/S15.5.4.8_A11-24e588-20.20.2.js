@@ -57,35 +57,35 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
 let phi0;
-  r2 = _anon;
+  r2 = String;
   r2 = r2.prototype;
-  r2 = r2["<ro0_54824>"];
-  r1 = r2["<ro0_54192>"];
-  r3 = "";
+  r2 = r2.lastIndexOf;
+  r1 = r2.hasOwnProperty;
+  r3 = "length";
   phi0 = r1.call(r2, r3);
   if (!phi0) {
     r1 = Test262Error;
     r2 = "#1: String.prototype.lastIndexOf.hasOwnProperty(\"length\") return true. Actual: ";
-    r4 = _anon;
+    r4 = String;
     r4 = r4.prototype;
-    r4 = r4["<ro0_54824>"];
-    r3 = r4["<ro0_54192>"];
-    r5 = "";
+    r4 = r4.lastIndexOf;
+    r3 = r4.hasOwnProperty;
+    r5 = "length";
     r2 = r2 + r3.call(r4, r5);
     throw new r1(r2);
   }
   r0 = undefined;
-  r1 = _anon;
+  r1 = String;
   r1 = r1.prototype;
-  r1 = r1["<ro0_54824>"];
-  r1 = r1[""];
+  r1 = r1.lastIndexOf;
+  r1 = r1.length;
   if (r1 !== 1) {
     r1 = Test262Error;
     r2 = "#2: String.prototype.lastIndexOf.length === 1. Actual: ";
-    r3 = _anon;
+    r3 = String;
     r3 = r3.prototype;
-    r3 = r3["<ro0_54824>"];
-    r2 = r2 + r3[""];
+    r3 = r3.lastIndexOf;
+    r2 = r2 + r3.length;
     throw new r1(r2);
   }
   return r0;

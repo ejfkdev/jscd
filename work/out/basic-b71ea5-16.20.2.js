@@ -63,12 +63,12 @@ function _anon_0(a0) {
   r1 = r1.PlainMonthDay;
   r2 = 3;
   r3 = 6;
-  __ctx_ctx3 = new r1(r2, r3);
-  r2 = Symbol_split;
+  instance = new r1(r2, r3);
+  r2 = assert;
   r1 = r2.sameValue;
-  r3 = __ctx.ctx3;
+  r3 = instance;
   r3 = r3.calendarId;
-  r4 = /* root: WasmExceptionTagMap */ undefined;
+  r4 = "iso8601";
   r0 = r1.call(r2, r3, r4);
   return r0;
 }

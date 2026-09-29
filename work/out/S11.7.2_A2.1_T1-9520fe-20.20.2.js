@@ -55,7 +55,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4;
-r1 = ["hoursInDay", "ignoreCase", "hoursInDay", "ignoreCase", "objectx", "objecty"];
+r1 = ["x", "y", "x", "y", "objectx", "objecty"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = 0;
@@ -64,38 +64,38 @@ if (r1 !== 0) {
   r2 = "#1: -4 >> 1 === -2. Actual: " + -2;
   throw new r1(r2);
 }
-hoursInDay = 0;
-r1 = hoursInDay >> 1;
+x = 0;
+r1 = x >> 1;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#2: var x = -4; x >> 1 === -2. Actual: ";
-  r2 = r2 + (hoursInDay >> 1);
+  r2 = r2 + (x >> 1);
   throw new r1(r2);
 }
-ignoreCase = 1;
+y = 1;
 r1 = 0;
-r1 = r1 >> ignoreCase;
+r1 = r1 >> y;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#3: var y = 1; -4 >> y === -2. Actual: ";
   r3 = 0;
-  r2 = r2 + (r3 >> ignoreCase);
+  r2 = r2 + (r3 >> y);
   throw new r1(r2);
 }
-hoursInDay = 0;
-ignoreCase = 1;
-r1 = hoursInDay;
-r1 = r1 >> ignoreCase;
+x = 0;
+y = 1;
+r1 = x;
+r1 = r1 >> y;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#4: var x = -4; var y = 1; x >> y === -2. Actual: ";
-  r3 = hoursInDay;
-  r2 = r2 + (r3 >> ignoreCase);
+  r3 = x;
+  r2 = r2 + (r3 >> y);
   throw new r1(r2);
 }
-r1 = _anon;
+r1 = Object;
 objectx = new r1(r0);
-r1 = _anon;
+r1 = Object;
 objecty = new r1(r0);
 r1 = objectx;
 r1.prop = 0;

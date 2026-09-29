@@ -77,7 +77,7 @@ function _anon_16(a0) {
   r1 = _anon;
   r0 = new r1(r0);
   r2 = r0["/* root: CodeWrapperMap */ undefined"];
-  r1 = r2["<ro0_54424>"];
+  r1 = r2.call;
   r3 = _anon;
   r3 = new r3(r0);
   r4 = 1;

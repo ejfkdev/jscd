@@ -79,7 +79,7 @@ r1.call(r2-r5);
 r1 = Symbol_split;
 r3 = ___root__sealed_symbol____undefined;
 r3 = r3.prototype;
-r2 = r3["<ro0_54288>"];
+r2 = r3["<ro0_54248>"];
 r4 = err;
 r2 = r2.call(r3, r4);
 r3 = "Error.prototype.isPrototypeOf(err) must return true";

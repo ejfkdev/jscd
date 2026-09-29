@@ -55,20 +55,20 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4;
-r1 = [".default"];
+r1 = ["C"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r3 = $262;
 r2 = r3.createRealm;
 r2 = r2.call(r3);
-r2 = r2["/* root: BytecodeWrapperMap */ undefined"];
-r1 = r2["/* root: async_iterator_symbol */ undefined"];
+r2 = r2.global;
+r1 = r2.eval;
 r3 = "new Proxy(function() {}, { construct: function(_, args) { return args; } })";
-_default = r1.call(r2, r3);
-r2 = Symbol_split;
+C = r1.call(r2, r3);
+r2 = assert;
 r1 = r2.sameValue;
-r3 = _default;
+r3 = C;
 r3 = new r3(r0);
 r3 = r3[""];
-r4 = Symbol_iterator;
+r4 = Array;
 r0 = r1.call(r2, r3, r4);

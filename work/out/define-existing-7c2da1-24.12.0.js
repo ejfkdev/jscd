@@ -71,7 +71,7 @@ r5["/* root: ArrayBoilerplateDescriptionMap */ undefined"] = originalGet;
 r5[""] = originalSet;
 r1.call(r2-r5);
 r2 = subject;
-r1 = r2["<ro0_54128>"];
+r1 = r2["<ro0_54088>"];
 r3 = "stringAcsr";
 r4 = ___Script_17_____undefined;
 result = r1.call(r2, r3, r4);

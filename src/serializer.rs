@@ -399,9 +399,7 @@ impl<'a> Walker<'a> {
         });
         let map = self.parse_ref(depth + 1)?;
         self.push_slot(id, 0, map);
-        // V8 的 Deserializer::ReadObject 结尾恒 `hot_objects_.Add(obj)` ——
-        // 新建对象也进热环（老族 7.8 的 payload 依赖这一点，否则 hot 引用取不到）
-        self.hot.add(HotEntry::Object(id));
+
         // 老族（≤8.4）没有 pending forward ref 机制（表里没有这个标签）→ 直接跳过
         let Some(t_resolve) = self.opt_tag("kResolvePendingForwardRef") else {
             return Ok(id);

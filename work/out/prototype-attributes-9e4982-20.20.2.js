@@ -57,9 +57,9 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = _anon;
+  r2 = WeakSet;
   r3 = "prototype";
-  r4 = ({ writable: false, enumerable: false });
+  r4 = ({ writable: false, enumerable: false, configurable: false });
   r0 = r1(r2-r4);
   return r0;
 }
