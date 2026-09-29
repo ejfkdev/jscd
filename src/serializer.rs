@@ -464,6 +464,18 @@ impl<'a> Walker<'a> {
             8
         };
         let byte_size = size_words * unit;
+        if let Ok(v) = std::env::var("JSCD_DBG_OBJ") {
+            let want = v == "1" || space == v.parse::<u8>().unwrap_or(255);
+            if want {
+                let ctx = self
+                    .data
+                    .get(tag_offset..(tag_offset + 12).min(self.data.len()))
+                    .unwrap_or(&[]);
+                eprintln!(
+                    "[objtag] pos={tag_offset} space={space} size_words={size_words} unit={unit} bytes={byte_size} ctx={ctx:02x?}"
+                );
+            }
+        }
         let id = self.objects.len();
         self.objects.push(Object {
             ty: Ty::Pending,
@@ -734,7 +746,12 @@ pub fn parse_with<'a>(
     if !(t_new..w.tag("kBackref")?).contains(&b) {
         return Err(format!("payload does not start with kNewObject (got 0x{b:02x})"));
     }
-    let top = w.parse_new_object(0)?;
+    // 老族：**首个对象也带 space 编号**（V8 常放在 kCode/kOld，不是 0）。
+    // 早先按 0 处理会把它错放进别的空间的 chunk 里，于是那个空间的地址整体
+    // 偏移一个对象 —— space2 的 backref (2,0,472) 就是这么命不中的
+    // （V8 的 472 正好等于我们坐标里的 416，差的正是首个对象的 56 字节）。
+    let top_space = if w.legacy.is_some() { b - t_new } else { 0 };
+    let top = w.parse_new_object_space(0, top_space)?;
     let t_sync = w.tag("kSynchronize")?;
     if std::env::var("JSCD_DBG_LEGACY").is_ok() {
         let tail = w.data.get(w.pos..(w.pos + 24).min(w.data.len())).unwrap_or(&[]);
