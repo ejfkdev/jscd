@@ -1219,7 +1219,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 .collect();
             return Expr::Ident(format!("[{}]", items.join(", ")));
         }
-        Expr::Ident(format!("<c{o}:{}>", ty.name(self.d.table)))
+        // 未知常量：给出类型线索（注释）但落到语法合法、运行不抛错的值上
+        Expr::Ident(format!("/* {}({o}) */ undefined", ty.name(self.d.table)))
     }
 
     /// 字面量键：Smi / 堆字符串 / RO 字符串（经 ro-map 还原）。
