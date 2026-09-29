@@ -446,6 +446,7 @@ pub fn read_scope<'a>(
     table: &VersionTable,
     ts: usize,
     scope_id: ObjId,
+    ro_map: Option<&RoMap>,
 ) -> Option<Scope> {
     let cfg = table.scope_info.clone()?;
     // flags：Smi 编码（值在高 32 位）或裸 uint32（13.x）
@@ -504,6 +505,16 @@ pub fn read_scope<'a>(
         for i in 0..n {
             let slot = (names_off / ts) + i;
             match cache.slot_at(scope_id, slot).and_then(|v| v.as_ref()) {
+                Some(Ref::RoRef(c, off)) => {
+                    // 11.3+ 的 context 局部名常是只读堆字符串 → 只能靠 ro-map 还原；
+                    // 名字解不出会连带"共享绑定"前言为空，捕获变量全部丢失（closure 就栽在这）。
+                    scope.context_locals.push(
+                        ro_map
+                            .and_then(|m| m.get(c, off))
+                            .map(|s| s.to_string())
+                            .unwrap_or_default(),
+                    );
+                }
                 Some(r) => scope
                     .context_locals
                     .push(crate::disasm::name_of_ref(cache, table, r).unwrap_or_default()),
@@ -993,7 +1004,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         if let Some(s) = self.scope_cache.borrow().get(&scope_id) {
             return Some(s.clone());
         }
-        let s = read_scope(self.cache, self.table, self.ts, scope_id)?;
+        let s = read_scope(self.cache, self.table, self.ts, scope_id, self.ro_map.as_ref())?;
         self.scope_cache.borrow_mut().insert(scope_id, s.clone());
         Some(s)
     }
