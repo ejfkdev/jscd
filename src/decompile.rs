@@ -766,11 +766,13 @@ impl<'a> Decompiler<'a> {
                 cur = sc.outer;
             }
         }
+        // `__context` 始终声明：PushContext/CreateXxxContext 会把它写进寄存器，
+        // 未声明的话输出里会出现 ReferenceError（上下文本身不参与语义，名字已由作用域解出）。
         if names.is_empty() {
-            return String::new();
+            return "var __context, __ctx = {};\n\n".to_string();
         }
         format!(
-            "// 共享绑定（闭包捕获的变量被摊平为文件级 var，便于直接运行）\nvar {};\nvar __context;\n\n",
+            "// 共享绑定（闭包捕获的变量被摊平为文件级 var，便于直接运行）\nvar {};\nvar __context, __ctx = {{}};\n\n",
             names.join(", ")
         )
     }
@@ -1145,13 +1147,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             Some(Elem::Smi(v)) => Expr::Num(v as f64),
             Some(Elem::Ref(Ref::Object(o))) => self.object_constant(o),
             Some(Elem::Ref(Ref::RoRef(c, o))) => match self.d.ro_map.as_ref().and_then(|m| m.get(c, o)) {
-                Some(name) => {
-                    if is_ident(name) {
-                        Expr::Str(name.to_string())
-                    } else {
-                        Expr::Ident(format!("/*ro*/ {name}"))
-                    }
-                }
+                // 一律按字符串字面量给出：RO 串的内容未必是合法标识符
+                // （"|" / ":" / "-" 之类曾输出成裸标识符 → 语法错误），
+                // 用 `Expr::Str` 在任何表达式位置都合法且保真。
+                Some(name) => Expr::Str(name.to_string()),
                 // 未建表时给出稳定占位名（同一 ref 在整份文件里一致）
                 None => Expr::Str(format!("<ro{c}_{o}>")),
             },
@@ -1351,7 +1350,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 return sanitize_var(&n);
             }
         }
-        format!("ctx{slot}")
+        // 名字解不出来时不要留裸标识符（会 ReferenceError）：
+        // 落到一个已声明的命名空间对象上，读出来是 undefined、写进去也只是记账。
+        format!("__ctx.ctx{slot}")
     }
 
     fn prop_key(&mut self, idx: usize) -> Key {
@@ -2127,14 +2128,17 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     r: Box::new(Expr::Num(v)),
                 });
             }
-            // ++/-- 只能作用于左值；否则退化为 `+1`/`-1`（保持合法）
+            // V8 语义：`Inc`/`Dec` 是 **前缀**——结果（新值）留在累加器里。
+            // 证据：`return ++n`（闭包 fixture）→ LdaCurrentContextSlot; Inc; Star0;
+            //       StaCurrentContextSlot; Return —— 存回去的是 r0（新值）。
+            // 后缀 `n++` 的旧值由 V8 另存寄存器，不经 Inc 体现。
             "Inc" => {
                 let e = self.acc.take().unwrap_or(Expr::Hole);
                 self.acc = Some(if is_lvalue(&e) && !is_literalish(&e) {
                     Expr::Un {
                         op: "++",
                         e: Box::new(e),
-                        postfix: true,
+                        postfix: false,
                     }
                 } else {
                     Expr::Bin {
@@ -2150,7 +2154,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     Expr::Un {
                         op: "--",
                         e: Box::new(e),
-                        postfix: true,
+                        postfix: false,
                     }
                 } else {
                     Expr::Bin {
