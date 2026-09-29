@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 r2 = Object;
 r1 = r2.getPrototypeOf;
 r3 = Number;
-p = r1.call(r2, r3);
+p = r2.getPrototypeOf(r3);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = p;

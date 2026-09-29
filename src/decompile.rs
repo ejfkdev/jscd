@@ -611,12 +611,14 @@ pub struct Decompiler<'a> {
 }
 
 /// 循环上下文（break/continue 目标）。
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct LoopCtx {
     /// continue 跳转目标（= 循环判断处）
     continue_target: usize,
     /// break 跳转目标（= 循环结束）
     break_target: usize,
+    /// 循环标签（内层 `break outer` 需要 `break L1;`）。没嵌套循环是为空串。
+    label: String,
 }
 
 struct FnCtx<'a, 'b> {
@@ -2371,11 +2373,30 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
             // ② 循环头 → while(true) 包装
             if let Some((back_idx, exit_target)) = self.find_loop(i, end) {
-                self.line("while (true) {");
+                // 体内还有回边（嵌套循环）→ 打标签，供内层的 `break outer` / `continue outer`
+                let nested = (i + 1..back_idx).any(|k| {
+                    let cur = self.instrs[k].offset;
+                    self.uncond_jump_target(&self.instrs[k])
+                        .or_else(|| self.cond_jump_target(&self.instrs[k]))
+                        .map(|t| t <= cur && t >= self.instrs[i].offset)
+                        .unwrap_or(false)
+                });
+                let label = if nested {
+                    self.label_counter += 1;
+                    format!("L{}", self.label_counter)
+                } else {
+                    String::new()
+                };
+                if label.is_empty() {
+                    self.line("while (true) {");
+                } else {
+                    self.line(&format!("{label}: while (true) {{"));
+                }
                 self.indent += 1;
                 self.loops.push(LoopCtx {
                     continue_target: ins.offset,
                     break_target: exit_target,
+                    label: label.clone(),
                 });
                 // 循环头指令要放在循环体内：`continue` 回到顶部时需要重新求值（条件计算就在头部）
                 self.emit_expr_statement(&ins);
@@ -2423,16 +2444,34 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 }
                 let cond_e = self.cond_of(&base);
                 let cond = cond_e.render();
-                let in_break = self.loops.iter().any(|l| l.break_target == target);
-                if in_break {
-                    // 跳转发生 ⇔ 退出循环 → 条件原样
-                    self.line(&format!("if ({cond}) break;"));
+                // 匹配的是哪一层循环？非最内层 → 必须带标签（`break outer` 语义）
+                let brk = self
+                    .loops
+                    .iter()
+                    .rposition(|l| l.break_target == target)
+                    .map(|idx| (idx, self.loops[idx].label.clone()));
+                if let Some((idx, label)) = brk {
+                    let stmt = if idx + 1 == self.loops.len() || label.is_empty() {
+                        "break;".to_string()
+                    } else {
+                        format!("break {label};")
+                    };
+                    self.line(&format!("if ({cond}) {stmt}"));
                     i += 1;
                     continue;
                 }
-                let in_continue = self.loops.iter().any(|l| l.continue_target == target);
-                if in_continue {
-                    self.line(&format!("if ({cond}) continue;"));
+                let cont = self
+                    .loops
+                    .iter()
+                    .rposition(|l| l.continue_target == target)
+                    .map(|idx| (idx, self.loops[idx].label.clone()));
+                if let Some((idx, label)) = cont {
+                    let stmt = if idx + 1 == self.loops.len() || label.is_empty() {
+                        "continue;".to_string()
+                    } else {
+                        format!("continue {label};")
+                    };
+                    self.line(&format!("if ({cond}) {stmt}"));
                     i += 1;
                     continue;
                 }
@@ -2617,19 +2656,46 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 let is_loop = base.starts_with("JumpLoop");
                 if is_loop || target < cur {
                     // 只在循环体内才输出 continue（避免游离的 continue 造成语法错误）
-                    if self.loops.iter().any(|l| l.continue_target == target) {
-                        self.line("continue;");
-                    } else if self.loops.iter().any(|l| l.break_target == target) {
-                        self.line("break;");
+                    if let Some((idx, label)) = self
+                        .loops
+                        .iter()
+                        .rposition(|l| l.continue_target == target)
+                        .map(|idx| (idx, self.loops[idx].label.clone()))
+                    {
+                        if idx + 1 == self.loops.len() || label.is_empty() {
+                            self.line("continue;");
+                        } else {
+                            self.line(&format!("continue {label};"));
+                        }
+                    } else if let Some((idx, label)) = self
+                        .loops
+                        .iter()
+                        .rposition(|l| l.break_target == target)
+                        .map(|idx| (idx, self.loops[idx].label.clone()))
+                    {
+                        if idx + 1 == self.loops.len() || label.is_empty() {
+                            self.line("break;");
+                        } else {
+                            self.line(&format!("break {label};"));
+                        }
                     } else {
                         self.line(&format!("/* 回边 @{target}（未识别的循环结构） */"));
                     }
                     i += 1;
                     continue;
                 }
-                if self.loops.iter().any(|l| l.break_target == target) {
+                if let Some((idx, label)) = self
+                    .loops
+                    .iter()
+                    .rposition(|l| l.break_target == target)
+                    .map(|idx| (idx, self.loops[idx].label.clone()))
+                {
                     self.flush_acc_before(&base);
-                    self.line("break;");
+                    if idx + 1 == self.loops.len() || label.is_empty() {
+                        self.line("break;");
+                    } else {
+                        self.line(&format!("break {label};"));
+                    }
                 }
                 // 其他前向 Jump：通常是 if 的尾部跳转，已由 ③ 消费
                 i += 1;

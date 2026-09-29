@@ -93,7 +93,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
   r10 = __context;
   try {
     r7 = r7;
-    r11 = r5.call(r6);
+    r11 = r6[""]();
     phi0 = r11;
     if (r11 === undefined) {
       phi0 = __runtime.ThrowIteratorResultNotAnObject(r11);
@@ -164,7 +164,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
   r10 = __context;
   try {
     r7 = r7;
-    r11 = r5.call(r6);
+    r11 = r6[""]();
     phi3 = r11;
     if (r11 === undefined) {
       phi3 = __runtime.ThrowIteratorResultNotAnObject(r11);

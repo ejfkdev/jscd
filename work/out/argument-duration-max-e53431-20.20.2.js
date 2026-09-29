@@ -71,7 +71,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r18 = __context;
   try {
     r15 = r15;
-    r19 = r13.call(r14);
+    r19 = r14[""]();
     phi0 = r19;
     if (r19 === undefined) {
       phi0 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -89,7 +89,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi2 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi3 = r26;
           if (r26 === undefined) {
             phi3 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -110,7 +110,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi5 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi6 = r26;
           if (r26 === undefined) {
             phi6 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -165,12 +165,12 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       } else {
         r20 = instance;
         r19 = r20.add;
-        r12 = r19.call(r20, r10);
+        r12 = r20.add(r10);
         r20 = assert;
         r19 = r20.sameValue;
         r21 = r12.total;
         r23 = "seconds";
-        r21 = r21.call(r12, r23);
+        r21 = r12.total(r23);
         r22 = 9007199254740992;
         r23 = "operation succeeds with ";
         r23 = r23 + r11;
@@ -225,7 +225,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r18 = __context;
   try {
     r15 = r15;
-    r19 = r13.call(r14);
+    r19 = r14[""]();
     phi11 = r19;
     if (r19 === undefined) {
       phi11 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -243,7 +243,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi13 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi14 = r26;
           if (r26 === undefined) {
             phi14 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -264,7 +264,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi16 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi17 = r26;
           if (r26 === undefined) {
             phi17 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -319,12 +319,12 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       } else {
         r20 = instance;
         r19 = r20.add;
-        r7 = r19.call(r20, r5);
+        r7 = r20.add(r5);
         r20 = assert;
         r19 = r20.sameValue;
         r21 = r7.total;
         r23 = "seconds";
-        r21 = r21.call(r7, r23);
+        r21 = r7.total(r23);
         r22 = -9007199254740992;
         r23 = "operation succeeds with ";
         r23 = r23 + r6;

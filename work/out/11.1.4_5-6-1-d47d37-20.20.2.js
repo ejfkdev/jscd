@@ -70,7 +70,7 @@ r1 = assert;
 r3 = arr;
 r2 = r3.hasOwnProperty;
 r4 = "1";
-r2 = r2.call(r3, r4);
+r2 = r3.hasOwnProperty(r4);
 r3 = "arr.hasOwnProperty(\"1\") !== true";
 r1(r2, r3);
 r2 = assert;

@@ -60,7 +60,7 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_4;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 
@@ -71,7 +71,7 @@ function _anon_4(a0) {
   r1 = r1.prototype;
   r0 = r1.setFullYear;
   r2 = 2012;
-  r0.call(r1, r2);
+  r1.setFullYear(r2);
   return;
 }
 

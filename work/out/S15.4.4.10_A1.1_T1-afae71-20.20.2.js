@@ -63,14 +63,14 @@ r2 = x;
 r1 = r2.slice;
 r3 = 0;
 r4 = 3;
-arr = r1.call(r2, r3, r4);
+arr = r2.slice(r3, r4);
 r1 = arr;
 r2 = Object;
 r2 = r2.prototype;
 r1.getClass = r2.toString;
 r2 = arr;
 r1 = r2.getClass;
-r1 = r1.call(r2);
+r1 = r2.getClass();
 r2 = "<ro0_38872>";
 r2 = r2 + "Array";
 if (r1 !== (r2 + "<ro0_13872>")) {
@@ -78,7 +78,7 @@ if (r1 !== (r2 + "<ro0_13872>")) {
   r2 = "#1: var x = [0,1,2,3,4]; var arr = x.slice(0,3); arr is Array object. Actual: ";
   r4 = arr;
   r3 = r4.getClass;
-  r2 = r2 + r3.call(r4);
+  r2 = r2 + r4.getClass();
   throw new r1(r2);
 }
 r1 = arr;

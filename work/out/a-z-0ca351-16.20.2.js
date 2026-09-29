@@ -58,7 +58,7 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8, r9;
   r1 = 11;
   r0 = undefined;
-  while (true) {
+  L1: while (true) {
     if (!(r1 <= 36)) break;
     r2 = /* BigIntMap(3) */ undefined;
     r0 = undefined;

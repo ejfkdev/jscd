@@ -72,7 +72,7 @@ function _anon_0(a0) {
   r4 = mar31;
   r3 = r4.subtract;
   r5 = ({ months: 1 });
-  r3 = r3.call(r4, r5);
+  r3 = r4.subtract(r5);
   r4 = 2020;
   r5 = 2;
   r6 = "M02";
@@ -91,7 +91,7 @@ function _anon_0(a0) {
   r3 = r4.subtract;
   r5 = ({ months: 1 });
   r6 = ({ overflow: "constrain" });
-  r3 = r3.call(r4, r5, r6);
+  r3 = r4.subtract(r5, r6);
   r4 = 2020;
   r5 = 2;
   r6 = "M02";
@@ -121,6 +121,6 @@ function _anon_18(a0) {
   r0 = r1.subtract;
   r2 = ({ months: 1 });
   r3 = ({ overflow: "reject" });
-  return r0.call(r1, r2, r3);
+  return r1.subtract(r2, r3);
 }
 

@@ -64,7 +64,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r14 = r14.PlainDateTime;
   r13 = r14.from;
   r15 = ({ year: 275760, month: 9, day: 13 });
-  max = r13.call(r14, r15);
+  max = r14.from(r15);
   maxCases = [["P547581Y4M23DT23H59M59.999999999S", "string with max years"], [{ years: 547581, months: 4, days: 23, nanoseconds: 86399999999999 }, "property bag with max years"], ["P6570976M23DT23H59M59.999999999S", "string with max months"], [{ months: 6570976, days: 23, nanoseconds: 86399999999999 }, "property bag with max months"], ["P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: 28571428, days: 4, nanoseconds: 86399999999999 }, "property bag with max weeks"], ["P200000000DT23H59M59.999999999S", "string with max days"], [{ days: 200000000, nanoseconds: 86399999999999 }, "property bag with max days"], ["PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: 4800000023, minutes: 59, seconds: 59, milliseconds: 999, microseconds: 999, nanoseconds: 999 }, "property bag with max hours"], ["PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: 288000001439, seconds: 59, milliseconds: 999, microseconds: 999, nanoseconds: 999 }, "property bag with max minutes"], ["PT17280000086399.999999999S", "string with max seconds"], [{ seconds: 17280000086399, nanoseconds: 999999999 }, "property bag with max seconds"]];
   r15 = maxCases;
   r14 = r15[Symbol.iterator]();
@@ -73,7 +73,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r18 = __context;
   try {
     r15 = r15;
-    r19 = r13.call(r14);
+    r19 = r14[""]();
     phi0 = r19;
     if (r19 === undefined) {
       phi0 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -91,7 +91,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi2 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi3 = r26;
           if (r26 === undefined) {
             phi3 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -112,7 +112,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi5 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi6 = r26;
           if (r26 === undefined) {
             phi6 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -167,7 +167,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       } else {
         r20 = max;
         r19 = r20.subtract;
-        r12 = r19.call(r20, r10);
+        r12 = r20.subtract(r10);
         r20 = TemporalHelpers;
         r19 = r20.assertPlainDateTime;
         r22 = 0;
@@ -229,7 +229,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r14 = r14.PlainDateTime;
   r13 = r14.from;
   r15 = ({ year: -271821, month: 4, day: 19, nanosecond: 1 });
-  min = r13.call(r14, r15);
+  min = r14.from(r15);
   minCases = [["-P547581Y4M24DT23H59M59.999999999S", "string with max years"], [{ years: -547581, months: -4, days: -24, nanoseconds: -86399999999999 }, "property bag with max years"], ["-P6570976M24DT23H59M59.999999999S", "string with max months"], [{ months: -6570976, days: -24, nanoseconds: -86399999999999 }, "property bag with max months"], ["-P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: -28571428, days: -4, nanoseconds: -86399999999999 }, "property bag with max weeks"], ["-P200000000DT23H59M59.999999999S", "string with max days"], [{ days: -200000000, nanoseconds: -86399999999999 }, "property bag with max days"], ["-PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: -4800000023, minutes: -59, seconds: -59, milliseconds: -999, microseconds: -999, nanoseconds: -999 }, "property bag with max hours"], ["-PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: -288000001439, seconds: -59, milliseconds: -999, microseconds: -999, nanoseconds: -999 }, "property bag with max minutes"], ["-PT17280000086399.999999999S", "string with max seconds"], [{ seconds: -17280000086399, nanoseconds: -999999999 }, "property bag with max seconds"]];
   r2 = undefined;
   r15 = minCases;
@@ -239,7 +239,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r18 = __context;
   try {
     r15 = r15;
-    r19 = r13.call(r14);
+    r19 = r14[""]();
     phi11 = r19;
     if (r19 === undefined) {
       phi11 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -257,7 +257,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi13 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi14 = r26;
           if (r26 === undefined) {
             phi14 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -278,7 +278,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi16 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r20.call(r21);
+          r26 = r21[""]();
           phi17 = r26;
           if (r26 === undefined) {
             phi17 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -333,7 +333,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       } else {
         r20 = min;
         r19 = r20.subtract;
-        r7 = r19.call(r20, r5);
+        r7 = r20.subtract(r5);
         r20 = TemporalHelpers;
         r19 = r20.assertPlainDateTime;
         r22 = 275760;

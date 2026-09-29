@@ -76,7 +76,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r18 = __context;
   try {
     r15 = r15;
-    r19 = r13.call(r14);
+    r19 = r14.next();
     phi2 = r19;
     if (r19 === undefined) {
       phi2 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -100,7 +100,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi6 = r23;
         if (!r23) {
           r23 = true;
-          r27 = r21.call(r22);
+          r27 = r22.next();
           phi7 = r27;
           if (r27 === undefined) {
             phi7 = __runtime.ThrowIteratorResultNotAnObject(r27);
@@ -121,7 +121,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi9 = r23;
         if (!r23) {
           r23 = true;
-          r27 = r21.call(r22);
+          r27 = r22.next();
           phi10 = r27;
           if (r27 === undefined) {
             phi10 = __runtime.ThrowIteratorResultNotAnObject(r27);
@@ -176,7 +176,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       } else {
         r21 = instance;
         r20 = r21.add;
-        r12 = r20.call(r21, r10);
+        r12 = r21.add(r10);
         r21 = TemporalHelpers;
         r20 = r21.assertPlainTime;
         r23 = 7;
@@ -244,7 +244,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r18 = __context;
   try {
     r15 = r15;
-    r19 = r13.call(r14);
+    r19 = r14.next();
     phi17 = r19;
     if (r19 === undefined) {
       phi17 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -268,7 +268,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi21 = r23;
         if (!r23) {
           r23 = true;
-          r27 = r21.call(r22);
+          r27 = r22.next();
           phi22 = r27;
           if (r27 === undefined) {
             phi22 = __runtime.ThrowIteratorResultNotAnObject(r27);
@@ -289,7 +289,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi24 = r23;
         if (!r23) {
           r23 = true;
-          r27 = r21.call(r22);
+          r27 = r22.next();
           phi25 = r27;
           if (r27 === undefined) {
             phi25 = __runtime.ThrowIteratorResultNotAnObject(r27);
@@ -344,7 +344,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       } else {
         r21 = instance;
         r20 = r21.add;
-        r7 = r20.call(r21, r5);
+        r7 = r21.add(r5);
         r21 = TemporalHelpers;
         r20 = r21.assertPlainTime;
         r23 = 16;

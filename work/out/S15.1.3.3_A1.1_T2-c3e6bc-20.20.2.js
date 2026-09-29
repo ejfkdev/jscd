@@ -74,7 +74,7 @@ while (true) {
     r3 = r4.fromCharCode;
     r5 = index;
     r6 = 65;
-    r3 = r3.call(r4, r5, r6);
+    r3 = r4.fromCharCode(r5, r6);
   } catch (e) {
     r2 = r2(r3);
     /* createcatchcontext */

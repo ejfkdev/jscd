@@ -75,7 +75,7 @@ r3 = Math;
 r2 = r3.sin;
 r4 = Math;
 r4 = r4.PI / 2;
-r1 = r1 + r2.call(r3, r4);
+r1 = r1 + r3.sin(r4);
 if (r1 > 0.00001) {
   r1 = Test262Error;
   r2 = "#1: return Expression yields to Return (return, GetValue(Evaluate Expression), empty)";

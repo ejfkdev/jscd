@@ -69,7 +69,7 @@ r2 = r2.map;
 r1 = r2.call;
 r3 = Math;
 r4 = callbackfn;
-testResult = r1.call(r2, r3, r4);
+testResult = r2.call(r3, r4);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = testResult;
@@ -85,6 +85,6 @@ function callbackfn(a0, a1, a2) {
   r2 = r2.prototype;
   r2 = r2.toString;
   r1 = r2.call;
-  return r0 === r1.call(r2, a2);
+  return r0 === r2.call(a2);
 }
 

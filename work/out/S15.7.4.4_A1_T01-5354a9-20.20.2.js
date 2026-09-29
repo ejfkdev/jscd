@@ -61,7 +61,7 @@ function _anon_0(a0) {
   r4 = Number;
   r4 = r4.prototype;
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = 0;
   r5 = "Number.prototype.valueOf() must return 0";
   r1.call(r2-r5);
@@ -70,7 +70,7 @@ function _anon_0(a0) {
   r4 = Number;
   r4 = new r4(r0);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = 0;
   r5 = "(new Number()).valueOf() must return 0";
   r1.call(r2-r5);
@@ -80,7 +80,7 @@ function _anon_0(a0) {
   r5 = 0;
   r4 = new r4(r5);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = 0;
   r5 = "(new Number(0)).valueOf() must return 0";
   r1.call(r2-r5);
@@ -90,7 +90,7 @@ function _anon_0(a0) {
   r5 = 0;
   r4 = new r4(r5);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = 0;
   r5 = "(new Number(-1)).valueOf() must return -1";
   r1.call(r2-r5);
@@ -100,7 +100,7 @@ function _anon_0(a0) {
   r5 = 1;
   r4 = new r4(r5);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = 1;
   r5 = "(new Number(1)).valueOf() must return 1";
   r1.call(r2-r5);
@@ -110,7 +110,7 @@ function _anon_0(a0) {
   r5 = NaN;
   r4 = new r4(r5);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = NaN;
   r5 = "new Number(NaN).valueOf() returns NaN";
   r1.call(r2-r5);
@@ -121,7 +121,7 @@ function _anon_0(a0) {
   r5 = r5.POSITIVE_INFINITY;
   r4 = new r4(r5);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = Number;
   r4 = r4.POSITIVE_INFINITY;
   r5 = "(new Number(Number.POSITIVE_INFINITY)).valueOf() returns Number.POSITIVE_INFINITY";
@@ -133,7 +133,7 @@ function _anon_0(a0) {
   r5 = r5.NEGATIVE_INFINITY;
   r4 = new r4(r5);
   r3 = r4.valueOf;
-  r3 = r3.call(r4);
+  r3 = r4.valueOf();
   r4 = Number;
   r4 = r4.NEGATIVE_INFINITY;
   r5 = "(new Number(Number.NEGATIVE_INFINITY)).valueOf() returns Number.NEGATIVE_INFINITY";

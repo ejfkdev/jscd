@@ -69,7 +69,7 @@ let t0;
     delete r4["MIN_VALUE"];
     r4 = undefined;
     r5 = false;
-    r0 = r2.call(r3, r4, r5);
+    r0 = r3.sameValue(r4, r5);
   } catch (e) {
     r2 = r0;
     /* createcatchcontext */

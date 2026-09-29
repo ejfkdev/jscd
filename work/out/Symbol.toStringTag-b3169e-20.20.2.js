@@ -63,7 +63,7 @@ function _anon_0(a0) {
   r4 = Symbol;
   r3 = r3[r4.toStringTag];
   r4 = "WeakSet";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = verifyProperty;
   r2 = WeakSet;
   r2 = r2.prototype;

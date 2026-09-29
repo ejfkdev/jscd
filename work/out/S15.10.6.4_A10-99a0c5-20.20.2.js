@@ -65,7 +65,7 @@ r4 = r4.prototype;
 r4 = r4.toString;
 r3 = r4.hasOwnProperty;
 r5 = "length";
-r3 = r3.call(r4, r5);
+r3 = r4.hasOwnProperty(r5);
 r4 = true;
 r5 = "RegExp.prototype.toString.hasOwnProperty('length') must return true";
 r1.call(r2-r5);

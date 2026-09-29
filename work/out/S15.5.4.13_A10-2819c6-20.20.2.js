@@ -64,7 +64,7 @@ r2 = r2.prototype;
 r2 = r2.slice;
 r1 = r2.hasOwnProperty;
 r3 = "length";
-phi0 = r1.call(r2, r3);
+phi0 = r2.hasOwnProperty(r3);
 if (!phi0) {
   r1 = Test262Error;
   r2 = "#1: String.prototype.slice.hasOwnProperty('length') return true. Actual: ";
@@ -73,7 +73,7 @@ if (!phi0) {
   r4 = r4.slice;
   r3 = r4.hasOwnProperty;
   r5 = "length";
-  r2 = r2 + r3.call(r4, r5);
+  r2 = r2 + r4.hasOwnProperty(r5);
   throw new r1(r2);
 }
 r1 = String;

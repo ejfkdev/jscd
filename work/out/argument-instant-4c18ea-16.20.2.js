@@ -67,7 +67,7 @@ function _anon_0(a0) {
   r2 = r2.Instant;
   r1 = r2.from;
   r3 = orig;
-  result = r1.call(r2, r3);
+  result = r2.from(r3);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = result;

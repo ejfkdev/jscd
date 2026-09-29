@@ -63,29 +63,29 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_4;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   effects = [];
   r2 = assert;
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_18;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.compareArray;
   r3 = effects;
   r4 = ["return"];
-  r1.call(r2, r3, r4);
+  r2.compareArray(r3, r4);
   effects = [];
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_47;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.compareArray;
   r3 = effects;
   r4 = ["return"];
-  r1.call(r2, r3, r4);
+  r2.compareArray(r3, r4);
   effects = [];
   r2 = Iterator;
   r2 = r2.prototype;
@@ -105,7 +105,7 @@ function _anon_0(a0) {
   r1 = r2.compareArray;
   r3 = effects;
   r4 = ["get next"];
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.compareArray(r3, r4);
   return r0;
 }
 
@@ -151,7 +151,7 @@ function return_(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "return";
-  r0.call(r1, r2);
+  r1.push(r2);
   return {  };
 }
 
@@ -162,7 +162,7 @@ function get_next(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "get next";
-  r0.call(r1, r2);
+  r1.push(r2);
   return _anon_33;
 }
 
@@ -203,7 +203,7 @@ function return_(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "return";
-  r0.call(r1, r2);
+  r1.push(r2);
   return {  };
 }
 
@@ -214,7 +214,7 @@ function get_next(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "get next";
-  r0.call(r1, r2);
+  r1.push(r2);
   return _anon_60;
 }
 
@@ -233,7 +233,7 @@ function get_next(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "get next";
-  r0.call(r1, r2);
+  r1.push(r2);
   return _anon_78;
 }
 

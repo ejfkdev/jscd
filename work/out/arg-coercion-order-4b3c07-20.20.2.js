@@ -86,7 +86,7 @@ r2 = assert;
 r1 = r2.compareArray;
 r3 = effects;
 r4 = expectedEffects;
-r1.call(r2, r3, r4);
+r2.compareArray(r3, r4);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = returnValue;
@@ -97,7 +97,7 @@ r2 = assert;
 r1 = r2.sameValue;
 r4 = date;
 r3 = r4.getTime;
-r3 = r3.call(r4);
+r3 = r4.getTime();
 r4 = NaN;
 r5 = "argument is ignored when `this` is an invalid date";
 r0 = r1.call(r2-r5);
@@ -107,7 +107,7 @@ function valueOf(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "valueOf hour";
-  r0.call(r1, r2);
+  r1.push(r2);
   return 0;
 }
 
@@ -117,7 +117,7 @@ function valueOf(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "valueOf min";
-  r0.call(r1, r2);
+  r1.push(r2);
   return 0;
 }
 
@@ -127,7 +127,7 @@ function valueOf(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "valueOf sec";
-  r0.call(r1, r2);
+  r1.push(r2);
   return 0;
 }
 
@@ -137,7 +137,7 @@ function valueOf(a0) {
   r1 = effects;
   r0 = r1.push;
   r2 = "valueOf ms";
-  r0.call(r1, r2);
+  r1.push(r2);
   return 0;
 }
 

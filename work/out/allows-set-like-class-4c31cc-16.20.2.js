@@ -77,9 +77,9 @@ function _anon_0(a0) {
   r4 = s1;
   r3 = r4.isDisjointFrom;
   r5 = s2;
-  r3 = r3.call(r4, r5);
+  r3 = r4.isDisjointFrom(r5);
   r4 = true;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

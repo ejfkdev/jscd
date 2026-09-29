@@ -72,7 +72,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10;
   r11 = __context;
   try {
     r8 = r8;
-    r12 = r6.call(r7);
+    r12 = r7[""]();
     phi0 = r12;
     if (r12 === undefined) {
       phi0 = __runtime.ThrowIteratorResultNotAnObject(r12);
@@ -90,7 +90,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10;
         phi2 = r15;
         if (!r15) {
           r15 = true;
-          r19 = r13.call(r14);
+          r19 = r14[""]();
           phi3 = r19;
           if (r19 === undefined) {
             phi3 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -111,7 +111,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10;
         phi5 = r15;
         if (!r15) {
           r15 = true;
-          r19 = r13.call(r14);
+          r19 = r14[""]();
           phi6 = r19;
           if (r19 === undefined) {
             phi6 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -166,7 +166,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10;
       } else {
         r13 = instance;
         r12 = r13.subtract;
-        r1 = r12.call(r13, r4);
+        r1 = r13.subtract(r4);
         /* 回边 @42（未识别的循环结构） */
         r10 = 0;
         r9 = r10;

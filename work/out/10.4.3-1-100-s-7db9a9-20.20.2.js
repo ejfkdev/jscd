@@ -65,7 +65,7 @@ r4 = "ab";
 r3 = r4.replace;
 r5 = "b";
 r6 = _ro0_14088_;
-r3 = r3.call(r4, r5, r6);
+r3 = r4.replace(r5, r6);
 r4 = "aa";
 r5 = "\"ab\".replace(\"b\", f)";
 r1.call(r2-r5);

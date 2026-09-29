@@ -62,7 +62,7 @@ function _anon_0(a0) {
   r4 = r4.prototype;
   r3 = r4.hasOwnProperty;
   r5 = "toString";
-  r3 = r3.call(r4, r5);
+  r3 = r4.hasOwnProperty(r5);
   r4 = true;
   r5 = "Date.prototype.hasOwnProperty(\"toString\") must return true";
   r0 = r1.call(r2-r5);

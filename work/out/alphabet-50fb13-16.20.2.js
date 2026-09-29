@@ -62,9 +62,9 @@ function _anon_0(a0) {
   r5 = [199, 239, 242];
   r4 = new r4(r5);
   r3 = r4.toBase64;
-  r3 = r3.call(r4);
+  r3 = r4.toBase64();
   r4 = "x+/y";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Uint8Array;
@@ -72,9 +72,9 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4.toBase64;
   r5 = ({ alphabet: "base64" });
-  r3 = r3.call(r4, r5);
+  r3 = r4.toBase64(r5);
   r4 = "x+/y";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Uint8Array;
@@ -82,14 +82,14 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4.toBase64;
   r5 = ({ alphabet: "base64url" });
-  r3 = r3.call(r4, r5);
+  r3 = r4.toBase64(r5);
   r4 = "x-_y";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_19;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 
@@ -101,7 +101,7 @@ function _anon_19(a0) {
   r1 = new r1(r2);
   r0 = r1.toBase64;
   r2 = ({ alphabet: "other" });
-  r0.call(r1, r2);
+  r1.toBase64(r2);
   return;
 }
 

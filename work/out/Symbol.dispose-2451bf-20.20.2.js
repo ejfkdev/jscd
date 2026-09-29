@@ -65,7 +65,7 @@ function _anon_0(a0) {
   r4 = DisposableStack;
   r4 = r4.prototype;
   r4 = r4.dispose;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = verifyProperty;
   r2 = DisposableStack;
   r2 = r2.prototype;
