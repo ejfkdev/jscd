@@ -308,7 +308,7 @@ impl<'a> Walker<'a> {
             Ok(SlotValue::Ref(Ref::Root(idx)))
         } else if (t_root_const..t_root_const + 32).contains(&b) {
             Ok(SlotValue::Ref(Ref::Root((b - t_root_const) as usize)))
-        } else if b == self.tag("kReadOnlyHeapRef")? {
+        } else if Some(b) == self.opt_tag("kReadOnlyHeapRef") {
             let c = self.putint()?;
             let o = self.putint()?;
             Ok(SlotValue::Ref(Ref::RoRef(c, o)))
@@ -434,11 +434,11 @@ impl<'a> Walker<'a> {
 
 /// 解析整个 payload（已解压、已去头）。
 pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
+    // 最小必需集：跨族恒存在（8.x 无 kReadOnlyHeapRef、11.3 起空间数变化等）
     for n in [
         "kNewObject",
         "kBackref",
         "kRootArray",
-        "kReadOnlyHeapRef",
         "kAttachedReference",
         "kSynchronize",
         "kNop",

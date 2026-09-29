@@ -2676,6 +2676,16 @@
   "saved_class_bit": 10
  },
  "serialization": {
+  "legacy": {
+   "kDoubleAlignmentSentinel": 0,
+   "kFirstEncodableFixedRawDataSize": 1,
+   "kFirstEncodableRepeatCount": 2,
+   "kFixedRawDataCount": 32,
+   "kFixedRepeatCount": 16,
+   "kHotObjectCount": 8,
+   "kMaxRecursionDepth": 32,
+   "kRootArrayConstantsCount": 32
+  },
   "tags": {
    "kApiReference": 16,
    "kAttachedReference": 8,

@@ -5,5 +5,9 @@ pub static EMBEDDED_TABLE_FILES: &[(&str, &str)] = &[
     ("v11_3.json", include_str!("../tables/v11_3.json")),
     ("v12_4.json", include_str!("../tables/v12_4.json")),
     ("v13_6.json", include_str!("../tables/v13_6.json")),
+    ("v6_2.json", include_str!("../tables/v6_2.json")),
+    ("v6_8.json", include_str!("../tables/v6_8.json")),
+    ("v7_8.json", include_str!("../tables/v7_8.json")),
+    ("v8_4.json", include_str!("../tables/v8_4.json")),
     ("v9_4.json", include_str!("../tables/v9_4.json")),
 ];

@@ -85,3 +85,48 @@ flags 位域位置两代一致（saved=bit10、function_variable=bit12-13、infe
 
 - 13.6 有 1 个函数名取值偏差（roots 索引与真实构建的字符串段仍有个别错位；反汇编本体完全一致）。
 - 老版本家族（V8 5.8–8.4，Node 8–14）尚未做代码页校准（表结构已就位）。
+## 10. 旧族（V8 ≤ 8.x，Node 8–14）——待实现
+
+Node 12/14 的 `version_hash` 已能精确/爆破识别，表也已提取（`tables/v7_8.json`、`v8_4.json`），
+但**解码路径需要独立实现**（现代路径不适用）。已查明的差异：
+
+### 10.1 tag 编码：与空间位打包
+
+| 版本 | 编码 | 关键值 |
+|---|---|---|
+| 6.2 / 6.8 | `static const int` + 位掩码 | `kNewObject=0x00`、`kBackref=0x08`、`kNop=0x2f`、`kSynchronize=0x1c`、`kVariableRepeat=0x1d`、`kVariableRawData=0x3a`、`kRootArrayConstants=0x80`、`kFixedRawData=0xc0`、`kFixedRepeat=0xe0`、`kHotObject=0xf0` |
+| 7.8 / 8.4 | 现代式扁平枚举，但语义不同 | `kBackref=0x08`（**8 个空间** 0x00..0x07）、无 `kReadOnlyHeapRef`、`kNop=20`、`kSynchronize=26`；多出 chunk 类 tag：`kNextChunk=21`、`kDeferred=22`、`kAlignmentPrefix=23`、`kVariableRawCode=30`；8.4 有 `kStartupObjectCache=16`、7.8 该位是 `kPartialSnapshotCache=16` |
+| 9.4+ | 现代扁平枚举 | 见正文各节 |
+
+### 10.2 skip 变体（旧族专有）
+
+旧族把"引用 + 跳过"合并编码：
+
+```
+kRootArrayConstants = 0x80, kRootArrayConstantsWithSkip = 0xa0, kRootArrayConstantsMask = 0x1f
+kHotObject         = 0xf0, kHotObjectWithSkip         = 0xf8, kHotObjectMask         = 0x07
+kFixedRawData = 0xc0, kFixedRepeat = 0xe0
+kWhereMask = 0x1f, kHowToCodeMask = 0x20, kWhereToPointMask = 0x40
+kSkip = 0x0f, kDeferred = 0x6f, kNextChunk = 0x4f, kAlignmentPrefix = 0x19
+kNumberOfFixedRawData = 0x20, kNumberOfFixedRepeat = 0x10, kNumberOfHotObjects = 8
+```
+
+即 `0xa0..0xbf` = 根常量 0..31 **且跳过 1 槽**；`0xf8..0xff` = 热对象 + 跳过；
+`kDeferred`(0x6f) 表示该引用被延迟（随后由 deferred 段补全）。
+
+### 10.3 还需校准
+
+- BytecodeArray 头偏移（6.x/7.x 的 `bytecode-array.h` 是 C++ 定义，非 .tq）
+- 解释器帧常量（6.x/7.x 的 `frame-constants.h` 结构不同）
+- SMI/指针宽度：Node 12 及更早在 x64 上无指针压缩（ts=8）；Node 8/10 同样
+
+### 10.4 运行旧版 Node（本机实操）
+
+```bash
+# mise 的镜像很慢（~20 KB/s）；直连 nodejs.org 快 20 倍，且 ≤15 只有 x64 包（需 Rosetta）
+curl -sL -o /tmp/node-v14.21.3-darwin-x64.tar.gz \
+  https://nodejs.org/dist/v14.21.3/node-v14.21.3-darwin-x64.tar.gz
+d=~/.local/share/mise/installs/node/14.21.3 && mkdir -p $d && \
+  tar -xzf /tmp/node-v14.21.3-darwin-x64.tar.gz -C $d --strip-components=1
+$d/bin/node --version   # 经 Rosetta 运行
+```

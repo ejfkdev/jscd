@@ -110,10 +110,27 @@ def extract_operand_types(text):
 
 # --------------------------------------------------- serializer-deserializer.h
 
+def extract_legacy_tags(text):
+    """旧族（V8 ≤ 8.x）的序列化 tag：不是枚举而是 static const int + 位掩码。
+
+    形如 kNewObject/kBackref 定义在 snapshot/serializer.h，其余在 serializer-common.h。
+    这一族的 tag 是"位打包"（Where / HowToCode / WhereToPoint），与现代扁平枚举不同族，
+    解码逻辑需独立实现（见 docs/VERSIONS.md「旧族」一节）。
+    """
+    if text is None:
+        return None
+    sect = text[text.find("class SerializerDeserializer") :]
+    consts = dict(
+        (k, int(v, 0)) for k, v in re.findall(r"static const int (k\w+)\s*=\s*(0x[0-9a-fA-F]+|\d+)\s*;", sect)
+    )
+    return consts or None
+
+
 def extract_serialization_tags(text):
     """提取 SerializationTag::Bytecode 枚举（显式值 + 隐式递增 + range 常量）。"""
-    # 类型拼写随版本变：V8 ≤ 11.x 用 ": byte"，12.x+ 用 ": uint8_t"
-    m = re.search(r"enum Bytecode : (?:byte|uint8_t|uint8) \{(.*?)\n  \};", text, re.S)
+    # 类型拼写随版本变：V8 ≤ 11.x 用 ": byte"，12.x+ 用 ": uint8_t"；
+    # 更早的版本（Node 8/10/12）在 serializer-common.h 里且无底层类型
+    m = re.search(r"enum Bytecode(?:\s*:\s*(?:byte|uint8_t|uint8))?\s*\{(.*?)\n  \};", text, re.S)
     if not m:
         raise RuntimeError("SerializationTag::Bytecode not found")
     body = m.group(1)
@@ -828,17 +845,28 @@ def main():
 
         src_b = git_show(tag, "src/interpreter/bytecodes.h")
         src_o = git_show(tag, "src/interpreter/bytecode-operands.h")
-        src_t = git_show(tag, "src/snapshot/serializer-deserializer.h")
-        src_r = git_show(tag, "src/roots/roots.h")
-        src_s = git_show(tag, "src/init/heap-symbols.h")
-        src_d = git_show(tag, "src/objects/objects-definitions.h")
+        src_t = (
+            git_show(tag, "src/snapshot/serializer-deserializer.h")
+            or git_show(tag, "src/snapshot/serializer-common.h")
+            or git_show(tag, "src/snapshot/serializer.h")
+        )
+        src_serializer_h = git_show(tag, "src/snapshot/serializer.h")
+        # 旧族：tag 常量散落在 serializer-common.h 与 serializer.h（8.x 两族并存）
+        src_t = (src_t or "") + "\n" + (src_serializer_h or "")
+        src_r = git_show(tag, "src/roots/roots.h") or git_show(tag, "src/roots.h")
+        src_s = git_show(tag, "src/init/heap-symbols.h") or git_show(tag, "src/heap-symbols.h")
+        src_d = git_show(tag, "src/objects/objects-definitions.h") or git_show(
+            tag, "src/objects-definitions.h"
+        )
         src_rt = git_show(tag, "src/runtime/runtime.h")
         src_intr = git_show(tag, "src/interpreter/interpreter-intrinsics.h")
         # BytecodeArray 定义位置随版本移动：9.x–11.x 在 objects/code.tq，12.x+ 在 objects/bytecode-array.tq
         src_code = git_show(tag, "src/objects/bytecode-array.tq") or git_show(tag, "src/objects/code.tq")
         src_trusted = git_show(tag, "src/objects/trusted-object.tq")
         src_fixed = git_show(tag, "src/objects/fixed-array.tq")
-        src_frame = git_show(tag, "src/execution/frame-constants.h")
+        src_frame = git_show(tag, "src/execution/frame-constants.h") or git_show(
+            tag, "src/frame-constants.h"
+        )
         src_sfi = git_show(tag, "src/objects/shared-function-info.tq")
         src_scope = git_show(tag, "src/objects/scope-info.tq")
         src_ba_inl = git_show(tag, "src/objects/bytecode-array-inl.h")
@@ -856,7 +884,8 @@ def main():
             "bytecodes": extract_bytecodes(src_b),
             "operand_types": extract_operand_types(src_o),
             "serialization": {
-                "tags": extract_serialization_tags(src_t),
+                "tags": extract_serialization_tags(src_t) if "enum Bytecode" in (src_t or "") else {},
+                "legacy": extract_legacy_tags(src_t),
             },
             "roots": extract_roots(src_r, src_s, src_d) if src_r else [],
             "frame": extract_frame_layout(src_frame),
