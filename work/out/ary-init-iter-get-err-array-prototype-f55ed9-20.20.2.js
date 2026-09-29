@@ -87,7 +87,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
   r5 = this;
   r3 = __intrinsic.CreateJSGeneratorObject(r4, r5);
   r6 = a0[Symbol.iterator]();
-  r5 = r6[""];
+  r5 = r6["/* root: AllocationSite */ undefined"];
   r4 = a0;
   r7 = false;
   r10 = __context;
@@ -95,7 +95,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     phi0 = r7;
     if (!r7) {
       r7 = true;
-      r11 = r6[""]();
+      r11 = r6["/* root: AllocationSite */ undefined"]();
       phi1 = r11;
       if (r11 === undefined) {
         phi1 = __runtime.ThrowIteratorResultNotAnObject(r11);
@@ -116,7 +116,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     phi3 = r7;
     if (!r7) {
       r7 = true;
-      r11 = r6[""]();
+      r11 = r6["/* root: AllocationSite */ undefined"]();
       phi4 = r11;
       if (r11 === undefined) {
         phi4 = __runtime.ThrowIteratorResultNotAnObject(r11);
@@ -137,7 +137,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     phi6 = r7;
     if (!r7) {
       r7 = true;
-      r11 = r6[""]();
+      r11 = r6["/* root: AllocationSite */ undefined"]();
       phi7 = r11;
       if (r11 === undefined) {
         phi7 = __runtime.ThrowIteratorResultNotAnObject(r11);

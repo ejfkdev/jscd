@@ -78,13 +78,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
   r1 = undefined;
   r8 = cases;
   r7 = r8[Symbol.iterator]();
-  r6 = r7[""];
+  r6 = r7["/* root: AllocationSite */ undefined"];
   r8 = false;
   r11 = __context;
   try {
     while (true) {
       r8 = true;
-      r12 = r7[""]();
+      r12 = r7["/* root: AllocationSite */ undefined"]();
       phi0 = r12;
       if (r12 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r12);
@@ -94,14 +94,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
       r8 = false;
       r0 = r12;
       r14 = r0[Symbol.iterator]();
-      r13 = r14[""];
+      r13 = r14["/* root: AllocationSite */ undefined"];
       r15 = false;
       r18 = __context;
       try {
         phi1 = r15;
         if (!r15) {
           r15 = true;
-          r19 = r14[""]();
+          r19 = r14["/* root: AllocationSite */ undefined"]();
           phi2 = r19;
           if (r19 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -122,7 +122,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         phi4 = r15;
         if (!r15) {
           r15 = true;
-          r19 = r14[""]();
+          r19 = r14["/* root: AllocationSite */ undefined"]();
           phi5 = r19;
           if (r19 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r19);

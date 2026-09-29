@@ -80,7 +80,7 @@ function _anon_0(a0) {
   r2 = r2.prototype;
   r3 = Symbol;
   r3 = r3.toStringTag;
-  r4 = ({ writable: false, enumerable: false });
+  r4 = ({ writable: false, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

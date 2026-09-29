@@ -71,13 +71,13 @@ var closed, closable, ShouldNotGetValueOf;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5, r6;
   closed = false;
-  r1 = ({ [__ctx.__computed]: undefined, return: undefined });
+  r1 = ({ AllocationSite: undefined, return: undefined });
   r4 = _ro0_43752_;
   r3 = r4.prototype;
   r2 = r1;
   __runtime.InternalSetPrototype(r2, r3);
   r1.return = return_;
-  r3 = "";
+  r3 = /* root: AllocationSite */ undefined;
   r4 = get_next;
   r5 = null;
   r6 = 0;

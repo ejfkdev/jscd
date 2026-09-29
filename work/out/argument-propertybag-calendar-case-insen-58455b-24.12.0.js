@@ -71,7 +71,7 @@ var timeZone, arg, result;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   arg = "UTC";
-  r1 = ({ year: 1970, monthCode: "M01", day: 1, timeZone: undefined });
+  r1 = ({ year: 1970, monthCode: "M01", day: 1, timeZone: undefined, calendar: "IsO8601" });
   r1.timeZone = arg;
   result = r1;
   r2 = Temporal;

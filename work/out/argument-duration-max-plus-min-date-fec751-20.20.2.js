@@ -79,13 +79,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   maxCases = [["P547581Y4M23DT23H59M59.999999999S", "string with max years"], [{ years: 547581, months: 4, days: 23, nanoseconds: 86399999999999 }, "property bag with max years"], ["P6570976M23DT23H59M59.999999999S", "string with max months"], [{ months: 6570976, days: 23, nanoseconds: 86399999999999 }, "property bag with max months"], ["P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: 28571428, days: 4, nanoseconds: 86399999999999 }, "property bag with max weeks"], ["P200000000DT23H59M59.999999999S", "string with max days"], [{ days: 200000000, nanoseconds: 86399999999999 }, "property bag with max days"], ["PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: 4800000023, minutes: 59, seconds: 59, milliseconds: 999, microseconds: 999, nanoseconds: 999 }, "property bag with max hours"], ["PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: 288000001439, seconds: 59, milliseconds: 999, microseconds: 999, nanoseconds: 999 }, "property bag with max minutes"], ["PT17280000086399.999999999S", "string with max seconds"], [{ seconds: 17280000086399, nanoseconds: 999999999 }, "property bag with max seconds"]];
   r15 = maxCases;
   r14 = r15[Symbol.iterator]();
-  r13 = r14[""];
+  r13 = r14["/* root: AllocationSite */ undefined"];
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14[""]();
+      r19 = r14["/* root: AllocationSite */ undefined"]();
       phi0 = r19;
       if (r19 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -95,14 +95,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       r15 = false;
       r0 = r19;
       r21 = r0[Symbol.iterator]();
-      r20 = r21[""];
+      r20 = r21["/* root: AllocationSite */ undefined"];
       r22 = false;
       r25 = __context;
       try {
         phi1 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21[""]();
+          r26 = r21["/* root: AllocationSite */ undefined"]();
           phi2 = r26;
           if (r26 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -123,7 +123,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi4 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21[""]();
+          r26 = r21["/* root: AllocationSite */ undefined"]();
           phi5 = r26;
           if (r26 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -245,13 +245,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r2 = undefined;
   r15 = minCases;
   r14 = r15[Symbol.iterator]();
-  r13 = r14[""];
+  r13 = r14["/* root: AllocationSite */ undefined"];
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14[""]();
+      r19 = r14["/* root: AllocationSite */ undefined"]();
       phi10 = r19;
       if (r19 === undefined) {
         phi10 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -261,14 +261,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       r15 = false;
       r1 = r19;
       r21 = r1[Symbol.iterator]();
-      r20 = r21[""];
+      r20 = r21["/* root: AllocationSite */ undefined"];
       r22 = false;
       r25 = __context;
       try {
         phi11 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21[""]();
+          r26 = r21["/* root: AllocationSite */ undefined"]();
           phi12 = r26;
           if (r26 === undefined) {
             phi12 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -289,7 +289,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi14 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21[""]();
+          r26 = r21["/* root: AllocationSite */ undefined"]();
           phi15 = r26;
           if (r26 === undefined) {
             phi15 = __runtime.ThrowIteratorResultNotAnObject(r26);

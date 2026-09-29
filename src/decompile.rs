@@ -20,7 +20,6 @@ use crate::serializer::{CodeCache, Elem, ObjId, Ref, SlotValue};
 use crate::tables::VersionTable;
 use std::collections::HashMap;
 use std::fmt::Write as FmtWrite;
-use std::io::Write;
 
 // ─────────────────────────────── 表达式 ───────────────────────────────
 
@@ -1549,7 +1548,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// 对象字面量的"键为字符串"打分（用于自动判定 kDescriptionStartIndex）。
     fn obp_string_keys(&self, o: ObjId, start: usize, len: usize) -> usize {
-        let count = len.saturating_sub(start) / 2;
+        let count = if start >= 2 { len / 2 } else { len.saturating_sub(start) / 2 };
         (0..count.min(64))
             .filter(|i| self.elem_key(o, start + 2 * i).is_some_and(|k| !k.starts_with('<') || k.starts_with("<ro")))
             .count()
@@ -1578,7 +1577,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         } else {
             pref
         };
-        let count = len.saturating_sub(start) / 2;
+        // 13.x 的 ObjectBoilerplateDescription 前两格是 backing_store_size/flags（额外字段），
+        // 元素从第 2 格起、数量正好是 len/2；≤12.4 则从第 1 格起、数量 (len-1)/2。
+        let count = if start >= 2 {
+            len / 2
+        } else {
+            len.saturating_sub(start) / 2
+        };
         let mut parts = Vec::new();
         for i in 0..count.min(64) {
             let key = self.elem_key(o, start + 2 * i);

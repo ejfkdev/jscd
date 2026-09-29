@@ -132,7 +132,7 @@ try {
   r1 = verifyProperty;
   r2 = arrow;
   r3 = "name";
-  r4 = ({ enumerable: false, writable: false, configurable: true });
+  r4 = ({ enumerable: false, writable: false, configurable: true, value: "arrow" });
   r1(r2-r4);
   r2 = assert;
   r1 = r2.sameValue;

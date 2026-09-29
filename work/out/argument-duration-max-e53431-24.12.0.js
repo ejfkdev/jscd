@@ -74,7 +74,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
   r13 = Temporal;
   r13 = r13.Duration;
   maxCases = new r13(r0);
-  minCases = [["P104249991374DT7H36M31.999999999S", "string with max days"], [{ days: 104249991374 }, "property bag with max days"], ["PT2501999792983H36M31.999999999S", "string with max hours"], [{ hours: 2501999792983 }, "property bag with max hours"], ["PT150119987579016M31.999999999S", "string with max minutes"], [{ minutes: 150119987579016 }, "property bag with max minutes"], ["PT9007199254740991.999999999S", "string with max seconds"], [{ seconds: 9007199254740991 }, "property bag with max seconds"]];
+  minCases = [["P104249991374DT7H36M31.999999999S", "string with max days"], [{ days: 104249991374, nanoseconds: 27391999999999 }, "property bag with max days"], ["PT2501999792983H36M31.999999999S", "string with max hours"], [{ hours: 2501999792983, nanoseconds: 2191999999999 }, "property bag with max hours"], ["PT150119987579016M31.999999999S", "string with max minutes"], [{ minutes: 150119987579016, nanoseconds: 31999999999 }, "property bag with max minutes"], ["PT9007199254740991.999999999S", "string with max seconds"], [{ seconds: 9007199254740991, nanoseconds: 999999999 }, "property bag with max seconds"]];
   r15 = minCases;
   r14 = r15[Symbol.iterator]();
   r13 = r14.next;
@@ -202,34 +202,34 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     /* 回边 @425（未识别的循环结构） */
     r17 = 0;
     r16 = r17;
-    r17 = r16;
-    r16 = 0;
-    r18 = undefined /* hole */;
-    if (!r15) {
-      r20 = __context;
-      try {
-        if (r14.return != null) {
-          r21 = r14.return;
-          phi9 = r14.return();
-          if (phi9 === undefined) {
-            r22 = phi9;
-            r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
-            if (r16 !== 0) {
-              if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
-            }
+  }
+  r17 = r16;
+  r16 = 0;
+  r18 = undefined /* hole */;
+  if (!r15) {
+    r20 = __context;
+    try {
+      if (r14.return != null) {
+        r21 = r14.return;
+        phi9 = r14.return();
+        if (phi9 === undefined) {
+          r22 = phi9;
+          r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
+          if (r16 !== 0) {
+            if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
           }
         }
-      } catch (e) {
-        r20 = r20;
-        if (r16 !== 0) {
-          if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
-        }
+      }
+    } catch (e) {
+      r20 = r20;
+      if (r16 !== 0) {
+        if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
       }
     }
-    if (r16 === 0) {
-      if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
-    }
-    return r2;
   }
+  if (r16 === 0) {
+    if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
+  }
+  return r2;
 }
 

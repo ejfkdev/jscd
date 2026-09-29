@@ -98,7 +98,7 @@ function _anon_4(a0) {
   r3.sameValue(r4, r5);
   r3 = assert;
   r2 = r3.sameValue;
-  r4 = r1[""];
+  r4 = r1["/* root: AllocationSite */ undefined"];
   r3.sameValue(r4, a0);
   r3 = assert;
   r2 = r3.sameValue;

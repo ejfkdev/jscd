@@ -83,10 +83,18 @@ let phi0, phi1;
     r3 = r3 + phi1;
     throw new r2(r3);
   } catch (e) {
-    r4 = undefined;
-    r4 = r4 + __ctx.ctx2;
-    throw new r3(r4);
-    /* TODO PopContext r2 */
+    r2 = undefined;
+    /* createcatchcontext */
+    r1 = r2;
+    r0 = undefined;
+    r3 = __ctx.ctx2;
+    r3 = r3 instanceof ReferenceError;
+    if (r3 !== true) {
+      r3 = Test262Error;
+      r4 = "#1.2: x && true throw ReferenceError. Actual: ";
+      r4 = r4 + __ctx.ctx2;
+      throw new r3(r4);
+    }
     return r0;
   }
 }

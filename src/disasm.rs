@@ -130,7 +130,6 @@ impl<'a> Disassembler<'a> {
     /// name_or_scope_info 为 String 直接用；为 ScopeInfo 时读 FunctionName
     /// （function_variable_info.name），空则回落 inferred_function_name。
     pub fn sfi_name(&self, id: ObjId) -> String {
-        let slot = self.sfi_name_slot();
         let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, self.sfi_name_slot()) else {
             return String::new();
         };

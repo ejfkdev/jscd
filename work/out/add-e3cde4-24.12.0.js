@@ -79,7 +79,7 @@ function _anon_0(a0) {
   r2 = Set;
   r2 = r2.prototype;
   r3 = "add";
-  r4 = ({ writable: true, enumerable: false });
+  r4 = ({ writable: true, enumerable: false, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

@@ -115,7 +115,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
         r2 = r3.defineProperty;
         r4 = inner;
         r5 = "caller";
-        r6 = ({  });
+        r6 = ({ get: undefined });
         r6.get = get;
         phi2 = r2.call(r3-r6);
       }

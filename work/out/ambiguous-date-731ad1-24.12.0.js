@@ -82,7 +82,7 @@ function _anon_0(a0) {
   r1 = r2.assertPlainDateTime;
   r4 = __ctx.ctx3;
   r3 = r4.subtract;
-  r5 = ({  });
+  r5 = ({ months: 1 });
   r3 = r4.subtract(r5);
   r4 = 2020;
   r5 = 2;
@@ -100,8 +100,8 @@ function _anon_0(a0) {
   r1 = r2.assertPlainDateTime;
   r4 = __ctx.ctx3;
   r3 = r4.subtract;
-  r5 = ({  });
-  r6 = ({  });
+  r5 = ({ months: 1 });
+  r6 = ({ overflow: "constrain" });
   r3 = r4.subtract(r5, r6);
   r4 = 2020;
   r5 = 2;
@@ -130,8 +130,8 @@ function _anon_17(a0) {
   if (mar31 === undefined) throw new ReferenceError("mar31");
   r1 = mar31;
   r0 = r1.subtract;
-  r2 = ({  });
-  r3 = ({  });
+  r2 = ({ months: 1 });
+  r3 = ({ overflow: "reject" });
   return r1.subtract(r2, r3);
 }
 

@@ -82,7 +82,7 @@ __expected = ["h", "e", "l", "l", "o"];
 r2 = assert;
 r1 = r2.sameValue;
 r3 = __split;
-r3 = r3[""];
+r3 = r3["/* root: AllocationSite */ undefined"];
 r4 = Array;
 r5 = "The value of __split.constructor is expected to equal the value of Array";
 r1.call(r2-r5);

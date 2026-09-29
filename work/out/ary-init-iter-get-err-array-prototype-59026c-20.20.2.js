@@ -85,14 +85,14 @@ function _anon_5(a0) {
 let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
   r3 = [1, 2, 3];
   r5 = r3[Symbol.iterator]();
-  r4 = r5[""];
+  r4 = r5["/* root: AllocationSite */ undefined"];
   r6 = false;
   r9 = __context;
   try {
     phi0 = r6;
     if (!r6) {
       r6 = true;
-      r10 = r5[""]();
+      r10 = r5["/* root: AllocationSite */ undefined"]();
       phi1 = r10;
       if (r10 === undefined) {
         phi1 = __runtime.ThrowIteratorResultNotAnObject(r10);
@@ -113,7 +113,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     phi3 = r6;
     if (!r6) {
       r6 = true;
-      r10 = r5[""]();
+      r10 = r5["/* root: AllocationSite */ undefined"]();
       phi4 = r10;
       if (r10 === undefined) {
         phi4 = __runtime.ThrowIteratorResultNotAnObject(r10);
@@ -134,7 +134,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     phi6 = r6;
     if (!r6) {
       r6 = true;
-      r10 = r5[""]();
+      r10 = r5["/* root: AllocationSite */ undefined"]();
       phi7 = r10;
       if (r10 === undefined) {
         phi7 = __runtime.ThrowIteratorResultNotAnObject(r10);

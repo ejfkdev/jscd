@@ -73,14 +73,14 @@ __runtime.DeclareGlobals(r1, r2);
 vals = [];
 r1 = vals;
 r3 = r1[Symbol.iterator]();
-r2 = r3[""];
+r2 = r3["/* root: AllocationSite */ undefined"];
 r4 = false;
 r7 = __context;
 try {
   phi0 = r4;
   if (!r4) {
     r4 = true;
-    r8 = r3[""]();
+    r8 = r3["/* root: AllocationSite */ undefined"]();
     phi1 = r8;
     if (r8 === undefined) {
       phi1 = __runtime.ThrowIteratorResultNotAnObject(r8);

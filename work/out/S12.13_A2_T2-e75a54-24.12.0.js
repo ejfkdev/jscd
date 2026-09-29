@@ -71,6 +71,9 @@ function _anon_0(a0) {
   try {
     throw null;
   } catch (e) {
+    r2 = undefined;
+    /* createcatchcontext */
+    r1 = r2;
     r0 = undefined;
     if (__ctx.ctx2 !== null) {
       r3 = Test262Error;
@@ -78,7 +81,6 @@ function _anon_0(a0) {
       r4 = r4 + __ctx.ctx2;
       throw new r3(r4);
     }
-    /* TODO PopContext r2 */
     return r0;
   }
 }

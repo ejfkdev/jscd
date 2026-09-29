@@ -87,7 +87,7 @@ function _anon_6(a0, a1) {
   r4 = Object;
   r3 = r4.defineProperty;
   r6 = "length";
-  r7 = ({  });
+  r7 = ({ value: 1 });
   r5 = r0;
   r3.call(r4-r7);
   r3 = r0.map;
@@ -106,7 +106,7 @@ function _anon_6(a0, a1) {
   r4 = Object;
   r3 = r4.defineProperty;
   r6 = "length";
-  r7 = ({  });
+  r7 = ({ get: undefined });
   r7.get = get;
   r5 = r1;
   r3.call(r4-r7);

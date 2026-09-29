@@ -189,9 +189,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           _ = r21;
           iterCount = r21;
         } catch (e) {
-          r17 = 0;
-          r16 = r17;
-          r17 = r16;
+          r17 = r21;
           r16 = 0;
           r18 = undefined /* hole */;
           if (!r15) {
@@ -215,40 +213,42 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
               }
             }
           }
-          if (r16 === 0) {
-            r5 = 0;
-            r7 = undefined /* hole */;
-            r6 = r17;
-            phi13 = r7;
-          } else {
-            r10 = assert;
-            r9 = r10.sameValue;
-            if (flag1 === undefined) throw new ReferenceError("flag1");
-            r11 = flag2;
-            r12 = false;
-            r10.sameValue(r11, r12);
-            r10 = assert;
-            r9 = r10.sameValue;
-            if (flag2 === undefined) throw new ReferenceError("flag2");
-            r11 = _;
-            r12 = true;
-            r10.sameValue(r11, r12);
-            if (iterCount === undefined) throw new ReferenceError("iterCount");
-            promise = promise + 1;
-            continue;
-            r6 = 0;
-            r5 = r6;
-            r6 = r5;
-            r5 = 0;
-            r7 = undefined /* hole */;
-          }
+        }
+        r21 = r21;
+        if (r16 !== 0) {
+          if (flag1 !== undefined) throw flag1; // rethrow（仅当有挂起异常）
+        }
+        if (r16 === 0) {
+          r5 = 0;
+          r7 = undefined /* hole */;
+          r6 = r17;
+          phi13 = r7;
+        } else {
+          r10 = assert;
+          r9 = r10.sameValue;
+          if (flag1 === undefined) throw new ReferenceError("flag1");
+          r11 = flag2;
+          r12 = false;
+          r10.sameValue(r11, r12);
+          r10 = assert;
+          r9 = r10.sameValue;
+          if (flag2 === undefined) throw new ReferenceError("flag2");
+          r11 = _;
+          r12 = true;
+          r10.sameValue(r11, r12);
+          if (iterCount === undefined) throw new ReferenceError("iterCount");
+          promise = promise + 1;
+          continue;
+          r6 = 0;
+          r5 = r6;
+          r6 = r5;
+          r5 = 0;
+          r7 = undefined /* hole */;
         }
         continue;
       }
     } catch (e) {
-      r6 = 0;
-      r5 = r6;
-      r6 = r5;
+      r6 = r7;
       r5 = 0;
       r7 = undefined /* hole */;
       if (!r4) {
@@ -280,13 +280,17 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           }
         }
       }
-      if (r5 === 0) {
-        if (flag1 !== undefined) throw flag1; // rethrow（仅当有挂起异常）
-      }
-      r3 = undefined;
-      r2 = r0;
-      return __intrinsic.AsyncFunctionResolve(r2, r3);
     }
+    r9 = r9;
+    if (r5 !== 0) {
+      if (flag1 !== undefined) throw flag1; // rethrow（仅当有挂起异常）
+    }
+    if (r5 === 0) {
+      if (flag1 !== undefined) throw flag1; // rethrow（仅当有挂起异常）
+    }
+    r3 = undefined;
+    r2 = r0;
+    return __intrinsic.AsyncFunctionResolve(r2, r3);
   } catch (e) {
     r3 = undefined;
     r2 = r0;

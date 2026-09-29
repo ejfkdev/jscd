@@ -82,7 +82,7 @@ function _anon_0(a0) {
   r2 = r2.prototype;
   r3 = Symbol;
   r3 = r3["<ro0_57288>"];
-  r4 = ({ enumerable: false, writable: true });
+  r4 = ({ enumerable: false, writable: true, configurable: true });
   r0 = r1(r2-r4);
   return r0;
 }

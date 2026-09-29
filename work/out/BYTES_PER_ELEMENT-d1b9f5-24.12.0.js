@@ -71,7 +71,7 @@ function _anon_0(a0) {
   r2 = BigInt64Array;
   r2 = r2.prototype;
   r3 = "BYTES_PER_ELEMENT";
-  r4 = ({ value: 8, writable: false, enumerable: false });
+  r4 = ({ value: 8, writable: false, enumerable: false, configurable: false });
   r0 = r1(r2-r4);
   return r0;
 }

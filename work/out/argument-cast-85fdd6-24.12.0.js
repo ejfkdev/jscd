@@ -85,7 +85,7 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.Duration;
   r3 = r4.compare;
-  r5 = ({  });
+  r5 = ({ hours: 12 });
   r6 = Temporal;
   r6 = r6.Duration;
   r6 = new r6(r0);
@@ -120,7 +120,7 @@ function _anon_0(a0) {
   r5 = Temporal;
   r5 = r5.Duration;
   r5 = new r5(r0);
-  r6 = ({  });
+  r6 = ({ hours: 12 });
   r3 = r4.compare(r5, r6);
   r4 = 0;
   r5 = "second argument object";
@@ -136,8 +136,8 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.Duration;
   r3 = r4.compare;
-  r5 = ({ hours: 12 });
-  r6 = ({ hours: 12 });
+  r5 = ({ hours: 12, minute: 5 });
+  r6 = ({ hours: 12, day: 5 });
   r3 = r4.compare(r5, r6);
   r4 = 0;
   r5 = "ignores incorrect properties";
@@ -151,7 +151,7 @@ function _anon_13(a0) {
   r1 = Temporal;
   r1 = r1.Duration;
   r0 = r1.compare;
-  r2 = ({  });
+  r2 = ({ hour: 12 });
   r3 = Temporal;
   r3 = r3.Duration;
   r3 = new r3(r0);
@@ -167,7 +167,7 @@ function _anon_24(a0) {
   r2 = Temporal;
   r2 = r2.Duration;
   r2 = new r2(r0);
-  r3 = ({  });
+  r3 = ({ hour: 12 });
   return r1.compare(r2, r3);
 }
 

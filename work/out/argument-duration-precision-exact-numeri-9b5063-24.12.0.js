@@ -74,7 +74,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
   r6 = Temporal;
   r6 = r6.PlainTime;
   cases = new r6(r0);
-  __ctx_ctx4 = [[{ milliseconds: 4503599627370497000 }, "case where floating point inaccuracy brings total below limit, positive"], [{ milliseconds: -4503599627370497000 }, "case where floating point inaccuracy brings total below limit, negative"]];
+  __ctx_ctx4 = [[{ milliseconds: 4503599627370497000, microseconds: 4503599627370495000000 }, "case where floating point inaccuracy brings total below limit, positive"], [{ milliseconds: -4503599627370497000, microseconds: -4503599627370495000000 }, "case where floating point inaccuracy brings total below limit, negative"]];
   r1 = undefined;
   r8 = __ctx.ctx4;
   r7 = r8[Symbol.iterator]();
@@ -143,9 +143,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         }
         r5 = phi4;
       } catch (e) {
-        r18 = 0;
-        r17 = r18;
-        r18 = r17;
+        r18 = r5;
         r17 = 0;
         r19 = undefined /* hole */;
         if (!r16) {
@@ -169,29 +167,31 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
             }
           }
         }
-        if (r17 === 0) {
-          r9 = 0;
-          r11 = undefined /* hole */;
-          r10 = r18;
-          phi8 = r11;
-        } else {
-          r14 = cases;
-          r13 = r14.subtract;
-          r1 = r14.subtract(r4);
-          continue;
-          r10 = 0;
-          r9 = r10;
-          r10 = r9;
-          r9 = 0;
-          r11 = undefined /* hole */;
-        }
+      }
+      r22 = r22;
+      if (r17 !== 0) {
+        if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
+      }
+      if (r17 === 0) {
+        r9 = 0;
+        r11 = undefined /* hole */;
+        r10 = r18;
+        phi8 = r11;
+      } else {
+        r14 = cases;
+        r13 = r14.subtract;
+        r1 = r14.subtract(r4);
+        continue;
+        r10 = 0;
+        r9 = r10;
+        r10 = r9;
+        r9 = 0;
+        r11 = undefined /* hole */;
       }
       continue;
     }
   } catch (e) {
-    r10 = 0;
-    r9 = r10;
-    r10 = r9;
+    r10 = r11;
     r9 = 0;
     r11 = undefined /* hole */;
     if (!r8) {
@@ -215,10 +215,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         }
       }
     }
-    if (r9 === 0) {
-      if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
-    }
-    return r1;
   }
+  r13 = r13;
+  if (r9 !== 0) {
+    if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
+  }
+  if (r9 === 0) {
+    if (instance !== undefined) throw instance; // rethrow（仅当有挂起异常）
+  }
+  return r1;
 }
 

@@ -80,13 +80,13 @@ let phi0, phi1;
   r1 = undefined;
   r5 = numbers;
   r4 = r5[Symbol.iterator]();
-  r3 = r4[""];
+  r3 = r4["/* root: AllocationSite */ undefined"];
   r5 = false;
   r8 = __context;
   try {
     while (true) {
       r5 = true;
-      r9 = r4[""]();
+      r9 = r4["/* root: AllocationSite */ undefined"]();
       phi0 = r9;
       if (r9 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r9);

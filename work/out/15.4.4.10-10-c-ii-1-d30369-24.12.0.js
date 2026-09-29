@@ -75,7 +75,7 @@ r1 = r2.defineProperty;
 r3 = Array;
 r3 = r3.prototype;
 r4 = "0";
-r5 = ({ value: "test", writable: false });
+r5 = ({ value: "test", writable: false, configurable: true });
 r1.call(r2-r5);
 r2 = arrObj;
 r1 = r2.slice;

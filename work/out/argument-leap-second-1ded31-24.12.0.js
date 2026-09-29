@@ -87,7 +87,7 @@ function _anon_0(a0) {
   r4 = true;
   r5 = "leap second is a valid ISO string for PlainDate";
   r1.call(r2-r5);
-  result1 = { year: 2016, month: 12, day: 31, hour: 23, minute: 59 };
+  result1 = { year: 2016, month: 12, day: 31, hour: 23, minute: 59, second: 60 };
   r2 = arg;
   r1 = r2.equals;
   r3 = result1;

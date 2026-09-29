@@ -88,7 +88,7 @@ let phi0, phi1, phi2, phi3;
   r3 = this;
   r1 = __intrinsic.CreateJSGeneratorObject(r2, r3);
   r4 = a0[Symbol.iterator]();
-  r3 = r4[""];
+  r3 = r4["/* root: AllocationSite */ undefined"];
   r2 = a0;
   r5 = false;
   r8 = __context;
@@ -96,7 +96,7 @@ let phi0, phi1, phi2, phi3;
     phi0 = r5;
     if (!r5) {
       r5 = true;
-      r9 = r4[""]();
+      r9 = r4["/* root: AllocationSite */ undefined"]();
       phi1 = r9;
       if (r9 === undefined) {
         phi1 = __runtime.ThrowIteratorResultNotAnObject(r9);

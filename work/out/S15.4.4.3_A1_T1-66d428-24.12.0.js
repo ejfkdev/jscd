@@ -70,7 +70,7 @@ r1 = ["n", "obj", "arr"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 n = 0;
-r1 = ({  });
+r1 = ({ toLocaleString: undefined });
 r1.toLocaleString = _anon_9;
 obj = r1;
 r1 = [0, 0, null, 0, 0];

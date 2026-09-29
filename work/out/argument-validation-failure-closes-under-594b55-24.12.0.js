@@ -71,7 +71,7 @@ var closed, closable, ShouldNotGetValueOf;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5, r6;
   closable = false;
-  r1 = ({ next: undefined });
+  r1 = ({ next: undefined, return: undefined });
   r4 = Iterator;
   r3 = r4.prototype;
   r2 = r1;
@@ -219,7 +219,7 @@ function _anon_63(a0) {
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = ShouldNotGetValueOf;
   r0 = r1.take;
-  r2 = ({  });
+  r2 = ({ valueOf: undefined });
   r4 = "valueOf";
   r5 = get_valueOf;
   r6 = null;

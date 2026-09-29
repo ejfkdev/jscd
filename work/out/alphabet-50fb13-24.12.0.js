@@ -82,7 +82,7 @@ function _anon_0(a0) {
   r5 = [199, 239, 242];
   r4 = new r4(r5);
   r3 = r4.toBase64;
-  r5 = ({  });
+  r5 = ({ alphabet: "base64" });
   r3 = r4.toBase64(r5);
   r4 = "x+/y";
   r2.sameValue(r3, r4);
@@ -92,7 +92,7 @@ function _anon_0(a0) {
   r5 = [199, 239, 242];
   r4 = new r4(r5);
   r3 = r4.toBase64;
-  r5 = ({  });
+  r5 = ({ alphabet: "base64url" });
   r3 = r4.toBase64(r5);
   r4 = "x-_y";
   r2.sameValue(r3, r4);
@@ -111,7 +111,7 @@ function _anon_20(a0) {
   r2 = [199, 239, 242];
   r1 = new r1(r2);
   r0 = r1.toBase64;
-  r2 = ({  });
+  r2 = ({ alphabet: "other" });
   r1.toBase64(r2);
   return;
 }

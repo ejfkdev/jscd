@@ -71,7 +71,7 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 proxyProto = [];
 r1 = allowProxyTraps;
-r2 = ({  });
+r2 = ({ getPrototypeOf: undefined });
 r2.getPrototypeOf = getPrototypeOf;
 handler = r1(r2);
 r1 = Proxy;

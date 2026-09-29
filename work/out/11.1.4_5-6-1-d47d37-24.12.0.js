@@ -74,7 +74,7 @@ r1 = r2.defineProperty;
 r3 = Array;
 r3 = r3.prototype;
 r4 = "1";
-r5 = ({ value: 100, writable: false });
+r5 = ({ value: 100, writable: false, configurable: true });
 r1.call(r2-r5);
 arr = [101, 12];
 r1 = assert;

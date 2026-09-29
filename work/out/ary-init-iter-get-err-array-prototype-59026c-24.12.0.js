@@ -154,9 +154,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     }
     r2 = phi6;
   } catch (e) {
-    r8 = 0;
-    r7 = r8;
-    r8 = r7;
+    r8 = r2;
     r7 = 0;
     r9 = undefined /* hole */;
     if (!r6) {
@@ -180,10 +178,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         }
       }
     }
-    if (r7 === 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    return;
   }
+  r12 = r12;
+  if (r7 !== 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  }
+  if (r7 === 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  }
+  return;
 }
 

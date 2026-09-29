@@ -78,13 +78,13 @@ let phi0, phi1, phi2, phi3;
   max = new r13(r14, r15);
   r15 = ["UTC", "+02:00", "-07:00"];
   r14 = r15[Symbol.iterator]();
-  r13 = r14[""];
+  r13 = r14["/* root: AllocationSite */ undefined"];
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14[""]();
+      r19 = r14["/* root: AllocationSite */ undefined"]();
       phi0 = r19;
       if (r19 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -173,13 +173,13 @@ let phi0, phi1, phi2, phi3;
   r2 = undefined;
   r15 = ["UTC", "+00:18", "-08:12"];
   r14 = r15[Symbol.iterator]();
-  r13 = r14[""];
+  r13 = r14["/* root: AllocationSite */ undefined"];
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14[""]();
+      r19 = r14["/* root: AllocationSite */ undefined"]();
       phi2 = r19;
       if (r19 === undefined) {
         phi2 = __runtime.ThrowIteratorResultNotAnObject(r19);

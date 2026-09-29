@@ -75,7 +75,7 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.PlainYearMonth;
   r3 = r4.from;
-  r5 = ({ year: 2019 });
+  r5 = ({ year: 2019, monthCode: "M11" });
   r3 = r4.from(r5);
   r4 = 2019;
   r5 = 11;
@@ -87,7 +87,7 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.PlainYearMonth;
   r3 = r4.from;
-  r5 = ({ year: 2019 });
+  r5 = ({ year: 2019, month: 11 });
   r3 = r4.from(r5);
   r4 = 2019;
   r5 = 11;
@@ -100,7 +100,7 @@ function _anon_0(a0) {
   r4 = _anon_15;
   r5 = "Mismatch between month and monthCode";
   r1.call(r2-r5);
-  r1 = ({ year: 2019, month: 11 });
+  r1 = ({ year: 2019, month: 11, day: undefined });
   r3 = "day";
   r4 = get_day;
   r5 = null;
@@ -120,7 +120,7 @@ function _anon_0(a0) {
   r6 = "M11";
   r7 = "month with day";
   r1.call(r2-r7);
-  r1 = ({ year: 2019, monthCode: "M11" });
+  r1 = ({ year: 2019, monthCode: "M11", day: undefined });
   r3 = "day";
   r4 = get_day;
   r5 = null;
@@ -181,7 +181,7 @@ function _anon_0(a0) {
   r4 = Temporal;
   r4 = r4.PlainYearMonth;
   r3 = r4.from;
-  r5 = ({ year: 1976, month: 11 });
+  r5 = ({ year: 1976, month: 11, months: 12 });
   r3 = r4.from(r5);
   r4 = 1976;
   r5 = 11;
@@ -197,7 +197,7 @@ function _anon_15(a0) {
   r1 = Temporal;
   r1 = r1.PlainYearMonth;
   r0 = r1.from;
-  r2 = ({ year: 2019, month: 11 });
+  r2 = ({ year: 2019, month: 11, monthCode: "M12" });
   return r1.from(r2);
 }
 
@@ -233,7 +233,7 @@ function _anon_55(a0) {
   r1 = Temporal;
   r1 = r1.PlainYearMonth;
   r0 = r1.from;
-  r2 = ({  });
+  r2 = ({ year: 2019 });
   return r1.from(r2);
 }
 
@@ -243,7 +243,7 @@ function _anon_63(a0) {
   r1 = Temporal;
   r1 = r1.PlainYearMonth;
   r0 = r1.from;
-  r2 = ({ year: 2019 });
+  r2 = ({ year: 2019, months: 6 });
   return r1.from(r2);
 }
 
@@ -253,7 +253,7 @@ function _anon_71(a0) {
   r1 = Temporal;
   r1 = r1.PlainYearMonth;
   r0 = r1.from;
-  r2 = ({  });
+  r2 = ({ month: 6 });
   return r1.from(r2);
 }
 
@@ -263,7 +263,7 @@ function _anon_79(a0) {
   r1 = Temporal;
   r1 = r1.PlainYearMonth;
   r0 = r1.from;
-  r2 = ({  });
+  r2 = ({ monthCode: "M06" });
   return r1.from(r2);
 }
 
@@ -273,7 +273,7 @@ function _anon_88(a0) {
   r1 = Temporal;
   r1 = r1.PlainYearMonth;
   r0 = r1.from;
-  r2 = ({ year: undefined });
+  r2 = ({ year: undefined, month: 6 });
   r2.year = undefined;
   return r1.from(r2);
 }

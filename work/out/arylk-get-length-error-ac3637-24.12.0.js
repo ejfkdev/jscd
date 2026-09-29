@@ -77,7 +77,7 @@ r2 = Object;
 r1 = r2.defineProperty;
 r3 = arrayLike;
 r4 = "length";
-r5 = ({  });
+r5 = ({ get: undefined });
 r5.get = get;
 r1.call(r2-r5);
 r1 = testWithTypedArrayConstructors;

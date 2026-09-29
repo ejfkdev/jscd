@@ -136,22 +136,29 @@ let phi0, phi1, phi2;
         r4 = undefined /* hole */;
         break;
     }
-    __intrinsic.GeneratorClose(r1);
-    switch (r2) {
-      case 0:
-        r9 = true;
-        r7 = r1;
-        r8 = r3;
-        return __intrinsic.AsyncGeneratorResolve(r7, r8, r9);
-        break;
-      case 1:
-        return r3;
-        break;
-    }
-    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    r9 = true;
-    r7 = r1;
   }
+  r8 = r4;
+  r7 = r1;
+  r3 = __intrinsic.AsyncGeneratorReject(r7, r8);
+  r2 = 2;
+  r3 = r2;
+  r2 = 0;
+  r4 = undefined /* hole */;
+  __intrinsic.GeneratorClose(r1);
+  switch (r2) {
+    case 0:
+      r9 = true;
+      r7 = r1;
+      r8 = r3;
+      return __intrinsic.AsyncGeneratorResolve(r7, r8, r9);
+      break;
+    case 1:
+      return r3;
+      break;
+  }
+  if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  r9 = true;
+  r7 = r1;
   r8 = r3;
   return __intrinsic.AsyncGeneratorResolve(r7, r8, r9);
   return r3;
