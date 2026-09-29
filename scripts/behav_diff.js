@@ -94,7 +94,10 @@ const callTimed = (code, args, label) => {
     );
     return { ok: true, value: out };
   } catch (e) {
-    return { ok: false, value: e.constructor.name + ': ' + String(e.message).split('\n')[0] };
+    // 抛出的可能是 undefined/字符串（反编译产物会这样）→ 不能假定是 Error 对象
+    var name = (e && e.constructor && e.constructor.name) || typeof e;
+    var msg = (e && e.message) || String(e);
+    return { ok: false, value: name + ': ' + String(msg).split('\n')[0] };
   }
 };
 

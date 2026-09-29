@@ -3,7 +3,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 VERSIONS=(${*:-16.20.2 18.20.8 20.20.2 22.12.0 24.12.0})
-FIXTURES=(arith branch loop_for loop_while strings array_ops object_ops switch_case try_catch recursion closure)
+# fixture 列表直接取自 cases.json —— 新增用例自动纳入矩阵
+FIXTURES=($(python3 -c "import json;print(' '.join(json.load(open('tests/fixtures/behav/cases.json')).keys()))"))
 pass=0; partial=0; fail=0; other=0
 for v in "${VERSIONS[@]}"; do
   map="workspace/ro/ro-map-$v.json"
