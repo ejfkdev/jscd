@@ -761,6 +761,32 @@ pub fn parse_with<'a>(
         w.byte()?;
     }
     classify(&mut w.objects, table, ts);
+    if let Ok(want) = std::env::var("JSCD_DBG_EMPTY") {
+        let range = want.parse::<usize>().ok();
+        for (i, o) in w.objects.iter().enumerate() {
+            let show = match range {
+                None => o.slots.is_empty(),
+                Some(base) => i >= base && i < base + 12,
+            };
+            if !show {
+                continue;
+            }
+            let mut s = Vec::new();
+            for sl in o.slots.iter() {
+                s.push(match &sl.value {
+                    SlotValue::Ref(r) => format!("{}:ref{:?}", sl.index, r),
+                    SlotValue::Raw(r) => format!("{}:raw{}", sl.index, r.len),
+                    SlotValue::Repeat(n, _) => format!("{}:rep{}", sl.index, n),
+                    SlotValue::PendingRef(p) => format!("{}:pend{}", sl.index, p),
+                    other => format!("{}:{other:?}", sl.index),
+                });
+            }
+            eprintln!(
+                "[empty] id={i} ty={:?} bytes={} tag_pos={} slots={s:?}",
+                o.ty, o.byte_size, o.start_offset
+            );
+        }
+    }
     Ok(CodeCache {
         payload,
         tagged_size: ts,

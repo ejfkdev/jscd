@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -76,7 +99,7 @@ let phi0, phi1;
   r4 = 2019;
   r5 = 6;
   numbers = new r3(r4, r5);
-  __ctx_ctx4 = [1, 201906, -201906, 1234567];
+  __ctx.ctx4 = [1, 201906, -201906, 1234567];
   r1 = undefined;
   r5 = __ctx.ctx4;
   r4 = r5[Symbol.iterator]();

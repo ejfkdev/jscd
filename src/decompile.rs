@@ -768,9 +768,10 @@ impl<'a> Decompiler<'a> {
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -780,20 +781,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -1507,6 +1530,26 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 对象常量（字符串/数字/正则/字面量模板/嵌套 SFI）。
     fn object_constant(&mut self, o: ObjId) -> Expr {
         let ty = self.d.cache.obj(o).ty;
+        if std::env::var("JSCD_DBG_OBJ").is_ok() {
+            let n = self.d.cache.array_len(o);
+            let mut slots = Vec::new();
+            for i in 0..n.min(8) {
+                slots.push(match self.d.cache.array_elem(o, i) {
+                    Some(Elem::Ref(Ref::Root(r))) => format!("{i}:root{r}"),
+                    Some(Elem::Ref(Ref::Object(x))) => {
+                        format!("{i}:obj{x}:{}", self.d.cache.obj(x).ty.name(self.d.table))
+                    }
+                    Some(Elem::Ref(Ref::RoRef(c, off))) => format!("{i}:ro{c}/{off}"),
+                    Some(Elem::Smi(v)) => format!("{i}:smi{v}"),
+                    other => format!("{i}:{other:?}"),
+                });
+            }
+            eprintln!(
+                "[obj] o={o} ty={:?} name={} len={n} slots={slots:?}",
+                ty,
+                ty.name(self.d.table)
+            );
+        }
         if ty.is_string(self.d.table) {
             return Expr::Str(self.d.dis.string_value(o).unwrap_or_default());
         }
@@ -1536,6 +1579,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         if ty.is(self.d.table, "ArrayBoilerplateDescription") {
             return self.array_boilerplate(o);
+        }
+        if let Some(c) = self.class_boilerplate(o) {
+            return c;
         }
         if ty.is(self.d.table, "FixedArray") {
             // 类方法表 / 跳转表 / 元素数组：把真实元素解出来（原先只给 /*0*/ 占位，
@@ -1576,6 +1622,201 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             ),
             Some(Elem::Ref(r)) => crate::disasm::name_of_ref(self.d.cache, self.d.table, r),
             _ => None,
+        }
+    }
+
+    /// 类字面量的 boilerplate → `{ n: 动态参数数, i: { 属性名: 下标 | {get,set} } }`。
+    ///
+    /// V8 布局（FixedArray；13.6 起类型是 ClassBoilerplateMap、少了 args_count 格）：
+    ///   [args_count, 静态属性模板, 静态元素字典, 静态计算名数组,
+    ///    实例属性模板, 实例元素字典, 实例计算名数组]
+    /// 模板是 DescriptorArray：头三格 [map, 打包计数, enum cache]，条目三格
+    /// **(key, details, value)**（V8 `kEntryKeyIndex/kEntryDetailsIndex/kEntryValueIndex`）。
+    /// 方法条目的 value = 动态参数下标（Smi，3 起是闭包），访问器条目 = AccessorPair
+    /// （[map, getter, setter]，未设置的一侧是 null）—— 见 runtime-classes.cc 的
+    /// SubstituteValues / GetMethodAndSetName。旧版把模板整块当数组打出来，
+    /// 于是 `bump`/`value` 这类**只存在于 boilerplate 里**的方法名（10.2 起 SFI 不再带
+    /// 推断名）全丢，node18+ 的类只能靠函数名挂方法 → `c.bump is not a function`。
+    fn class_boilerplate(&mut self, o: ObjId) -> Option<Expr> {
+        let len = self.d.cache.array_len(o);
+        let tyname = self.d.cache.obj(o).ty.name(self.d.table).to_string();
+        let is_typed = tyname == "ClassBoilerplateMap";
+        if std::env::var("JSCD_DBG_CLS").is_ok() {
+            eprintln!("[cls] enter o={o} len={len} ty={tyname}");
+        }
+        // 形状判定：7 格 FixedArray，首格是 Smi 参数数，第 2/5 格是模板对象
+        let (args_idx, inst_idx) = if is_typed && len >= 7 {
+            // ClassBoilerplateMap（13.6 起）：[静态模板, 静态元素, 静态计算名, 实例模板, …]
+            (None, 4usize)
+        } else if is_typed && len >= 4 {
+            // 12.4 的 ClassBoilerplateMap 只有 6 格，没有 args_count
+            (None, 3usize)
+        } else if len == 7 {
+            // ≤12.x 的普通 FixedArray 形态：[args_count, 静态模板, …, 实例模板, …]
+            (Some(0usize), 4usize)
+        } else if len >= 8 {
+            (Some(0usize), 5usize)
+        } else {
+            return None;
+        };
+        let args = args_idx
+            .and_then(|i| self.d.cache.array_elem(o, i))
+            .and_then(|e| e.as_smi())
+            .map(|v| v as f64);
+        if args_idx.is_some() && args.is_none() {
+            return None;
+        }
+        // 模板必须是"对象"（DescriptorArray / 字典）而不是 Smi/根
+        let inst = match self.d.cache.array_elem(o, inst_idx) {
+            Some(Elem::Ref(Ref::Object(x))) => x,
+            _ => return None,
+        };
+        if std::env::var("JSCD_DBG_CLS").is_ok() {
+            eprintln!("[cls] o={o} len={len} ty={tyname} args={args:?} inst={inst}");
+        }
+        let entries = self.class_template_entries(inst)?;
+        let n = args.unwrap_or(0.0);
+        let inst_lit = Expr::ObjectLit(
+            entries
+                .iter()
+                .map(|(k, v)| (js_string(k), v.clone()))
+                .collect(),
+        );
+        Some(Expr::ObjectLit(vec![
+            ("n".to_string(), Expr::Num(n)),
+            ("i".to_string(), inst_lit),
+        ]))
+    }
+
+    /// 类模板（DescriptorArray / 字典）→ [(属性名, 下标 | {get,set})]。
+    ///
+    /// DescriptorArray 的第 1 格不是 Smi 而是**打包头**（低 16 位 = 含 slack 的总数、
+    /// 次 16 位 = 描述符个数、再往上是被标记数与对齐填充），所以 `array_len()` 读成 0，
+    /// 必须直接解字节。条目三格是 (key, details, value)；字典形态则是 (key, value, details)，
+    /// 这里按"值像不像下标/AccessorPair"来分辨。
+    fn class_template_entries(&mut self, o: ObjId) -> Option<Vec<(String, Expr)>> {
+        let ts = self.d.ts;
+        let packed = self
+            .d
+            .cache
+            .raw_at_ts(o, ts, ts, ts)
+            .and_then(|d| <[u8; 8]>::try_from(d).ok())
+            .map(u64::from_le_bytes);
+        // 打包头判定：高 32 位为 0 且整个值非 0（Smi 的 8 字节形态高 32 位是值本身）
+        let n_desc = match packed {
+            Some(v) if v != 0 && (v >> 32) == 0 => ((v >> 16) & 0xffff) as usize,
+            _ => 0,
+        };
+        let entries = self.class_entries_scan(o, n_desc);
+        if std::env::var("JSCD_DBG_CLS").is_ok() {
+            eprintln!(
+                "[cls] template o={o} packed={packed:?} n_desc={n_desc} entries={}",
+                entries.len()
+            );
+        }
+        if entries.is_empty() {
+            None
+        } else {
+            Some(entries)
+        }
+    }
+
+    /// 扫模板条目：`n_desc > 0` 走 DescriptorArray（元素 1 起、3 格一组、值在第 3 格）；
+    /// 否则按字典形态扫（值在第 2 格）。
+    fn class_entries_scan(&mut self, o: ObjId, n_desc: usize) -> Vec<(String, Expr)> {
+        let len = self.d.cache.obj(o).byte_size / self.d.ts;
+        let mut out = Vec::new();
+        if n_desc > 0 {
+            // 元素空间（array_elem 的下标从 map/length 之后算起）：元素 0 = enum cache，
+            // 描述符从元素 1 起、3 格一组 (key, details, value)
+            let mut k = 1usize;
+            for _ in 0..n_desc.min(128) {
+                if k + 2 >= len {
+                    break;
+                }
+                if let Some(key) = self.template_key(o, k) {
+                    let v = self.template_value(o, k + 2);
+                    out.push((key, v));
+                }
+                k += 3;
+            }
+            return out;
+        }
+        // 字典形态：从第 1 格起按 3 格一组，值在第 2 格（键、值、details）
+        let mut k = 1usize;
+        while k + 2 < len {
+            if let Some(key) = self.template_key(o, k) {
+                let v = self.template_value(o, k + 1);
+                out.push((key, v));
+                k += 3;
+            } else {
+                k += 1;
+            }
+            if out.len() >= 128 {
+                break;
+            }
+        }
+        out
+    }
+
+    /// 模板条目第 k 格若是"名字"（字符串对象 / String:/Symbol: 根）→ 名字文本。
+    fn template_key(&mut self, o: ObjId, k: usize) -> Option<String> {
+        let r = match self.d.cache.array_elem(o, k) {
+            Some(Elem::Ref(r)) => r,
+            other => {
+                if std::env::var("JSCD_DBG_CLS").is_ok() {
+                    eprintln!("[cls] key k={k} -> {other:?}");
+                }
+                return None;
+            }
+        };
+        if let Ref::Root(i) = r {
+            let n = self.d.table.root_name(i)?;
+            let is_name = n.starts_with("String:") || n.starts_with("Symbol:");
+            if !is_name {
+                return None;
+            }
+        }
+        let s = crate::disasm::name_of_ref(self.d.cache, self.d.table, r)?;
+        if s.is_empty() {
+            return None;
+        }
+        Some(s)
+    }
+
+    /// 原始槽号处的 Smi（对象字段，如 AccessorPair 的 getter/setter）。
+    fn raw_smi(&self, o: ObjId, slot: usize) -> Option<i64> {
+        match self.d.cache.slot_at(o, slot)? {
+            SlotValue::Raw(d) => {
+                crate::serializer::decode_smi_bytes(self.d.cache.raw_bytes(*d))
+            }
+            _ => None,
+        }
+    }
+
+    /// 模板条目的"值"格 → 动态参数下标（Smi）或访问器对 `{get,set}`（AccessorPair）。
+    fn template_value(&mut self, o: ObjId, k: usize) -> Expr {
+        match self.d.cache.array_elem(o, k) {
+            Some(Elem::Smi(i)) => Expr::Num(i as f64),
+            Some(Elem::Ref(Ref::Object(p))) => {
+                // AccessorPair 是普通字段对象 [map, getter, setter]（不是 FixedArray），
+                // 所以按**原始槽号**取；未设置的一侧是 null（不是 Smi）
+                let g = self.raw_smi(p, 1);
+                let s = self.raw_smi(p, 2);
+                if g.is_none() && s.is_none() {
+                    Expr::Num(-1.0)
+                } else {
+                    let mut kv = Vec::new();
+                    if let Some(g) = g {
+                        kv.push(("get".to_string(), Expr::Num(g as f64)));
+                    }
+                    if let Some(s) = s {
+                        kv.push(("set".to_string(), Expr::Num(s as f64)));
+                    }
+                    Expr::ObjectLit(kv)
+                }
+            }
+            _ => Expr::Num(-1.0),
         }
     }
 
@@ -3546,7 +3787,15 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 if matches!(value, Expr::Hole) {
                     return;
                 }
-                let name = sanitize_var(&self.context_name(slot));
+                // 名字解不出来时 context_name 落到 `__ctx.ctxN`（成员表达式）——
+                // 这里不能再 sanitize（会变成另一个标识符 `__ctx_ctxN`，写进去读不出来：
+                // node24 的类构造器就是这么丢的）。
+                let raw = self.context_name(slot);
+                let name = if raw.starts_with("__ctx.") {
+                    raw
+                } else {
+                    sanitize_var(&raw)
+                };
                 self.line(&format!("{name} = {};", value.render()));
                 self.acc_consumed();
             }

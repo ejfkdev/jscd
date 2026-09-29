@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -236,7 +259,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
     r13 = r14.from;
     r15 = ({ year: -271821, month: 4, day: 19, nanosecond: 1 });
     minCases = r14.from(r15);
-    __ctx_ctx6 = [["-P547581Y4M24DT23H59M59.999999999S", "string with max years"], [{ years: -547581, months: -4, days: -24, nanoseconds: -86399999999999 }, "property bag with max years"], ["-P6570976M24DT23H59M59.999999999S", "string with max months"], [{ months: -6570976, days: -24, nanoseconds: -86399999999999 }, "property bag with max months"], ["-P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: -28571428, days: -4, nanoseconds: -86399999999999 }, "property bag with max weeks"], ["-P200000000DT23H59M59.999999999S", "string with max days"], [{ days: -200000000, nanoseconds: -86399999999999 }, "property bag with max days"], ["-PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: -4800000023, minutes: -59, seconds: -59, milliseconds: -999, microseconds: -999, nanoseconds: -999 }, "property bag with max hours"], ["-PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: -288000001439, seconds: -59, milliseconds: -999, microseconds: -999, nanoseconds: -999 }, "property bag with max minutes"], ["-PT17280000086399.999999999S", "string with max seconds"], [{ seconds: -17280000086399, nanoseconds: -999999999 }, "property bag with max seconds"]];
+    __ctx.ctx6 = [["-P547581Y4M24DT23H59M59.999999999S", "string with max years"], [{ years: -547581, months: -4, days: -24, nanoseconds: -86399999999999 }, "property bag with max years"], ["-P6570976M24DT23H59M59.999999999S", "string with max months"], [{ months: -6570976, days: -24, nanoseconds: -86399999999999 }, "property bag with max months"], ["-P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: -28571428, days: -4, nanoseconds: -86399999999999 }, "property bag with max weeks"], ["-P200000000DT23H59M59.999999999S", "string with max days"], [{ days: -200000000, nanoseconds: -86399999999999 }, "property bag with max days"], ["-PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: -4800000023, minutes: -59, seconds: -59, milliseconds: -999, microseconds: -999, nanoseconds: -999 }, "property bag with max hours"], ["-PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: -288000001439, seconds: -59, milliseconds: -999, microseconds: -999, nanoseconds: -999 }, "property bag with max minutes"], ["-PT17280000086399.999999999S", "string with max seconds"], [{ seconds: -17280000086399, nanoseconds: -999999999 }, "property bag with max seconds"]];
     r2 = undefined;
     r15 = __ctx.ctx6;
     r14 = r15[Symbol.iterator]();
