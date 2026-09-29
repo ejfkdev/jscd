@@ -1863,8 +1863,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let ins = self.instrs[i].clone();
             let base = ins.name.split('.').next().unwrap_or(&ins.name).to_string();
 
-            // ⓪ 已被 guard 子句就地发射的冷块 → 跳过（它的内容已在对应分支里生成过）
-            if let Some(&(_, e)) = self.skip_spans.iter().find(|(s, _)| *s == i) {
+            // ⓪ 已被 guard 子句就地发射的冷块 → 跳过（它的内容已在对应分支里生成过）。
+            // 消费后要移除：同一区间可能被别的分支范围再次经过（可选链的 `LdaUndefined`
+            // 块就踩过这个坑），留着会静默吞掉指令、让合并值取到分支里的旧值。
+            if let Some(pos) = self.skip_spans.iter().position(|(s, _)| *s == i) {
+                let (_, e) = self.skip_spans.remove(pos);
                 i = e.max(i + 1);
                 continue;
             }
