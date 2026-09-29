@@ -379,6 +379,12 @@ const RESERVED: &[&str] = &[
 ];
 
 /// 变量名安全化：非法标识符或保留字加后缀（保证是合法绑定名）。
+/// 匿名 SFI 的稳定唯一名：同一份产物里每个匿名函数各不相同，
+/// 闭包引用（CreateClosure）与函数定义用同一个名字才能对上。
+fn anon_name(sfi: ObjId) -> String {
+    format!("_anon_{sfi}")
+}
+
 pub fn sanitize_var(s: &str) -> String {
     if RESERVED.contains(&s) {
         return format!("{s}_");
@@ -761,6 +767,14 @@ var __runtime = new Proxy({
     return Cls;
   },
   CreatePrivateNameSymbol: function (d) { return typeof Symbol === 'function' ? Symbol(d) : d; },
+  // DefineAccessorPropertyUnchecked(obj, key, getter, setter)：对象字面量里的 get/set
+  DefineAccessorPropertyUnchecked: function (obj, key, getter, setter) {
+    var d = {};
+    if (typeof getter === 'function') d.get = getter;
+    if (typeof setter === 'function') d.set = setter;
+    try { Object.defineProperty(obj, key, d); } catch (e) {}
+    return obj;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -1210,14 +1224,14 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             b == "ThrowSuperNotCalledIfHole" || b == "GetSuperConstructor"
         });
         if is_class_ctor {
-            let fname = sanitize_var(&self.fn_name());
+            let fname = self.flat_name();
             // 名字要与调用点一致（V8 里 `Counter.zero()` / `new Counter()` 都按这个名字引用）
             self.out.push_str(&format!("var {fname} = class {{\n"));
         }
         let header = if is_class_ctor {
             format!("constructor({})", names.join(", "))
         } else {
-            let fname = sanitize_var(&self.fn_name());
+            let fname = self.flat_name();
             let star = if self.is_generator { "*" } else { "" };
             let prefix = if self.is_async { "async " } else { "" };
             format!("{prefix}function{star} {fname}({})", names.join(", "))
@@ -1255,6 +1269,16 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 只取函数体（脚本/模块顶层代码要原样铺在文件里，而不是包成函数）。
     fn finish_body(&self) -> String {
         self.body.clone()
+    }
+
+    /// 本函数在摊平产物里的名字：有名字用名字，匿名用 SFI 唯一名。
+    fn flat_name(&self) -> String {
+        let n = self.fn_name();
+        if n.trim().is_empty() {
+            anon_name(self.sfi)
+        } else {
+            sanitize_var(&n)
+        }
     }
 
     fn fn_name(&self) -> String {
@@ -1394,11 +1418,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         if ty.is(self.d.table, "SharedFunctionInfo") {
             let n = self.d.dis.sfi_name(o);
-            return Expr::Ident(format!(
-                "/* function {} */ __uncompiled.{}",
-                n,
+            let key = if n.trim().is_empty() {
+                anon_name(o)
+            } else {
                 sanitize_ident(&n)
-            ));
+            };
+            return Expr::Ident(format!("/* function {n} */ __uncompiled.{key}"));
         }
         if ty.is(self.d.table, "ObjectBoilerplateDescription") {
             return self.object_boilerplate(o);
@@ -2113,7 +2138,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                                         self.line("} else {");
                                         self.indent += 1;
                                         let else_start = self.out.len();
-                                        self.emit_range(t_idx, e_idx.min(end))?;
+                                        // 不按 `end` 裁剪：短路共享目标可能正好在当前范围之外
+                                        self.emit_range(t_idx, e_idx)?;
                                         self.materialize_acc(&phi, &acc_then);
                                         else_assigned = self.out[else_start..].contains(&format!("{phi} = "));
                                         self.indent -= 1;
@@ -3027,24 +3053,28 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             }
             "CreateClosure" => {
                 let idx = idx_num(&arg(0));
-                let name = idx
-                    .and_then(|i| {
-                        self.pool.and_then(|p| self.d.cache.array_elem(p, i)).and_then(|e| {
-                            e.as_ref().and_then(|r| match r {
-                                Ref::Object(o)
-                                    if self.d.cache.obj(o).ty.is(self.d.table, "SharedFunctionInfo") =>
-                                {
-                                    Some(self.d.dis.sfi_name(o))
-                                }
-                                _ => None,
-                            })
+                let closure_sfi = idx.and_then(|i| {
+                    self.pool
+                        .and_then(|p| self.d.cache.array_elem(p, i))
+                        .and_then(|e| e.as_ref())
+                        .and_then(|r| match r {
+                            Ref::Object(o)
+                                if self.d.cache.obj(o).ty.is(self.d.table, "SharedFunctionInfo") =>
+                            {
+                                Some(o)
+                            }
+                            _ => None,
                         })
-                    })
+                });
+                let name = closure_sfi
+                    .map(|o| self.d.dis.sfi_name(o))
                     .unwrap_or_default();
-                self.acc = Some(Expr::Ident(if name.is_empty() {
-                    "__anonymous".to_string()
-                } else {
-                    sanitize_var(&name)
+                // 空名（箭头/嵌套函数）→ 用该 SFI 的唯一名；
+                // 以前落到共享的 `__anonymous` 空实现，于是 `nest(2)(3)` 调了个空函数。
+                self.acc = Some(Expr::Ident(match closure_sfi {
+                    Some(o) if name.trim().is_empty() => anon_name(o),
+                    _ if name.trim().is_empty() => anon_name(self.sfi),
+                    _ => sanitize_var(&name),
                 }));
             }
             "CreateFunctionContext" => {
@@ -3366,11 +3396,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         if s == "<closure>" {
             // 脚本体被铺平后没有 `_anon` 这个名字 → 匿名的落到已声明的 __anonymous
-            let n = self.fn_name();
-            return Expr::Ident(if n.trim().is_empty() {
+            // 脚本体被铺平后自身没有名字 → 用已声明的 __anonymous 占位
+            return Expr::Ident(if self.inline_body {
                 "__anonymous".to_string()
             } else {
-                sanitize_var(&n)
+                self.flat_name()
             });
         }
         if let Some(rest) = s.strip_prefix('a') {
