@@ -75,6 +75,7 @@ pub enum Operand {
     Imm(i64),
     Idx(u32),
     Flag8(u8),
+    Flag16(u16),
     RuntimeId(u32),
     IntrinsicId(u32),
     Raw { ty: String, value: u64 },
@@ -197,10 +198,11 @@ impl<'a> Decoder<'a> {
                 }
                 k += 1;
             }
+            // V8 Bytecodes::ToString(bytecode, scale, separator=".")：宽前缀用点号连接
             let name = match scale {
                 1 => def.name.clone(),
-                2 => format!("{}_Wide", def.name),
-                _ => format!("{}_ExtraWide", def.name),
+                2 => format!("{}.Wide", def.name),
+                _ => format!("{}.ExtraWide", def.name),
             };
             out.push(Instr {
                 offset: start,
@@ -233,6 +235,8 @@ impl<'a> Decoder<'a> {
             "Imm" => Operand::Imm(signed(&value, size) as i64),
             "Idx" | "UImm" | "RegCount" | "NativeContextIndex" => Operand::Idx(value as u32),
             "Flag8" => Operand::Flag8(value as u8),
+            // 13.x 起出现 16 位 flag（CreateRegExpLiteral 等），渲染同样带 #
+            "Flag16" => Operand::Flag16(value as u16),
             "RuntimeId" => Operand::RuntimeId(value as u32),
             "IntrinsicId" => Operand::IntrinsicId(value as u32),
             other => Operand::Raw {
@@ -280,6 +284,7 @@ impl<'a> Decoder<'a> {
             Operand::Imm(v) => format!("[{v}]"),
             Operand::Idx(v) => format!("[{v}]"),
             Operand::Flag8(v) => format!("#{v}"),
+            Operand::Flag16(v) => format!("#{v}"),
             Operand::RuntimeId(v) => format!("[{}]", self.runtime_name(*v)),
             Operand::IntrinsicId(v) => format!("[_{}]", self.intrinsic_name(*v)),
             Operand::Raw { ty, value } => format!("{ty}:{value}"),

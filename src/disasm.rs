@@ -16,7 +16,7 @@
 //! ```
 
 use crate::bytecode::{Decoder, FamilyLayout, Instr, Operand};
-use crate::serializer::{CodeCache, ObjId, Ref, SlotValue};
+use crate::serializer::{CodeCache, Elem, ObjId, Ref, SlotValue};
 use crate::tables::VersionTable;
 use std::fmt::Write as _;
 
@@ -33,7 +33,7 @@ mod fallback_slots {
 }
 
 pub struct Disassembler<'a> {
-    cache: &'a CodeCache,
+    cache: &'a CodeCache<'a>,
     table: &'a VersionTable,
     layout: FamilyLayout,
     /// 源码占位字符串长度（attached ref 0 展示用，来自头部 source_hash）
@@ -99,7 +99,7 @@ impl<'a> Disassembler<'a> {
         self.bca_slot(&["source_position_table"], fallback_slots::BCA_SOURCE_POSITION_TABLE)
     }
 
-    pub fn new(cache: &'a CodeCache, table: &'a VersionTable, layout: FamilyLayout) -> Self {
+    pub fn new(cache: &'a CodeCache<'a>, table: &'a VersionTable, layout: FamilyLayout) -> Self {
         Disassembler {
             cache,
             table,
@@ -112,7 +112,7 @@ impl<'a> Disassembler<'a> {
     pub fn render_all(&self, filter: Option<&str>) -> Result<String, String> {
         let mut out = String::new();
         for id in 0..self.cache.objects.len() {
-            if self.cache.obj(id).type_name != "SharedFunctionInfo" {
+            if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
                 continue;
             }
             let name = self.sfi_name(id);
@@ -134,7 +134,7 @@ impl<'a> Disassembler<'a> {
             return String::new();
         };
         match r {
-            Ref::Object(sid) if self.cache.obj(*sid).type_name == "ScopeInfo" => {
+            Ref::Object(sid) if self.cache.obj(*sid).ty.is(self.table, "ScopeInfo") => {
                 let name = self.scope_function_name(*sid);
                 if name.is_empty() {
                     self.scope_inferred_name(*sid)
@@ -151,7 +151,7 @@ impl<'a> Disassembler<'a> {
         match r {
             Ref::Object(sid) => {
                 let o = self.cache.obj(sid);
-                if o.type_name.contains("String") {
+                if o.ty.is_string(self.table) {
                     self.string_value(sid).unwrap_or_default()
                 } else {
                     String::new()
@@ -313,7 +313,7 @@ impl<'a> Disassembler<'a> {
         let mut bca_id = None;
         for slot in self.sfi_function_data_slots() {
             if let Some(SlotValue::Ref(Ref::Object(b))) = self.cache.slot_at(id, slot) {
-                if self.cache.obj(*b).type_name == "BytecodeArray" {
+                if self.cache.obj(*b).ty.is(self.table, "BytecodeArray") {
                     bca_id = Some(*b);
                     break;
                 }
@@ -404,7 +404,10 @@ impl<'a> Disassembler<'a> {
                 .collect::<Vec<_>>()
                 .join(", ");
             // 跳转目标：V8 打印 " (0xaddr @ target)"；我们无地址，用同样形状的 (jscd @ target)
-            let jump = jump_target(&instrs, ins).map(|t| format!(" (jscd @ {t})")).unwrap_or_default();
+            let jump = self
+                .jump_target(bca_id, ins)
+                .map(|t| format!(" (jscd @ {t})"))
+                .unwrap_or_default();
             // switch 跳转表：{ case: @target, ... }（V8 BytecodeArray::Disassemble 同形）
             let switch = self
                 .jump_table(bca_id, ins)
@@ -450,7 +453,7 @@ impl<'a> Disassembler<'a> {
 
     fn render_byte_array(&self, label: &str, r: Option<Ref>, out: &mut String) {
         match r {
-            Some(Ref::Object(id)) if self.cache.obj(id).type_name.contains("ByteArray") => {
+            Some(Ref::Object(id)) if self.cache.obj(id).ty.is(self.table, "ByteArray") => {
                 let len = self
                     .cache
                     .raw_at(
@@ -494,6 +497,54 @@ impl<'a> Disassembler<'a> {
         }
     }
 
+    /// 跳转目标（对齐 V8 BytecodeArrayIterator::GetJumpTargetOffset）。
+    ///
+    /// - 立即数形式：目标 = 指令自身偏移 + 相对量（JumpLoop 取负，不是"下一条"）
+    /// - `*Constant` 形式：相对量取自常量池里的 Smi
+    fn jump_target(&self, bca_id: ObjId, ins: &Instr) -> Option<usize> {
+        // V8: GetAbsoluteOffset(rel) = current_offset + rel + prefix_size（Wide 前缀占 1 字节）
+        let prefix = if ins.scale > 1 { 1 } else { 0 };
+        let here = ins.offset + prefix;
+        let base = ins.name.trim_end_matches(".Wide").trim_end_matches(".ExtraWide");
+        let is_constant = base.ends_with("Constant");
+        let rel: i64 = if is_constant {
+            let idx = match ins.operands.first()? {
+                Operand::Idx(v) => *v as usize,
+                _ => return None,
+            };
+            let pool = self
+                .cache
+                .slot_at(bca_id, self.bca_constant_pool_slot())
+                .and_then(|v| v.as_ref())
+                .and_then(|r| self.cache.ref_object(r))?;
+            self.cache.array_elem(pool, idx).and_then(|e| e.as_smi())?
+        } else {
+            match ins.operands.first()? {
+                Operand::Idx(v) => *v as i64,
+                Operand::Imm(v) => *v,
+                _ => return None,
+            }
+        };
+        match base {
+            "Jump" | "JumpConstant" | "JumpIfTrue" | "JumpIfTrueConstant" | "JumpIfFalse"
+            | "JumpIfFalseConstant" | "JumpIfToBooleanTrue" | "JumpIfToBooleanTrueConstant"
+            | "JumpIfToBooleanFalse" | "JumpIfToBooleanFalseConstant" | "JumpIfNull"
+            | "JumpIfNullConstant" | "JumpIfNotNull" | "JumpIfNotNullConstant"
+            | "JumpIfUndefined" | "JumpIfUndefinedConstant" | "JumpIfUndefinedOrNull"
+            | "JumpIfUndefinedOrNullConstant" | "JumpIfNotUndefined"
+            | "JumpIfNotUndefinedConstant" | "JumpIfJSReceiver" | "JumpIfJSReceiverConstant"
+            | "JumpIfNotHole" | "JumpIfNotHoleConstant" | "JumpIfReferenceError"
+            | "JumpIfReferenceErrorConstant" | "JumpIfNotReferenceError"
+            | "JumpIfNotReferenceErrorConstant" => {
+                Some((here as i64 + rel) as usize)
+            }
+            "JumpLoop" | "JumpLoopConstant" => {
+                (ins.offset as i64 + prefix as i64).checked_sub(rel).map(|v| v as usize)
+            }
+            _ => None,
+        }
+    }
+
     /// switch 跳转表：常量池 [start, start+size) 的 Smi 项，目标 = 指令偏移 + Smi。
     fn jump_table(&self, bca_id: ObjId, ins: &Instr) -> Option<Vec<(i32, usize)>> {
         // SwitchOnSmiNoFeedback: [Idx table_start, UImm size, Imm case_base]
@@ -528,16 +579,18 @@ impl<'a> Disassembler<'a> {
         let mut out = Vec::new();
         for i in 0..table_size {
             // V8 迭代器跳过非 Smi 槽，但 case 值随槽位递增
-            if let Some(ArrayElem::Smi(v)) = self.array_elem(pool, table_start + i) {
-                out.push((case_base + i as i32, ins.offset + v as usize));
+            if let Some(Elem::Smi(v)) = self.cache.array_elem(pool, table_start + i) {
+                // 同样走 GetAbsoluteOffset（含 Wide 前缀字节）
+                let prefix = if ins.scale > 1 { 1 } else { 0 };
+                out.push((case_base + i as i32, ins.offset + prefix + v as usize));
             }
         }
         Some(out)
     }
 
     /// 供 CLI 使用的公开入口。
-    pub fn array_elem_public(&self, id: ObjId, index: usize) -> Option<ArrayElem> {
-        self.array_elem(id, index)
+    pub fn array_elem_public(&self, id: ObjId, index: usize) -> Option<Elem<'a>> {
+        self.cache.array_elem(id, index)
     }
 
     /// parameter_count 是否直接是计数（13.x+）。
@@ -546,64 +599,23 @@ impl<'a> Disassembler<'a> {
     }
 
     /// FixedArray 元素（按字节偏移取值；length 槽在 offset=ts，元素 i 在 (2+i)*ts）。
-    fn array_elem(&self, id: ObjId, index: usize) -> Option<ArrayElem> {
-        let off = (2 + index) * self.layout.tagged_size;
-        self.value_at_byte_offset(id, off)
+    fn array_elem(&self, id: ObjId, index: usize) -> Option<Elem<'a>> {
+        self.cache.array_elem(id, index)
     }
 
-    /// 对象内某字节偏移处的槽值：指针槽 → Ref；raw 块内 → Smi/字节。
-    fn value_at_byte_offset(&self, id: ObjId, byte_off: usize) -> Option<ArrayElem> {
-        let ts = self.layout.tagged_size;
-        for s in &self.cache.obj(id).slots {
-            match &s.value {
-                SlotValue::Ref(r) => {
-                    if s.index * ts == byte_off {
-                        return Some(ArrayElem::Ref(*r));
-                    }
-                }
-                SlotValue::Raw(d) => {
-                    let start = s.index * ts;
-                    if byte_off >= start && byte_off + ts <= start + d.len() {
-                        let rel = byte_off - start;
-                        return Some(match decode_smi(&d[rel..rel + ts]) {
-                            Some(v) => ArrayElem::Smi(v),
-                            None => ArrayElem::Bytes(d[rel..rel + ts].to_vec()),
-                        });
-                    }
-                }
-                SlotValue::Repeat(n, inner) => {
-                    let start = s.index * ts;
-                    if byte_off >= start && byte_off < start + n * ts {
-                        return match inner.as_ref() {
-                            SlotValue::Ref(r) => Some(ArrayElem::Ref(*r)),
-                            SlotValue::Raw(d) => decode_smi(d).map(ArrayElem::Smi),
-                            _ => None,
-                        };
-                    }
-                }
-                _ => {}
-            }
-        }
-        None
-    }
-
-    /// FixedArray 元素数（length 槽 = Smi）。
+    /// FixedArray 元素数。
     pub fn fixed_array_len(&self, id: ObjId) -> usize {
-        let ts = self.layout.tagged_size;
-        self.cache
-            .raw_at(id, ts, 4)
-            .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)
-            .unwrap_or(0)
+        self.cache.array_len(id)
     }
 
     /// FixedArray 元素展开（Smi / 引用，按元素序）。
     pub fn fixed_array_entries(&self, id: ObjId) -> Vec<String> {
         let len = self.fixed_array_len(id);
         (0..len)
-            .map(|i| match self.array_elem(id, i) {
-                Some(ArrayElem::Smi(v)) => v.to_string(),
-                Some(ArrayElem::Ref(r)) => self.describe_ref(&r),
-                Some(ArrayElem::Bytes(b)) => format!("<raw {}>", hex(&b)),
+            .map(|i| match self.cache.array_elem(id, i) {
+                Some(Elem::Smi(v)) => v.to_string(),
+                Some(Elem::Ref(r)) => self.describe_ref(&r),
+                Some(Elem::Bytes(b)) => format!("<raw {}>", hex(b)),
                 None => "<hole>".into(),
             })
             .collect()
@@ -613,10 +625,7 @@ impl<'a> Disassembler<'a> {
     pub fn fixed_array_smis(&self, id: ObjId) -> Vec<Option<i64>> {
         let len = self.fixed_array_len(id);
         (0..len)
-            .map(|i| match self.array_elem(id, i) {
-                Some(ArrayElem::Smi(v)) => Some(v),
-                _ => None,
-            })
+            .map(|i| self.cache.array_elem(id, i).and_then(|e| e.as_smi()))
             .collect()
     }
 
@@ -625,7 +634,7 @@ impl<'a> Disassembler<'a> {
         match r {
             Ref::Object(id) => {
                 let o = self.cache.obj(*id);
-                match o.type_name.as_str() {
+                match o.ty.name(self.table).as_ref() {
                     t if t.contains("String") => self
                         .string_value(*id)
                         .map(|s| format!("<String[{}]: #{} >", s.chars().count(), s))
@@ -696,7 +705,11 @@ impl<'a> Disassembler<'a> {
             .cache
             .raw_at(id, 12, 4)
             .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?;
-        let is_one_byte = obj.type_name.contains("OneByte");
+        let is_one_byte = match obj.ty {
+            crate::serializer::Ty::Str(crate::serializer::StrKind::OneByte) => true,
+            crate::serializer::Ty::Str(crate::serializer::StrKind::TwoByte) => false,
+            _ => obj.ty.name(self.table).contains("OneByte"),
+        };
         let chars_off = 16;
         let d = self.cache.raw_at(id, chars_off, length)?;
         if is_one_byte {
@@ -741,46 +754,7 @@ impl<'a> Disassembler<'a> {
     }
 }
 
-/// 跳转目标：IsJumpImmediate → 下一条指令偏移 + 无符号立即数（JumpLoop 取负）；
-/// IsJumpConstant → 常量池里的 Smi。返回绝对偏移（对齐 GetJumpTargetOffset）。
-fn jump_target(instrs: &[Instr], ins: &Instr) -> Option<usize> {
-    // V8 BytecodeArrayIterator::GetJumpTargetOffset() = GetAbsoluteOffset(relative)
-    // = 指令自身偏移 + 相对量（不是下一条指令）。JumpLoop 的相对量取负。
-    let here = ins.offset;
-    match ins.name.as_str() {
-        "Jump" | "JumpIfTrue" | "JumpIfFalse" | "JumpIfToBooleanTrue"
-        | "JumpIfToBooleanFalse" | "JumpIfNull" | "JumpIfNotNull" | "JumpIfUndefined"
-        | "JumpIfUndefinedOrNull" | "JumpIfNotUndefined" | "JumpIfJSReceiver"
-        | "JumpIfNotHole" | "JumpIfReferenceError" | "JumpIfNotReferenceError" => {
-            let rel = match ins.operands.first()? {
-                Operand::Idx(v) => *v as usize,
-                Operand::Imm(v) => *v as usize,
-                _ => return None,
-            };
-            Some(here + rel)
-        }
-        "JumpLoop" => {
-            let rel = match ins.operands.first()? {
-                Operand::Idx(v) => *v as usize,
-                Operand::Imm(v) => *v as usize,
-                _ => return None,
-            };
-            here.checked_sub(rel)
-        }
-        _ => {
-            let _ = instrs;
-            None
-        }
-    }
-}
 
-/// FixedArray 元素形态。
-#[derive(Debug, Clone)]
-pub enum ArrayElem {
-    Ref(Ref),
-    Smi(i64),
-    Bytes(Vec<u8>),
-}
 
 fn read_u64(d: &[u8]) -> u64 {
     let mut v = 0u64;
