@@ -17,8 +17,21 @@ VERSIONS_ALL = ['8.17.0', '10.24.1', '12.22.12', '14.21.3', '16.20.2', '18.20.8'
 OURS = re.compile(r'\b(__[A-Za-z0-9_]*|_anon_[0-9]+|ctx[0-9]+|phi[0-9]+|r[0-9]+)\b')
 
 
+_NODE_BIN = {}
+
+
+def node_bin(version):
+    if version not in _NODE_BIN:
+        r = subprocess.run(['mise', 'which', 'node', '--', f'node@{version}'],
+                           capture_output=True, text=True, cwd=ROOT)
+        path = (r.stdout or '').strip().splitlines()[-1] if r.stdout else ''
+        _NODE_BIN[version] = path or 'node'
+    return _NODE_BIN[version]
+
+
 def mise(version, *args, timeout=60):
-    return subprocess.run(['mise', 'exec', f'node@{version}', '--', 'node', *args],
+    # 直接调二进制：省掉每次 `mise exec` 的启动开销（矩阵里会跑上千次）
+    return subprocess.run([node_bin(version), *args],
                           capture_output=True, text=True, timeout=timeout, cwd=ROOT)
 
 
@@ -30,10 +43,11 @@ def run(version, files, quiet=False):
     for src in files:
         jsc = OUT / f'{src.stem}-{version}.jsc'
         dec = OUT / f'{src.stem}-{version}.js'
-        r = mise(version, str(ROOT / 'scripts' / 'mkcorpus.js'), str(src), str(jsc))
+        r = mise(version, '--experimental-vm-modules', str(ROOT / 'scripts' / 'mkcorpus.js'), str(src), str(jsc))
         if r.returncode != 0 or not jsc.exists():
+            # 编译不了的多半是 ESM 提案语法（`import defer` 之类）或老 node 无模块支持
             stats['compile-fail'] += 1
-            failures.append((src.name, 'compile', r.stderr.strip()[:80]))
+            failures.append((src.name, 'compile-env', r.stderr.strip().splitlines()[0][:80] if r.stderr.strip() else ''))
             continue
         cmd = [str(ROOT / 'target' / 'release' / 'jscd'), 'decompile', str(jsc)]
         if ro.exists():

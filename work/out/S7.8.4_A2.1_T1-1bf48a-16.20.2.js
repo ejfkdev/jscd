@@ -55,28 +55,28 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3;
-r1 = ["unicode", "character", "index"];
+r1 = ["", "unicodeSets", /* root: PrototypeInfoMap */ undefined];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-unicode = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
-character = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+_anon = /* ?unknown(6) */ undefined;
+unicodeSets = /* ?unknown(8) */ undefined;
 r0 = undefined;
-index = 0;
+___root__PrototypeInfoMap____undefined = 0;
 while (true) {
-  r1 = index;
+  r1 = ___root__PrototypeInfoMap____undefined;
   if (!(r1 <= 25)) break;
   r0 = undefined;
-  r1 = unicode;
-  r1 = r1[index];
-  r2 = character;
-  if (r1 !== r2[index]) {
+  r1 = _anon;
+  r1 = r1[___root__PrototypeInfoMap____undefined];
+  r2 = unicodeSets;
+  if (r1 !== r2[___root__PrototypeInfoMap____undefined]) {
     r1 = Test262Error;
-    r2 = "#";
-    r3 = character;
-    r2 = r2 + r3[index];
-    r2 = r2 + "<ro0_36552>";
+    r2 = "caller";
+    r3 = unicodeSets;
+    r2 = r2 + r3[___root__PrototypeInfoMap____undefined];
+    r2 = r2 + "CompileError";
     throw new r1(r2);
   }
-  index = ++index;
+  ___root__PrototypeInfoMap____undefined = ++___root__PrototypeInfoMap____undefined;
   continue;
 }

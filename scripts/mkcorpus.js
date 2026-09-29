@@ -23,7 +23,23 @@ if (code.startsWith('#')) {
   const nl = code.indexOf('\n');
   code = nl === -1 ? '' : code.slice(nl + 1);
 }
-const asModule = flags.includes('--module');
+// 真 ESM（import/export/顶层 await）必须走 SourceTextModule 才能出 code cache；
+// bytenode 对 .mjs 也是这么做的。CJS 式 --module 只是包一层 wrapper。
+const looksEsm = /^\s*(?:import|export)\b/m.test(code) || /(^|\n)\s*await\s+/.test(code);
+const asModule = flags.includes('--module') || looksEsm;
+if (asModule && typeof vm.SourceTextModule === 'function') {
+  const mod = new vm.SourceTextModule(code, { produceCachedData: true });
+  let cache = mod.cachedData;
+  if (!cache || cache.length === 0) {
+    cache = mod.createCachedData();
+  }
+  let outM = Buffer.from(cache);
+  if (flags.includes('--brotli')) {
+    outM = require('zlib').brotliCompressSync(outM);
+  }
+  fs.writeFileSync(output, outM);
+  process.exit(0);
+}
 if (asModule) {
   code = require('module').wrap(code);
 }

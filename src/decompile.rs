@@ -879,10 +879,11 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         let Some(bca) = bca else {
             // 未编译（UncompiledData）：只输出签名占位
             let name = self.dis.sfi_name(sfi);
-            let fname = if name.is_empty() {
-                "_anonymous".to_string()
+            let fname = if name.trim().is_empty() {
+                anon_name(sfi)
             } else {
-                sanitize_ident(&name)
+                // 用 sanitize_var：保留字（"function" 之类）直接输出会得到 `function function()`
+                sanitize_var(&name)
             };
             return Ok(format!(
                 "function {fname}() {{ /* 未编译（UncompiledData）：源码不在 code cache 中 */ }}\n\n"
@@ -1424,7 +1425,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let key = if n.trim().is_empty() {
                 anon_name(o)
             } else {
-                sanitize_ident(&n)
+                // 必须用 sanitize_var：保留字（如 V8 偶尔给 SFI 起的 "function"）
+                // 经 sanitize_ident 会原样输出 → 链接后成裸 `function`（语法错误）
+                sanitize_var(&n)
             };
             return Expr::Ident(format!("/* function {n} */ __uncompiled.{key}"));
         }

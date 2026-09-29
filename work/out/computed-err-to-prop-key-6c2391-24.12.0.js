@@ -59,7 +59,7 @@ r1 = ["badKey"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = _anon;
-r1 = r2.create;
+r1 = r2["<ro0_53896>"];
 r3 = null;
 badKey = r1.call(r2, r3);
 r2 = Symbol_split;
