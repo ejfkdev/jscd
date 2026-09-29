@@ -1684,6 +1684,22 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         phi
     }
 
+    /// 数组元素的表达式渲染（模板串/字面量共用）。
+    fn array_element_expr(&mut self, o: ObjId, i: usize) -> Expr {
+        match self.d.cache.array_elem(o, i) {
+            Some(Elem::Smi(v)) => Expr::Num(v as f64),
+            Some(Elem::Ref(Ref::Object(x))) => self.object_constant(x),
+            Some(Elem::Ref(Ref::Root(r))) => self.root_value(r),
+            Some(Elem::Ref(Ref::RoRef(c, off))) => {
+                match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                    Some(n) => Expr::Str(n.to_string()),
+                    None => Expr::Str(format!("<ro{c}_{off}>")),
+                }
+            }
+            _ => Expr::Hole,
+        }
+    }
+
     /// 单条指令产出的字面量（case 标签用）：LdaSmi / LdaZero / LdaConstant(串或数)。
     fn literal_of(&mut self, idx: usize) -> Option<String> {
         let ins = self.instrs.get(idx)?.clone();
@@ -3370,7 +3386,37 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 self.acc = Some(Expr::ObjectLit(vec![(String::new(), e)]));
             }
             "GetTemplateObject" => {
-                self.acc = Some(Expr::ArrayLit(Vec::new())); // 模板对象占位
+                // 模板站点对象：常量池里是 TemplateObjectDescription = [cooked…, raw…]（各占一半）。
+                // 以前给个空数组 → `String.raw\`a\nb\`` 读到空 raw（length 0），
+                // 带标签模板也拿不到字符串。按 V8 的真实形状给出：数组 + raw 数组。
+                let obj = idx_num(&arg(0)).and_then(|i| {
+                    match self.pool.and_then(|p| self.d.cache.array_elem(p, i)) {
+                        Some(Elem::Ref(Ref::Object(o))) => Some(o),
+                        _ => None,
+                    }
+                });
+                let mut cooked = Vec::new();
+                let mut raw = Vec::new();
+                if let Some(o) = obj {
+                    let len = self.d.cache.array_len(o);
+                    let half = len / 2;
+                    for k in 0..half {
+                        cooked.push(self.array_element_expr(o, k));
+                        raw.push(self.array_element_expr(o, half + k));
+                    }
+                }
+                self.acc = Some(Expr::Call {
+                    callee: Box::new(Expr::Member {
+                        obj: Box::new(Expr::Ident("Object".into())),
+                        key: Key::Ident("assign".into()),
+                    }),
+                    args: vec![
+                        Expr::ArrayLit(cooked),
+                        Expr::ObjectLit(vec![("raw".to_string(), Expr::ArrayLit(raw))]),
+                    ],
+                    is_new: false,
+                    spread_arg: None,
+                });
             }
             "GetIterator" | "GetAsyncIterator" => {
                 // V8: `GetIterator <object>, <slot>` —— 对象是寄存器操作数，结果写 acc
