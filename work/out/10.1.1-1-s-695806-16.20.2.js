@@ -67,7 +67,7 @@ function testcase(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r4 = 1;
-  r1.call(r2, r0, r4);
+  r2.sameValue(r0, r4);
   return;
 }
 

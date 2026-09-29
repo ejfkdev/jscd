@@ -62,7 +62,7 @@ let phi0;
   r2 = r2.toUpperCase;
   r1 = r2.hasOwnProperty;
   r3 = "length";
-  phi0 = r1.call(r2, r3);
+  phi0 = r2.hasOwnProperty(r3);
   if (!phi0) {
     r1 = Test262Error;
     r2 = "#1: String.prototype.toUpperCase.hasOwnProperty(\"length\") return true. Actual: ";
@@ -71,7 +71,7 @@ let phi0;
     r4 = r4.toUpperCase;
     r3 = r4.hasOwnProperty;
     r5 = "length";
-    r2 = r2 + r3.call(r4, r5);
+    r2 = r2 + r4.hasOwnProperty(r5);
     throw new r1(r2);
   }
   r0 = undefined;

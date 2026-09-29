@@ -64,7 +64,7 @@ function _anon_0(a0) {
   r3 = r4.call;
   r5 = _anon_5;
   r5 = r5();
-  r3 = r3.call(r4, r5);
+  r3 = r4.call(r5);
   r4 = "[object Arguments]";
   r5 = "Object.prototype.toString.call(function() { return arguments; }()) returns [object Arguments]";
   r0 = r1.call(r2-r5);

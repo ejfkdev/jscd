@@ -64,7 +64,7 @@ r3 = r3.prototype;
 r3 = r3.toLocaleString;
 r2 = r3.hasOwnProperty;
 r4 = "length";
-r2 = r2.call(r3, r4);
+r2 = r3.hasOwnProperty(r4);
 r3 = "The value of !!Object.prototype.toLocaleString.hasOwnProperty(\"length\") is expected to be true";
 r1(r2, r3);
 r1 = Object;

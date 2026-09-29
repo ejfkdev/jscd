@@ -63,7 +63,7 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = ReferenceError;
   r4 = _anon_4;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 

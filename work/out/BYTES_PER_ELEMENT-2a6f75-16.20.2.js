@@ -62,7 +62,7 @@ function _anon_0(a0) {
   r3 = r3.prototype;
   r3 = r3.BYTES_PER_ELEMENT;
   r4 = 1;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = verifyNotEnumerable;
   r2 = Int8Array;
   r2 = r2.prototype;

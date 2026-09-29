@@ -649,6 +649,9 @@ struct FnCtx<'a, 'b> {
     used_handler_starts: Vec<usize>,
     /// emit_range 递归深度（护栏，防栈溢出）
     emit_depth: usize,
+    /// 寄存器 → 它当前持有的属性访问表达式（`r2 = o.m` → `r2 => o.m`）。
+    /// 用来把属性调用还原成 `o.m(args)`，而不是 `r2.call(o, args)`。
+    reg_prop: HashMap<u32, Expr>,
     /// 已生成的语句
     out: String,
     indent: usize,
@@ -1141,6 +1144,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             slot_aliases,
             used_handler_starts: Vec::new(),
             emit_depth: 0,
+            reg_prop: HashMap::new(),
             out: String::new(),
             indent: 0,
             loops: Vec::new(),
@@ -1692,6 +1696,16 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             self.phi_vars.push(phi.clone());
         }
         phi
+    }
+
+    /// 模板描述 Struct 的某个槽所指的对象（槽 1 = raw_strings、槽 2 = cooked_strings）。
+    fn template_part(&self, o: ObjId, slot: usize) -> Option<ObjId> {
+        match self.d.cache.slot_at(o, slot) {
+            Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(x))) => {
+                Some(*x)
+            }
+            _ => None,
+        }
     }
 
     /// 数组元素的表达式渲染（模板串/字面量共用）。
@@ -2826,6 +2840,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             "Star" => {
                 let r = reg_of(&arg(0));
                 self.store_reg(r, self.acc.clone());
+                if let Some(m) = self.acc.clone() {
+                    if matches!(m, Expr::Member { .. }) {
+                        self.reg_prop.insert(r, m);
+                    }
+                }
                 // Star 之后 acc 与 r 同值 → 直接用 r 表示，
                 // 否则表达式文本会在 r 被改写后失真（`obj?.nope?.deep` 曾算成 `r7.deep`）
                 self.acc = Some(Expr::Reg(r));
@@ -2836,6 +2855,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             _ if base.starts_with("Star") && base[4..].chars().all(|c| c.is_ascii_digit()) => {
                 let r: u32 = base[4..].parse().unwrap_or(0);
                 self.store_reg(r, self.acc.clone());
+                if let Some(m) = self.acc.clone() {
+                    if matches!(m, Expr::Member { .. }) {
+                        self.reg_prop.insert(r, m);
+                    }
+                }
                 self.acc = Some(Expr::Reg(r));
                 self.acc_stored = true;
                 self.acc_stored_reg = Some(r);
@@ -3123,6 +3147,18 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             "CallProperty0" | "CallProperty1" | "CallProperty2" | "CallProperty" => {
                 let callee = self.operand_expr(&arg(0));
                 let receiver = self.operand_expr(&arg(1));
+                // `r2 = o.m; …; CallProperty1 r2, o, arg` → 写成 `o.m(arg)`：
+                // 更可读，而且保持"非函数时抛 X is not a function"的原始语义
+                // （`.call` 形式在 callee 为 null/undefined 时报的是另一种错）。
+                let callee_is_loaded_method = {
+                    let (_, reg) = split_reg(&arg(0));
+                    match (reg.and_then(|r| self.reg_prop.get(&r)), &callee) {
+                        (Some(Expr::Member { obj, .. }), Expr::Reg(_)) => {
+                            obj.render() == receiver.render()
+                        }
+                        _ => false,
+                    }
+                };
                 let n = match base.as_str() {
                     "CallProperty0" => 0,
                     "CallProperty1" => 1,
@@ -3134,19 +3170,25 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     .collect();
                 // 语义：`<callee-stored-in-reg>(<receiver>, args)` —— 接收者必须传进去，
                 // 否则 `arr.join("-")` 会退化成 `fn("-")`（this=undefined → TypeError）。
-                let callee = match callee {
-                    Expr::Member { obj, key } => {
-                        // 形如 `obj.method` 已自带接收者
-                        let _ = receiver;
-                        Expr::Member { obj, key }
+                let callee = if callee_is_loaded_method {
+                    let (_, reg) = split_reg(&arg(0));
+                    reg.and_then(|r| self.reg_prop.get(&r).cloned()).unwrap()
+                } else {
+                    match callee {
+                        Expr::Member { obj, key } => {
+                            // 形如 `obj.method` 已自带接收者
+                            let _ = receiver;
+                            Expr::Member { obj, key }
+                        }
+                        other => Expr::Member {
+                            obj: Box::new(other),
+                            key: Key::Ident("call".to_string()),
+                        },
                     }
-                    other => Expr::Member {
-                        obj: Box::new(other),
-                        key: Key::Ident("call".to_string()),
-                    },
                 };
                 let mut all = args;
-                if matches!(callee, Expr::Member { ref key, .. } if matches!(key, Key::Ident(k) if k == "call"))
+                if !callee_is_loaded_method
+                    && matches!(callee, Expr::Member { ref key, .. } if matches!(key, Key::Ident(k) if k == "call"))
                 {
                     all.insert(0, receiver);
                 }
@@ -3421,11 +3463,27 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 let mut cooked = Vec::new();
                 let mut raw = Vec::new();
                 if let Some(o) = obj {
-                    let len = self.d.cache.array_len(o);
-                    let half = len / 2;
-                    for k in 0..half {
-                        cooked.push(self.array_element_expr(o, k));
-                        raw.push(self.array_element_expr(o, half + k));
+                    // TemplateObjectDescription 是 Struct：槽 1 = raw_strings、槽 2 = cooked_strings
+                    // （每个都是 FixedArray）—— 之前按 FixedArray 直接读，长度/元素全错。
+                    let raw_arr = self.template_part(o, 1);
+                    let cooked_arr = self.template_part(o, 2);
+                    if let (Some(r), Some(c)) = (raw_arr, cooked_arr) {
+                        let n = self.d.cache.array_len(c);
+                        for k in 0..n.min(64) {
+                            cooked.push(self.array_element_expr(c, k));
+                        }
+                        let n2 = self.d.cache.array_len(r);
+                        for k in 0..n2.min(64) {
+                            raw.push(self.array_element_expr(r, k));
+                        }
+                    } else {
+                        // 退路：老版本/未知布局按一半一半读
+                        let len = self.d.cache.array_len(o);
+                        let half = len / 2;
+                        for k in 0..half.min(64) {
+                            cooked.push(self.array_element_expr(o, k));
+                            raw.push(self.array_element_expr(o, half + k));
+                        }
                     }
                 }
                 self.acc = Some(Expr::Call {
@@ -3674,6 +3732,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             self.acc_stored = false;
             self.acc_stored_reg = None;
         }
+        self.reg_prop.remove(&r);
         if self.regs.len() <= r as usize {
             self.regs.resize(r as usize + 1, None);
         }

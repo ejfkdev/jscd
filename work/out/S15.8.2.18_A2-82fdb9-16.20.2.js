@@ -61,9 +61,9 @@ function _anon_0(a0) {
   r4 = Math;
   r3 = r4.tan;
   r5 = 0;
-  r3 = r3.call(r4, r5);
+  r3 = r4.tan(r5);
   r4 = 0;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

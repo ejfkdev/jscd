@@ -284,6 +284,9 @@ impl<'a> Walker<'a> {
         // 其余标签是扁平值 —— 早先"一律剥离低 3 位"会把 kRootArray(17) 当成 16。
         let b = b_raw;
         if let Some(_) = &self.legacy {
+            if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+                eprintln!("[legacy-ref] pos={} b={b_raw:#04x}", self.pos - 1);
+            }
             let t_new = self.tag("kNewObject")?;
             let t_backref = self.tag("kBackref")?;
             if (t_new..t_new + 6).contains(&b_raw) {
@@ -296,11 +299,23 @@ impl<'a> Walker<'a> {
                 let space = (b_raw - t_backref) as u8;
                 let chunk = self.putint()?;
                 let offset = self.putint()?;
-                let id = self
-                    .legacy
-                    .as_ref()
-                    .and_then(|l| l.resolve(space, chunk, offset))
-                    .ok_or_else(|| format!("legacy backref ({space},{chunk},{offset}) 未命中"))?;
+                let id = match self.legacy.as_ref().and_then(|l| l.resolve(space, chunk, offset)) {
+                    Some(id) => id,
+                    None => {
+                        if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+                            let l = self.legacy.as_ref().unwrap();
+                            let mut offs: Vec<(u32, ObjId, u32)> = l
+                                .by_addr
+                                .iter()
+                                .filter(|((s, _, _), _)| *s == space)
+                                .map(|((_, c, o), id)| (*o, *id, *c))
+                                .collect();
+                            offs.sort();
+                            eprintln!("[miss] ({space},{chunk},{offset}) 已有 {} 个: {:?}", offs.len(), offs.iter().rev().take(6).collect::<Vec<_>>());
+                        }
+                        return Err(format!("legacy backref ({space},{chunk},{offset}) 未命中"));
+                    }
+                };
                 self.hot.add(HotEntry::Object(id));
                 return Ok(SlotValue::Ref(Ref::Object(id)));
             }
@@ -449,23 +464,24 @@ impl<'a> Walker<'a> {
         let map = self.parse_ref(depth + 1)?;
         self.push_slot(id, 0, map);
 
-        // 老族（≤8.4）没有 pending forward ref 机制（表里没有这个标签）→ 直接跳过
-        let Some(t_resolve) = self.opt_tag("kResolvePendingForwardRef") else {
-            return Ok(id);
-        };
-        loop {
-            match self.peek() {
-                Some(b) if b == t_resolve => {
-                    self.byte()?;
-                    let pid = self.putint()?;
-                    if let Some(list) = self.pending.get_mut(&pid) {
-                        for (oid, vec_pos) in list.drain(..) {
-                            self.objects[oid].slots[vec_pos].value = SlotValue::Ref(Ref::Object(id));
+        // 老族（≤8.4）没有 pending forward ref 机制（表里没有这个标签）→ 跳过这段解析。
+        // 注意：这里**不能** return —— 后面还有槽循环（曾因此让老族对象只解析出一个 map）。
+        if let Some(t_resolve) = self.opt_tag("kResolvePendingForwardRef") {
+            loop {
+                match self.peek() {
+                    Some(b) if b == t_resolve => {
+                        self.byte()?;
+                        let pid = self.putint()?;
+                        if let Some(list) = self.pending.get_mut(&pid) {
+                            for (oid, vec_pos) in list.drain(..) {
+                                self.objects[oid].slots[vec_pos].value =
+                                    SlotValue::Ref(Ref::Object(id));
+                            }
                         }
+                        self.pending.remove(&pid);
                     }
-                    self.pending.remove(&pid);
+                    _ => break,
                 }
-                _ => break,
             }
         }
         let mut consumed = 1usize;
@@ -550,7 +566,10 @@ impl LegacyAlloc {
     /// 分配一个对象：记录地址 → 对象 id，推进 high water。
     fn allocate(&mut self, space: u8, size: u32, id: ObjId) -> Option<(u32, u32)> {
         if std::env::var("JSCD_DBG_ALLOC").is_ok() {
-            eprintln!("[alloc] space={space} size={size} id={id} chunk={} used={}", self.cur[space as usize], self.used[space as usize]);
+            eprintln!(
+                "[alloc] space={space} size={size} id={id} chunk={} used={}",
+                self.cur[space as usize], self.used[space as usize]
+            );
         }
         let s = space as usize;
         if s >= self.cur.len() {
@@ -641,6 +660,10 @@ pub fn parse_with<'a>(
     }
     let top = w.parse_new_object(0)?;
     let t_sync = w.tag("kSynchronize")?;
+    if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+        let tail = w.data.get(w.pos..(w.pos + 24).min(w.data.len())).unwrap_or(&[]);
+        eprintln!("[legacy] 主段结束 pos={} 后续字节={:02x?}", w.pos, tail);
+    }
     // 老族的 deferred 段（条目/backref 编码）还没完全对齐：主 payload 已完整，
     // 缺的只是"被延迟的对象内容"，不值得让整份解析失败 —— 记一笔后停下。
     let legacy_tolerant = w.legacy.is_some();

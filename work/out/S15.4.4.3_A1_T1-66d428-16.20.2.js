@@ -74,7 +74,7 @@ r2[r1] = obj;
 arr = r2;
 r2 = arr;
 r1 = r2.toLocaleString;
-r1.call(r2);
+r2.toLocaleString();
 r0 = undefined;
 r1 = n;
 if (r1 !== 3) {

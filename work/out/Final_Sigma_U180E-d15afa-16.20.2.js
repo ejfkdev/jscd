@@ -60,7 +60,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "A\u000e";
   r3 = r4.toLowerCase;
-  r3 = r3.call(r4);
+  r3 = r4.toLowerCase();
   r4 = "a\u000e";
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR";
   r1.call(r2-r5);
@@ -68,7 +68,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "A᠎";
   r3 = r4.toLowerCase;
-  r3 = r3.call(r4);
+  r3 = r4.toLowerCase();
   r4 = "a᠎";
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR, followed by LATIN CAPITAL LETTER B";
   r1.call(r2-r5);
@@ -76,7 +76,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "A£";
   r3 = r4.toLowerCase;
-  r3 = r3.call(r4);
+  r3 = r4.toLowerCase();
   r4 = "aÂ";
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, followed by MONGOLIAN VOWEL SEPARATOR";
   r1.call(r2-r5);
@@ -84,7 +84,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "AΣ";
   r3 = r4.toLowerCase;
-  r3 = r3.call(r4);
+  r3 = r4.toLowerCase();
   r4 = "aσ";
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, followed by MONGOLIAN VOWEL SEPARATOR, LATIN CAPITAL LETTER B";
   r1.call(r2-r5);
@@ -92,7 +92,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "A᠎";
   r3 = r4.toLowerCase;
-  r3 = r3.call(r4);
+  r3 = r4.toLowerCase();
   r4 = "a᠎";
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR, followed by MONGOLIAN VOWEL SEPARATOR";
   r1.call(r2-r5);
@@ -100,7 +100,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "A᠎£";
   r3 = r4.toLowerCase;
-  r3 = r3.call(r4);
+  r3 = r4.toLowerCase();
   r4 = "a᠎Ã";
   r5 = "Sigma preceded by LATIN CAPITAL LETTER A, MONGOLIAN VOWEL SEPARATOR, followed by MONGOLIAN VOWEL SEPARATOR, LATIN CAPITAL LETTER B";
   r0 = r1.call(r2-r5);
