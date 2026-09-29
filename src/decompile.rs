@@ -1439,6 +1439,232 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         )
     }
 
+    /// 占位内建的名字访问：合法标识符用 `ns.name`，否则用 `ns["name"]`
+    /// （名字表没覆盖时 id 会是裸数字，点访问就成了非法 JS）。
+    fn stub_access(ns: &str, name: &str) -> Expr {
+        if is_ident(name) {
+            Expr::Member {
+                obj: Box::new(Expr::Ident(ns.into())),
+                key: Key::Ident(name.into()),
+            }
+        } else {
+            Expr::Member {
+                obj: Box::new(Expr::Ident(ns.into())),
+                key: Key::Computed(Box::new(Expr::Str(name.into()))),
+            }
+        }
+    }
+
+    /// 单条指令产出的字面量（case 标签用）：LdaSmi / LdaZero / LdaConstant(串或数)。
+    fn literal_of(&mut self, idx: usize) -> Option<String> {
+        let ins = self.instrs.get(idx)?.clone();
+        let base = ins.name.split('.').next().unwrap_or(&ins.name);
+        match base {
+            "LdaZero" => Some("0".to_string()),
+            "LdaSmi" => match ins.operands.first()? {
+                Operand::Imm(v) => Some(v.to_string()),
+                Operand::Idx(v) => Some(v.to_string()),
+                _ => None,
+            },
+            "LdaConstant" | "LdaConstantWide" => match ins.operands.first()? {
+                Operand::Idx(v) => Some(match self.constant(*v as usize) {
+                    Expr::Str(s) => js_string(&s),
+                    other => other.render(),
+                }),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// case 体收尾：体末是前向无条件 Jump ⇒ 源码里是 break，补一句；
+    /// 体是"掉进下一个体"（fallthrough）时什么都不加，交给 JS 语义顺延。
+    fn emit_case_break(&mut self, body_end: usize) {
+        if body_end == 0 {
+            return;
+        }
+        let last = self.instrs[body_end - 1].clone();
+        if let Some(tgt) = self.uncond_jump_target(&last) {
+            let prefix = if last.scale > 1 { 1 } else { 0 };
+            if tgt > last.offset + prefix {
+                self.line("break;");
+            }
+        }
+    }
+
+    /// 比较链 switch 识别与重建。
+    ///
+    /// V8 把 `switch (v) { case 1: … case 2: … default: … }` 编译成一串
+    /// `LdaSmi c; TestEqualStrict v; JumpIfTrue body`，末尾一个 `Jump default`，
+    /// case 体顺序铺在后面（相邻 case 靠 fallthrough 共用体）。
+    /// 命中时直接发射 `switch`，返回 join（switch 之后的第一条指令下标）。
+    fn try_case_chain(&mut self, i: usize, end: usize) -> Option<usize> {
+        let cmp_names = [
+            "TestEqualStrict",
+            "TestEqual",
+            "TestReferenceEqual",
+        ];
+        let base_of = |k: usize, this: &Self| -> String {
+            this.instrs
+                .get(k)
+                .map(|x| x.name.split('.').next().unwrap_or(&x.name).to_string())
+                .unwrap_or_default()
+        };
+        if !cmp_names.contains(&base_of(i, self).as_str()) {
+            return None;
+        }
+        // 被测变量：寄存器（含参数 a0/this 这类负号寄存器）或上下文槽
+        let var_op = self.instrs[i].operands.first()?.clone();
+        if !matches!(var_op, Operand::Reg(_)) {
+            return None;
+        }
+        let var_name = self.render_operand(&var_op);
+        // 同一个值可能被 Mov 到别的寄存器上（V8 常这么干），把别名一起认下来
+        let mut aliases: std::collections::HashSet<String> = std::collections::HashSet::new();
+        aliases.insert(var_name.clone());
+        let mut cases: Vec<(String, usize)> = Vec::new();
+        // 首个 case 的字面量已被上层指令发射进 acc（LdaSmi 在 Test 之前）
+        let mut lit: Option<String> = self
+            .acc
+            .as_ref()
+            .map(|e| e.render())
+            .filter(|s| s.chars().next().is_some_and(|c| c.is_ascii_digit() || c == '"'));
+        let mut pending: Option<String> = None;
+        let mut j = i;
+        let default_target;
+        loop {
+            if j >= end {
+                return None;
+            }
+            if let Some(v) = self.literal_of(j) {
+                lit = Some(v);
+                j += 1;
+                continue;
+            }
+            let b = base_of(j, self);
+            if cmp_names.contains(&b.as_str()) {
+                // 比较的必须是同一个值（本体或它的 Mov 别名）
+                match self.instrs[j].operands.first() {
+                    Some(op @ Operand::Reg(_)) => {
+                        if !aliases.contains(&self.render_operand(op)) {
+                            return None;
+                        }
+                    }
+                    _ => return None,
+                }
+                pending = Some(lit.take()?);
+                j += 1;
+                continue;
+            }
+            if b == "JumpIfTrue" {
+                // 比较与跳转之间可能夹 Mov/Star（同一值换寄存器），靠 aliases 认下来
+                let val = pending.take()?;
+                let tgt = self.cond_jump_target(&self.instrs[j].clone())?;
+                let t_idx = *self.idx_of.get(&tgt)?;
+                cases.push((val, t_idx));
+                j += 1;
+                continue;
+            }
+            if b == "Mov" && self.instrs[j].operands.len() >= 2 {
+                let src = self.render_operand(&self.instrs[j].operands[0].clone());
+                let dst = self.render_operand(&self.instrs[j].operands[1].clone());
+                if aliases.contains(&src) {
+                    aliases.insert(dst);
+                }
+                j += 1;
+                continue;
+            }
+            if b == "Jump" {
+                let tgt = self.uncond_jump_target(&self.instrs[j].clone())?;
+                default_target = *self.idx_of.get(&tgt)?;
+                j += 1;
+                break;
+            }
+            if b == "Nop" || b.starts_with("Star") {
+                j += 1;
+                continue;
+            }
+            return None;
+        }
+        if cases.len() < 2 {
+            return None;
+        }
+        // case 体必须在派发链之后
+        if cases.iter().any(|(_, t)| *t < j) || default_target < j {
+            return None;
+        }
+        // 各 case 体的范围：按物理顺序，到下一个体起点为止
+        let mut targets: Vec<usize> = cases.iter().map(|(_, t)| *t).collect();
+        targets.push(default_target);
+        targets.sort_unstable();
+        targets.dedup();
+        // join = 任一体末尾前向 Jump 的目标（V8 的 break 落点）
+        let mut join: Option<usize> = None;
+        for (k, &t) in targets.iter().enumerate() {
+            let body_end = targets.get(k + 1).copied().unwrap_or(end);
+            if body_end > t {
+                if let Some(jt) = self.uncond_jump_target(&self.instrs[body_end - 1].clone()) {
+                    if jt > self.instrs[body_end - 1].offset {
+                        join = Some(*self.idx_of.get(&jt)?);
+                    }
+                }
+            }
+        }
+        let join = join?;
+        for &t in &targets {
+            if t >= join {
+                return None;
+            }
+        }
+        // ── 发射 ──
+        self.flush_acc_before("SwitchOnSmiNoFeedback");
+        self.line(&format!("switch ({var_name}) {{"));
+        self.indent += 1;
+        // 按目标体归组：同一个体的所有 case 标签要挤在体之前
+        // （V8 的派发链顺序是 1→体A、2→体A、3→体B，直接顺序输出会把 case 2 挂到体 B 上）
+        let mut groups: Vec<(usize, Vec<String>)> = Vec::new();
+        for (val, t) in cases.iter() {
+            match groups.iter_mut().find(|(gt, _)| gt == t) {
+                Some((_, v)) => v.push(val.clone()),
+                None => groups.push((*t, vec![val.clone()])),
+            }
+        }
+        for (t, labels) in groups {
+            let line = labels
+                .iter()
+                .map(|l| format!("case {l}:"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            self.line(&line);
+            self.indent += 1;
+            let k = targets.iter().position(|x| *x == t).unwrap();
+            let body_end = targets.get(k + 1).copied().unwrap_or(join).min(join);
+            if let Err(e) = self.emit_range(t, body_end) {
+                self.line(&format!("/* 结构化失败: {e} */"));
+            }
+            // 体末是前向 Jump（= 源码里的 break）→ 补 break；否则是 fallthrough，让 JS 顺延
+            self.emit_case_break(body_end);
+            if body_end == join {
+                self.acc = None;
+            }
+            self.indent -= 1;
+        }
+        self.line("default:");
+        self.indent += 1;
+        {
+            let k = targets.iter().position(|x| *x == default_target).unwrap();
+            let body_end = targets.get(k + 1).copied().unwrap_or(join).min(join);
+            if let Err(e) = self.emit_range(default_target, body_end) {
+                self.line(&format!("/* 结构化失败: {e} */"));
+            }
+            self.emit_case_break(body_end);
+        }
+        self.indent -= 1;
+        self.indent -= 1;
+        self.line("}");
+        Some(join)
+    }
+
     /// 发射一段指令范围（结构化控制流重建的核心）。
     ///
     /// 规则（覆盖 V8 常见模式）：
@@ -1520,6 +1746,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 self.indent -= 1;
                 self.line("}");
                 i = (back_idx + 1).max(i + 1);
+                continue;
+            }
+
+            // ③-0 比较链 switch（V8 对 switch 的常见降级形态）
+            if let Some(join) = self.try_case_chain(i, end) {
+                i = join.max(i + 1);
                 continue;
             }
 
@@ -2432,12 +2664,21 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 });
             }
             "CallRuntime" | "CallJSRuntime" => {
-                let name = ops.first().cloned().unwrap_or_else(|| "runtime".into());
-                let name = name.trim_matches(['[', ']']).to_string();
+                let raw = ops.first().cloned().unwrap_or_else(|| "runtime".into());
+                let raw = raw.trim_matches(['[', ']']).to_string();
+                // 渲染成裸数字说明名字表没覆盖这个 id → 退回表里查一次
+                let name = if raw.chars().all(|c| c.is_ascii_digit()) {
+                    raw.parse::<usize>()
+                        .ok()
+                        .and_then(|i| self.d.table.runtime_names.get(i).cloned())
+                        .unwrap_or(raw)
+                } else {
+                    raw
+                };
                 // 参数是 RegList（r7-r8）→ 展开成逐个寄存器实参
                 let args = self.reglist_exprs(&ops, 1);
                 self.acc = Some(Expr::Call {
-                    callee: Box::new(Expr::Ident(format!("__runtime.{name}"))),
+                    callee: Box::new(Self::stub_access("__runtime", &name)),
                     args,
                     is_new: false,
                     spread_arg: None,
@@ -2468,7 +2709,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     self.acc = Some(target);
                 } else {
                     self.acc = Some(Expr::Call {
-                        callee: Box::new(Expr::Ident(format!("__intrinsic.{name}"))),
+                        callee: Box::new(Self::stub_access("__intrinsic", &name)),
                         args,
                         is_new: false,
                         spread_arg: None,
