@@ -16,6 +16,9 @@ pub const SUBCOMMANDS: &[&str] = &[
     long_about = None
 )]
 pub struct Cli {
+    /// Emit machine-readable JSON（全局：`jscd --json info f` 与 `jscd info f --json` 均可）
+    #[arg(long, global = true)]
+    pub json: bool,
     #[command(subcommand)]
     pub cmd: Cmd,
 }
@@ -67,9 +70,6 @@ pub enum Cmd {
 /// 各子命令共享选项。
 #[derive(Args)]
 pub struct Common {
-    /// Emit machine-readable JSON
-    #[arg(long)]
-    pub json: bool,
     /// Write output to file ('-' = stdout, the default)
     #[arg(short, long)]
     pub output: Option<PathBuf>,

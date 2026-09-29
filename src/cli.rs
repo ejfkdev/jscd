@@ -6,20 +6,21 @@ use std::io::Write;
 use std::path::Path;
 
 pub fn run_cmd(cli: crate::args::Cli) -> Result<(), String> {
+    let json = cli.json;
     match cli.cmd {
         Cmd::Version => {
             println!("jscd {}", env!("JSCD_VERSION"));
             Ok(())
         }
-        Cmd::Info { file, common } => info_cmd(&file, &common),
-        Cmd::Strings { file, common } => strings_cmd(&file, &common),
-        Cmd::Functions { file, common } => functions_cmd(&file, &common),
+        Cmd::Info { file, common } => info_cmd(&file, &common, json),
+        Cmd::Strings { file, common } => strings_cmd(&file, &common, json),
+        Cmd::Functions { file, common } => functions_cmd(&file, &common, json),
         Cmd::Disasm {
             file,
             common,
             filter,
-        } => disasm_cmd(&file, &common, filter.as_deref()),
-        Cmd::Decompile { file, common } => decompile_cmd(&file, &common),
+        } => disasm_cmd(&file, &common, filter.as_deref(), json),
+        Cmd::Decompile { file, common } => decompile_cmd(&file, &common, json),
         Cmd::DebugParse { file } => debug_parse_cmd(&file),
     }
 }
@@ -158,7 +159,7 @@ fn brief(v: &crate::serializer::SlotValue, cache: &crate::serializer::CodeCache)
     }
 }
 
-fn info_cmd(file: &Path, common: &Common) -> Result<(), String> {
+fn info_cmd(file: &Path, common: &Common, json: bool) -> Result<(), String> {
     let data = load_input(file)?;
     // 两遍解析：默认布局读出 version_hash（两种布局该字段都在 @4）→ 识别 V8 版本
     // → 换用该版本的表布局重解析（12.x+ 头部多出 ro checksum，布局不同）。
@@ -168,11 +169,11 @@ fn info_cmd(file: &Path, common: &Common) -> Result<(), String> {
         .and_then(|t| crate::header::Header::parse_with(&data, &t.header).ok())
         .unwrap_or(h0);
     let text = header.render_text(file, &ident);
-    emit(common, &text, &header.render_json(file, &ident))
+    emit(common, &text, &header.render_json(file, &ident), json)
 }
 
 /// 常量池字符串提取：遍历对象图取全部字符串字面量（去重保序）。
-fn strings_cmd(file: &Path, common: &Common) -> Result<(), String> {
+fn strings_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), String> {
     let data = load_input(file)?;
     let (h, table, cache) = parse_cache(&data)?;
     let layout = crate::bytecode::FamilyLayout::from_table(&table);
@@ -207,11 +208,11 @@ fn strings_cmd(file: &Path, common: &Common) -> Result<(), String> {
         text.push('\n');
     }
     let json = serde_json::json!({ "count": values.len(), "strings": values, "from_roots": roots });
-    emit(common, &text, &json.to_string())
+    emit(common, &text, &json.to_string(), json_flag)
 }
 
 /// 函数树：列出全部 SharedFunctionInfo（名字/参数/字节码长度/嵌套层级）。
-fn functions_cmd(file: &Path, common: &Common) -> Result<(), String> {
+fn functions_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), String> {
     use std::fmt::Write as _;
     let data = load_input(file)?;
     let (h, table, cache) = parse_cache(&data)?;
@@ -350,17 +351,17 @@ fn functions_cmd(file: &Path, common: &Common) -> Result<(), String> {
         walk(r, 0, &d, &cache, &ba, ts, &children, &mut visited, &mut text, &mut json_items);
     }
     let json = serde_json::json!({ "count": json_items.len(), "functions": json_items });
-    emit(common, &text, &json.to_string())
+    emit(common, &text, &json.to_string(), json_flag)
 }
 
-fn disasm_cmd(file: &Path, common: &Common, filter: Option<&str>) -> Result<(), String> {
+fn disasm_cmd(file: &Path, common: &Common, filter: Option<&str>, json_flag: bool) -> Result<(), String> {
     let data = load_input(file)?;
     let (h, table, cache) = parse_cache(&data)?;
     let layout = crate::bytecode::FamilyLayout::from_table(&table);
     let d = crate::disasm::Disassembler::new(&cache, &table, layout)
         .with_source_len(h.source_length());
     let text = d.render_all(filter)?;
-    emit(common, &text, &json_out(&text))
+    emit(common, &text, &json_out(&text), json_flag)
 }
 
 /// 解压 → 头 → 识别 → 表 → payload 反序列化（tagged_size 自动回退）。
@@ -390,7 +391,7 @@ fn json_out(text: &str) -> String {
     serde_json::json!({ "disassembly": text }).to_string()
 }
 
-fn decompile_cmd(_file: &Path, _common: &Common) -> Result<(), String> {
+fn decompile_cmd(_file: &Path, _common: &Common, _json: bool) -> Result<(), String> {
     Err("decompile: control-flow reconstruction lands after disasm (M2)".into())
 }
 
@@ -401,8 +402,8 @@ pub fn load_input(file: &Path) -> Result<Vec<u8>, String> {
 }
 
 /// 统一落盘/出 stdout：-o 指定文件，`-o -` 或缺省走 stdout。
-fn emit(common: &Common, text: &str, json: &str) -> Result<(), String> {
-    let payload = if common.json { json } else { text };
+fn emit(common: &Common, text: &str, json: &str, want_json: bool) -> Result<(), String> {
+    let payload = if want_json { json } else { text };
     match &common.output {
         Some(p) if p != Path::new("-") => fs::write(p, payload)
             .map_err(|e| format!("write {}: {e}", p.display())),
