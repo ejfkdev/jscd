@@ -1857,8 +1857,25 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .next()
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
-        // 版本给先验，语料给证据：字符串键更多的那种布局胜出
-        let (pref, alt) = if v8_major >= 13 { (2usize, 1usize) } else { (1usize, 2usize) };
+        // 版本给先验，语料给证据：字符串键更多的那种布局胜出。
+        // 12.x 起头部多了 BackingStoreSize/Flags 两个额外字段（ObjectBoilerplateDescriptionShape
+        // 的 kBackingStoreSizeOffset/kFlagsOffset），元素从第 2 格起 —— 只按 major>=13
+        // 判会让 node22（12.4）把 flags 当键、条目数算成 0，对象字面量整块变 `{ }`。
+        let v8_minor: u32 = self
+            .d
+            .table
+            .v8
+            .split('.')
+            .nth(1)
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let has_extra_fields = v8_major > 12 || (v8_major == 12);
+        let _ = v8_minor;
+        let (pref, alt) = if has_extra_fields {
+            (2usize, 1usize)
+        } else {
+            (1usize, 2usize)
+        };
         let start = if len >= 4 && self.obp_string_keys(o, alt, len) > self.obp_string_keys(o, pref, len) {
             alt
         } else {
