@@ -453,7 +453,17 @@ impl<'a> Walker<'a> {
     fn parse_new_object_space(&mut self, depth: usize, space: u8) -> R<ObjId> {
         let tag_offset = self.pos.saturating_sub(1);
         let size_words = self.putint()? as usize;
-        let byte_size = size_words * 8;
+        // 老族（≤8.4）的 size 单位是 `1 << kObjectAlignmentBits`，而 V8 8.4 的
+        // `kObjectAlignmentBits = kTaggedSizeLog2` —— 也就是**等于 tagged size**
+        // （指针压缩构建 ts=4 → 4 字节/单位，非压缩 ts=8 → 8）。按 8 算会让每个对象的
+        // 字节尺寸翻倍、后续地址全偏（space2 的 backref 因此命不中）。
+        // 现代族固定 8 字节单位（kObjectAlignmentBits = 3）。
+        let unit = if self.legacy.is_some() {
+            self.tagged_size.max(4)
+        } else {
+            8
+        };
+        let byte_size = size_words * unit;
         let id = self.objects.len();
         self.objects.push(Object {
             ty: Ty::Pending,
@@ -541,8 +551,12 @@ struct LegacyAlloc {
     used: Vec<u32>,
     /// (space, chunk_index, offset) → 对象
     by_addr: std::collections::HashMap<(u8, u32, u32), ObjId>,
-    /// kAlignmentPrefix 提示的下一次对齐（字节，0 = 无）
+    /// kAlignmentPrefix 提示的下一次对齐：V8 `AllocationAlignment` 枚举值
+    /// （1 = kDoubleAligned、2 = kDoubleUnaligned），0 = 无
     align: u32,
+    /// tagged size（压缩指针为 4）：`Heap::GetMaximumFillToAlign` / `GetFillToAlign`
+    /// 都要用它（kDoubleSize - kTaggedSize）
+    ts: u32,
     /// 内容被延迟的对象（deferred 段按 backref 指回来补全）
     deferred: Vec<ObjId>,
     /// 分配发生顺序（调试用）：(space, chunk, offset, size, id)
@@ -576,28 +590,41 @@ impl LegacyAlloc {
     }
 
     /// 分配一个对象：记录地址 → 对象 id，推进 high water。
+    ///
+    /// 对齐分支照 V8 8.4 `DeserializerAllocator::Allocate`：
+    ///   reserved = size + Heap::GetMaximumFillToAlign(alignment)
+    ///   address  = AllocateRaw(space, reserved)      // 水位按 **reserved** 前进
+    ///   obj      = Heap::AlignWithFiller(obj, size, reserved, alignment)
+    /// `AlignWithFiller` 把 `pre_filler = Heap::GetFillToAlign(address, alignment)` 字节放在
+    /// 对象**前面**（对象地址 = address + pre_filler），余下的 `reserved - pre_filler` 放在
+    /// 对象**后面**。旧实现只把游标 pad 到对齐、再 += size —— 少了 filler 记账，
+    /// 之后每个对象的地址都偏（space2 在 1008 与 1136 之间就少了那个 128 字节的对象，
+    /// backref 因此命不中）。
     fn allocate(&mut self, space: u8, size: u32, id: ObjId) -> Option<(u32, u32)> {
-        if std::env::var("JSCD_DBG_ALLOC").is_ok() {
-            eprintln!(
-                "[alloc] space={space} size={size} id={id} chunk={} used={}",
-                self.cur[space as usize], self.used[space as usize]
-            );
-        }
         let s = space as usize;
         if s >= self.cur.len() {
             return None;
         }
-        if self.align > 0 {
-            let a = self.align as u32;
-            let pad = (a - (self.used[s] % a)) % a;
-            self.used[s] += pad;
+        let idx = self.cur[s] as u32;
+        let mut off = self.used[s];
+        let mut advance = size;
+        if self.align != 0 {
+            let pre = fill_to_align(self.used[s], self.align, self.ts);
+            off = self.used[s] + pre;
+            advance = size + max_fill_to_align(self.ts);
             self.align = 0;
         }
-        let off = self.used[s];
-        let idx = self.cur[s] as u32;
+        if std::env::var("JSCD_DBG_ALLOC").is_ok() {
+            eprintln!(
+                "[alloc] space={space} size={size} id={id} chunk={idx} off={off} \
+                 pre={} advance={advance} align={}",
+                off - (self.used[s]),
+                self.align
+            );
+        }
         self.by_addr.insert((space, idx, off), id);
         self.trace.push((space, idx, off, size, id));
-        self.used[s] += size;
+        self.used[s] += advance;
         Some((idx, off))
     }
 
@@ -609,8 +636,42 @@ impl LegacyAlloc {
         }
     }
 
+    /// backref 解析：对应 V8 `DeserializerAllocator::GetObject` ——
+    /// 若此刻还有 pending 的对齐（deferred 对象正好在被对齐的那个位置），
+    /// 记录下来的 offset 是 filler 之前的地址，要加上 padding 才是对象本身。
     fn resolve(&self, space: u8, chunk: u32, offset: u32) -> Option<ObjId> {
-        self.by_addr.get(&(space, chunk, offset)).copied()
+        if let Some(id) = self.by_addr.get(&(space, chunk, offset)) {
+            return Some(*id);
+        }
+        if self.align != 0 {
+            let pad = fill_to_align(offset, self.align, self.ts);
+            if pad != 0 {
+                if let Some(id) = self.by_addr.get(&(space, chunk, offset + pad)) {
+                    return Some(*id);
+                }
+            }
+        }
+        None
+    }
+}
+
+/// V8 8.4 `Heap::GetMaximumFillToAlign`：kDoubleAligned/kDoubleUnaligned 都是
+/// `kDoubleSize - kTaggedSize`（kDoubleSize = 8）。
+fn max_fill_to_align(ts: u32) -> u32 {
+    8u32.saturating_sub(ts)
+}
+
+/// V8 8.4 `Heap::GetFillToAlign`：
+///   kDoubleAligned(1)  ：地址未 8 对齐 → 补 kTaggedSize
+///   kDoubleUnaligned(2)：地址**已** 8 对齐 → 补 kDoubleSize - kTaggedSize（让双精度值尾部对齐）
+/// 其余 0。注意 64 位非压缩（ts=8）时两者恒为 0 —— 也就是那种构建里根本不会出现对齐前缀。
+fn fill_to_align(addr: u32, alignment: u32, ts: u32) -> u32 {
+    if alignment == 1 && addr & 7 != 0 {
+        ts
+    } else if alignment == 2 && addr & 7 == 0 {
+        8u32.saturating_sub(ts)
+    } else {
+        0
     }
 }
 
@@ -652,7 +713,9 @@ pub fn parse_with<'a>(
     }
     let ts = table.tagged_size as usize;
     let legacy_ctx = if table.serialization.legacy.contains_key("kSpaceMask") {
-        Some(LegacyAlloc::from_reservations(reservations))
+        let mut l = LegacyAlloc::from_reservations(reservations);
+        l.ts = ts as u32;
+        Some(l)
     } else {
         None
     };
