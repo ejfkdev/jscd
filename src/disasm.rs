@@ -56,7 +56,7 @@ impl<'a> Disassembler<'a> {
         vec![fallback_slots::SFI_FUNCTION_DATA]
     }
 
-    fn sfi_name_slot(&self) -> usize {
+    pub fn sfi_name_slot(&self) -> usize {
         let ts = self.layout.tagged_size;
         self.table
             .shared_function_info
@@ -89,13 +89,13 @@ impl<'a> Disassembler<'a> {
             .unwrap_or(fallback)
     }
 
-    fn bca_constant_pool_slot(&self) -> usize {
+    pub fn bca_constant_pool_slot(&self) -> usize {
         self.bca_slot(&["constant_pool"], fallback_slots::BCA_CONSTANT_POOL)
     }
-    fn bca_handler_table_slot(&self) -> usize {
+    pub fn bca_handler_table_slot(&self) -> usize {
         self.bca_slot(&["handler_table"], fallback_slots::BCA_HANDLER_TABLE)
     }
-    fn bca_source_position_slot(&self) -> usize {
+    pub fn bca_source_position_slot(&self) -> usize {
         self.bca_slot(&["source_position_table"], fallback_slots::BCA_SOURCE_POSITION_TABLE)
     }
 
@@ -755,6 +755,47 @@ impl<'a> Disassembler<'a> {
 }
 
 
+
+/// Ref → 名字字符串（字符串对象 / 根名字），供反编译与 ScopeInfo 读取复用。
+pub fn name_of_ref(cache: &CodeCache<'_>, table: &VersionTable, r: Ref) -> Option<String> {
+    match r {
+        Ref::Object(id) => {
+            let o = cache.obj(id);
+            if o.ty.is_string(table) {
+                // 复用 Disassembler 的字符串解码路径
+                let ts = table.tagged_size as usize;
+                let len = cache.raw_at_ts(id, 12, 4, ts).map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?;
+                let one_byte = matches!(
+                    o.ty,
+                    crate::serializer::Ty::Str(crate::serializer::StrKind::OneByte)
+                );
+                let d = cache.raw_at_ts(id, 16, if one_byte { len } else { len * 2 }, ts)?;
+                Some(if one_byte {
+                    String::from_utf8_lossy(d).into_owned()
+                } else {
+                    let u16s: Vec<u16> = d.chunks(2).map(|c| u16::from_le_bytes([c[0], *c.get(1).unwrap_or(&0)])).collect();
+                    String::from_utf16_lossy(&u16s)
+                })
+            } else {
+                None
+            }
+        }
+        Ref::Root(i) => table.roots.get(i).map(|n| {
+            match n.as_str() {
+                // 这些 root 作为"名字"出现时应为空（CamelName 形态来自 roots.h 列表）
+                "empty_string" | "EmptyString" | "undefined_value" | "UndefinedValue"
+                | "uninitialized_value" | "UninitializedValue" | "the_hole_value"
+                | "TheHoleValue" => String::new(),
+                other => other
+                    .strip_prefix("String:")
+                    .or_else(|| other.strip_prefix("Symbol:"))
+                    .unwrap_or(other)
+                    .to_string(),
+            }
+        }),
+        _ => None,
+    }
+}
 
 fn read_u64(d: &[u8]) -> u64 {
     let mut v = 0u64;

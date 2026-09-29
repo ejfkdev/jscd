@@ -10,6 +10,7 @@
 pub mod args;
 pub mod cli;
 pub mod bytecode;
+pub mod decompile;
 pub mod disasm;
 pub mod header;
 pub mod serializer;

@@ -5,7 +5,15 @@ use std::path::PathBuf;
 
 /// 已知子命令表（main.rs 快捷形式判定用）。
 pub const SUBCOMMANDS: &[&str] = &[
-    "info", "strings", "functions", "disasm", "decompile", "version", "debug-parse", "help",
+    "info",
+    "strings",
+    "functions",
+    "disasm",
+    "decompile",
+    "ro-map",
+    "version",
+    "debug-parse",
+    "help",
 ];
 
 #[derive(Parser)]
@@ -54,6 +62,18 @@ pub enum Cmd {
     },
     /// Reconstruct JavaScript from bytecode
     Decompile {
+        file: PathBuf,
+        #[command(flatten)]
+        common: Common,
+        /// 只读堆名表（由 `jscd ro-map` 生成；用于还原属性名）
+        #[arg(long)]
+        ro_map: Option<PathBuf>,
+        /// 语法门禁：用 node --check 实编译校验产物（需要 PATH 里有 node）
+        #[arg(long)]
+        verify: bool,
+    },
+    /// (probe) 从"探针 jsc"生成只读堆引用名表
+    RoMap {
         file: PathBuf,
         #[command(flatten)]
         common: Common,

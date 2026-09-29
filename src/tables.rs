@@ -68,6 +68,13 @@ pub struct VersionTable {
     pub serialization: SerializationCfg,
 }
 
+impl VersionTable {
+    /// 表指纹（用于校验 ro-map 与表匹配）。
+    pub fn v8_tags(&self) -> String {
+        self.source_tag.clone()
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct HashCfg {
     /// 目前恒为 "murmur_combine_v1"；未来版本如有变化在此切换
