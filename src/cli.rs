@@ -293,18 +293,32 @@ fn parse_cache<'a>(
 > {
     let h0 = crate::header::Header::parse(data)?;
     let ident = crate::tables::identify(h0.version_hash);
-    let table = crate::tables::table_for(ident.v8)
-        .ok_or_else(|| format!("no embedded table for v8 {} (run codegen)", ident.v8))?;
-    let h = crate::header::Header::parse_with(data, &table.header)?;
-    let payload = h.payload(data);
-    // tagged_size 是构建属性（压缩/非压缩），表里给默认值；解析失败时回退另一种
+    // 候选表：精确识别到的排第一；识别不到（老族哈希算法不同）时逐个试
+    let mut candidates: Vec<crate::tables::VersionTable> = Vec::new();
+    if let Some(t) = crate::tables::table_for(ident.v8) {
+        candidates.push(t);
+    }
+    if candidates.is_empty() {
+        candidates = crate::tables::all_tables();
+    }
     let mut errors = Vec::new();
-    for ts in [table.tagged_size, if table.tagged_size == 8 { 4 } else { 8 }] {
-        let mut t = table.clone();
-        t.tagged_size = ts;
-        match crate::serializer::parse(payload, &t) {
-            Ok(c) => return Ok((h, t, c)),
-            Err(e) => errors.push(format!("tagged_size={ts}: {e}")),
+    for table in candidates {
+        let Ok(h) = crate::header::Header::parse_with(data, &table.header) else {
+            continue;
+        };
+        let payload = h.payload(data);
+        // tagged_size 是构建属性（压缩/非压缩），表里给默认值；解析失败时回退另一种
+        for ts in [table.tagged_size, if table.tagged_size == 8 { 4 } else { 8 }] {
+            let mut t = table.clone();
+            t.tagged_size = ts;
+            match crate::serializer::parse(payload, &t) {
+                Ok(c) => return Ok((h, t, c)),
+                Err(e) => {
+                    if errors.len() < 6 {
+                        errors.push(format!("{} tagged_size={ts}: {e}", t.v8))
+                    }
+                }
+            }
         }
     }
     Err(format!("payload parse failed ({})", errors.join(" | ")))

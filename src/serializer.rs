@@ -210,6 +210,8 @@ struct Walker<'a> {
     pos: usize,
     tagged_size: usize,
     tags: &'a std::collections::HashMap<String, u8>,
+    /// 老族：tag 低 3 位是空间编号，比较标签前要剥掉（现代族为 0）
+    space_mask: u8,
     objects: Vec<Object>,
     hot: HotRing,
     pending: std::collections::HashMap<u32, Vec<(ObjId, usize)>>,
@@ -275,7 +277,10 @@ impl<'a> Walker<'a> {
         if depth > 64 {
             return Err("ref recursion too deep".into());
         }
-        let b = self.byte()?;
+        let b_raw = self.byte()?;
+        // 老族（≤8.4）：tag 低 3 位是堆空间编号（kSpaceMask）→ 比较标签前先剥掉。
+        // 注意"索引类"范围（热对象环、根常量）的索引就在那 3 位里，必须用原始字节。
+        let b = b_raw & !self.space_mask;
         let t_new = self.tag("kNewObject")?;
         let t_backref = self.tag("kBackref")?;
         let t_hot = self.tag("kHotObject")?;
@@ -295,8 +300,8 @@ impl<'a> Walker<'a> {
             }
             self.hot.add(HotEntry::Object(idx)); // PutBackReference 会入 hot 环
             Ok(SlotValue::Ref(Ref::Object(idx)))
-        } else if (t_hot..t_hot + 8).contains(&b) {
-            let i = (b - t_hot) as usize;
+        } else if (t_hot..t_hot + 8).contains(&b_raw) {
+            let i = (b_raw - t_hot) as usize;
             match self.hot.get(i) {
                 Some(HotEntry::Object(id)) => Ok(SlotValue::Ref(Ref::Object(id))),
                 Some(HotEntry::Root(r)) => Ok(SlotValue::Ref(Ref::Root(r))),
@@ -306,14 +311,18 @@ impl<'a> Walker<'a> {
             let idx = self.putint()? as usize;
             self.hot.add(HotEntry::Root(idx));
             Ok(SlotValue::Ref(Ref::Root(idx)))
-        } else if (t_root_const..t_root_const + 32).contains(&b) {
-            Ok(SlotValue::Ref(Ref::Root((b - t_root_const) as usize)))
+        } else if (t_root_const..t_root_const + 32).contains(&b_raw) {
+            Ok(SlotValue::Ref(Ref::Root((b_raw - t_root_const) as usize)))
         } else if Some(b) == self.opt_tag("kReadOnlyHeapRef") {
             let c = self.putint()?;
             let o = self.putint()?;
             Ok(SlotValue::Ref(Ref::RoRef(c, o)))
         } else if b == self.tag("kAttachedReference")? {
             Ok(SlotValue::Ref(Ref::Attached(self.putint()? as usize)))
+        } else if Some(b) == self.opt_tag("kPartialSnapshotCache") {
+            // 7.8：部分快照缓存（老族专有）→ 与只读缓存同样按"外部对象"编号
+            let i = self.putint()? as usize;
+            Ok(SlotValue::Ref(Ref::RoRef(u32::MAX, i as u32)))
         } else if Some(b) == self.opt_tag("kStartupObjectCache")
             || Some(b) == self.opt_tag("kReadOnlyObjectCache")
             || Some(b) == self.opt_tag("kSharedHeapObjectCache")
@@ -390,7 +399,10 @@ impl<'a> Walker<'a> {
         });
         let map = self.parse_ref(depth + 1)?;
         self.push_slot(id, 0, map);
-        let t_resolve = self.tag("kResolvePendingForwardRef")?;
+        // 老族（≤8.4）没有 pending forward ref 机制（表里没有这个标签）→ 直接跳过
+        let Some(t_resolve) = self.opt_tag("kResolvePendingForwardRef") else {
+            return Ok(id);
+        };
         loop {
             match self.peek() {
                 Some(b) if b == t_resolve => {
@@ -434,6 +446,14 @@ impl<'a> Walker<'a> {
 
 /// 解析整个 payload（已解压、已去头）。
 pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
+    // 合并 tag 表：现代族用 `tags`，老族（≤8.4）的标签值在 `legacy` 里（`tags` 为空）
+    let mut merged_map: std::collections::HashMap<String, u8> = table.serialization.tags.clone();
+    // 老族（≤8.4）以 legacy 表为准：源码树里同时存在现代枚举，tags 会串味
+    for (k, v) in &table.serialization.legacy {
+        merged_map.insert(k.clone(), *v);
+    }
+    let merged_tags: &'static std::collections::HashMap<String, u8> =
+        Box::leak(Box::new(merged_map));
     // 最小必需集：跨族恒存在（8.x 无 kReadOnlyHeapRef、11.3 起空间数变化等）
     for n in [
         "kNewObject",
@@ -446,7 +466,7 @@ pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
         "kRootArrayConstants",
         "kFixedRawData",
     ] {
-        if !table.serialization.tags.contains_key(n) {
+        if !merged_tags.contains_key(n) {
             return Err(format!("table missing serialization tag {n}"));
         }
     }
@@ -455,7 +475,12 @@ pub fn parse<'a>(payload: &'a [u8], table: &VersionTable) -> R<CodeCache<'a>> {
         data: payload,
         pos: 0,
         tagged_size: ts,
-        tags: &table.serialization.tags,
+        tags: merged_tags,
+        space_mask: if merged_tags.contains_key("kWhereMask") || merged_tags.contains_key("kSpaceMask") {
+            7
+        } else {
+            0
+        },
         objects: Vec::new(),
         hot: HotRing::default(),
         pending: std::collections::HashMap::new(),

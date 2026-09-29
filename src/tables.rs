@@ -108,6 +108,9 @@ pub struct OperandTypeInfo {
 pub struct SerializationCfg {
     #[serde(default)]
     pub tags: HashMap<String, u8>,
+    /// 老族（V8 ≤ 8.4）：标签值与掩码常量都在这张表里（`tags` 为空）
+    #[serde(default)]
+    pub legacy: HashMap<String, u8>,
     #[serde(default)]
     pub code_items: HashMap<String, u8>,
     #[serde(default)]
@@ -214,6 +217,26 @@ fn manifest() -> &'static Option<Manifest> {
 fn table_map() -> &'static HashMap<&'static str, &'static str> {
     static T: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
     T.get_or_init(|| EMBEDDED_TABLE_FILES.iter().copied().collect())
+}
+
+/// 全部内嵌表（老族哈希与 9.4+ 不同，识别不出来时逐个试解析）。
+pub fn all_tables() -> Vec<VersionTable> {
+    let mut out: Vec<VersionTable> = Vec::new();
+    if let Some(m) = manifest().as_ref() {
+        for e in &m.versions {
+            if let Some(t) = table_for(&e.v8) {
+                if !out.iter().any(|x| x.v8 == t.v8) {
+                    out.push(t);
+                }
+            }
+        }
+    }
+    out.sort_by_key(|t| {
+        // 先试老族（价格低：解析失败很快），再试现代族
+        let maj: u32 = t.v8.split('.').next().and_then(|s| s.parse().ok()).unwrap_or(0);
+        maj
+    });
+    out
 }
 
 /// 按 version_hash 精确查表 → 未命中则爆破。
