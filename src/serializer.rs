@@ -304,14 +304,14 @@ impl<'a> Walker<'a> {
                     None => {
                         if std::env::var("JSCD_DBG_LEGACY").is_ok() {
                             let l = self.legacy.as_ref().unwrap();
-                            let mut offs: Vec<(u32, ObjId, u32)> = l
-                                .by_addr
+                            let mut lines: Vec<String> = l
+                                .trace
                                 .iter()
-                                .filter(|((s, _, _), _)| *s == space)
-                                .map(|((_, c, o), id)| (*o, *id, *c))
+                                .filter(|(s, _, off, _, _)| *s == space && *off <= offset + 64)
+                                .map(|(s, c, o, sz, id)| format!("s{s}c{c}@{o}+{sz}#{id}"))
                                 .collect();
-                            offs.sort();
-                            eprintln!("[miss] ({space},{chunk},{offset}) 已有 {} 个: {:?}", offs.len(), offs.iter().rev().take(6).collect::<Vec<_>>());
+                            lines.dedup();
+                            eprintln!("[miss] ({space},{chunk},{offset}) 尾部分配: {:?}", lines.iter().rev().take(8).rev().collect::<Vec<_>>());
                         }
                         return Err(format!("legacy backref ({space},{chunk},{offset}) 未命中"));
                     }
@@ -460,6 +460,13 @@ impl<'a> Walker<'a> {
         });
         if let Some(l) = self.legacy.as_mut() {
             l.allocate(space, byte_size as u32, id);
+            if std::env::var("JSCD_DBG_LEGACY").is_ok() && (id >= 18) {
+                let ctx = self.data.get(tag_offset..(tag_offset + 12).min(self.data.len())).unwrap_or(&[]);
+                eprintln!(
+                    "[obj] id={id} space={space} words={size_words} tag_pos={tag_offset} bytes={:02x?}",
+                    ctx
+                );
+            }
         }
         let map = self.parse_ref(depth + 1)?;
         self.push_slot(id, 0, map);
@@ -535,6 +542,8 @@ struct LegacyAlloc {
     align: u32,
     /// 内容被延迟的对象（deferred 段按 backref 指回来补全）
     deferred: Vec<ObjId>,
+    /// 分配发生顺序（调试用）：(space, chunk, offset, size, id)
+    trace: Vec<(u8, u32, u32, u32, ObjId)>,
 }
 
 impl LegacyAlloc {
@@ -584,6 +593,7 @@ impl LegacyAlloc {
         let off = self.used[s];
         let idx = self.cur[s] as u32;
         self.by_addr.insert((space, idx, off), id);
+        self.trace.push((space, idx, off, size, id));
         self.used[s] += size;
         Some((idx, off))
     }

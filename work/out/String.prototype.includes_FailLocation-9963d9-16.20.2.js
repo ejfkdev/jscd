@@ -62,7 +62,7 @@ function _anon_0(a0) {
   r3 = r4.includes;
   r5 = "o";
   r6 = 3;
-  r3 = r3.call(r4, r5, r6);
+  r3 = r4.includes(r5, r6);
   r4 = false;
   r5 = "\"word\".includes(\"o\", 3)";
   r0 = r1.call(r2-r5);

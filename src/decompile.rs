@@ -1761,6 +1761,127 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
     }
 
+    /// for-in 重建。
+    ///
+    /// V8 的形状（7.8–13.x 一致）：
+    ///   ToObject rObj ; ForInEnumerate rObj ; ForInPrepare rA-rC
+    ///   LdaZero ; Star rIdx
+    ///   L: ForInContinue rIdx, rC ; JumpIfFalse EXIT
+    ///      ForInNext rObj, rIdx, rA-rB ; JumpIfUndefined STEP
+    ///      Star <loop var> …（循环体）…
+    ///   STEP: ForInStep rIdx ; Star rIdx ; JumpLoop L
+    ///   EXIT:
+    /// 对应 JS 的 `for (<lval> in <obj>) { body }` —— 直接发射，循环控制指令整段丢掉。
+    fn try_emit_for_in(&mut self, i: usize, end: usize) -> Option<usize> {
+        let base_of = |k: usize| -> String {
+            self.instrs
+                .get(k)
+                .map(|x| x.name.split('.').next().unwrap_or(&x.name).to_string())
+                .unwrap_or_default()
+        };
+        if base_of(i) != "ForInEnumerate" || base_of(i + 1) != "ForInPrepare" {
+            return None;
+        }
+        // 被枚举的对象：ForInEnumerate 的寄存器操作数（ToObject 已把值落进去）
+        let obj_reg = match self.instrs[i].operands.first() {
+            Some(Operand::Reg(r)) if *r >= 0 => *r as u32,
+            _ => return None,
+        };
+        // 找 ForInContinue + JumpIfFalse EXIT
+        let mut j = i + 2;
+        while j < end && base_of(j) != "ForInContinue" {
+            if j > i + 6 {
+                return None;
+            }
+            j += 1;
+        }
+        if base_of(j) != "ForInContinue" || base_of(j + 1) != "JumpIfFalse" {
+            return None;
+        }
+        let exit_off = self.cond_jump_target(&self.instrs[j + 1].clone())?;
+        let exit_idx = *self.idx_of.get(&exit_off)?;
+        // 回边：跳到 ForInContinue 的无条件跳转
+        let head_off = self.instrs[j].offset;
+        let back_idx = (j + 2..exit_idx).find(|k| {
+            self.uncond_jump_target(&self.instrs[*k].clone())
+                .map(|t| t == head_off)
+                .unwrap_or(false)
+        })?;
+        // 循环体：[ForInNext 的 undefined 守卫之后, ForInStep)
+        // ForInStep 紧贴回边之前（`ForInStep; Star idx; JumpLoop`）→ 从后往前找最稳
+        let step_idx = (j + 2..back_idx)
+            .rev()
+            .find(|k| base_of(*k) == "ForInStep")?;
+        let next_idx = (j + 2..step_idx).find(|k| base_of(*k) == "ForInNext")?;
+        let mut body_start = next_idx + 1;
+        // `JumpIfUndefined STEP`：键被删掉时跳过本轮
+        let mut guard: Option<String> = None;
+        if base_of(body_start) == "JumpIfUndefined" {
+            if let Some(Operand::Idx(v)) = self.instrs[body_start].operands.first() {
+                let t = self.instrs[body_start].offset + 1 + *v as usize;
+                if self.idx_of.get(&t) == Some(&step_idx) {
+                    guard = Some("true".to_string()); // 变量名稍后按真实寄存器填
+                }
+            }
+            body_start += 1;
+        }
+        // 循环变量：ForInNext 的值先 Star 进某个寄存器
+        let var_reg = self.loop_var_reg(body_start)?;
+        // 该 Star 本身不必输出（`for (r5 in …)` 已经赋值）；后续对同值的 Star 走 acc 模型
+        let body_real = body_start + 1;
+        self.acc = Some(Expr::Reg(var_reg));
+        if std::env::var("JSCD_DBG_FORIN").is_ok() {
+            for k in j..(back_idx + 1).min(self.instrs.len()) {
+                let b = self.instrs[k].name.split('.').next().unwrap_or("").to_string();
+                eprintln!("[forin] idx={k} off={} {b}", self.instrs[k].offset);
+            }
+            eprintln!("[forin] body_real={body_real} step_idx={step_idx} back_idx={back_idx} exit={exit_idx}");
+        }
+        let var = format!("r{var_reg}");
+        let guard = guard.map(|_| format!("{var} !== undefined"));
+        self.line(&format!("for ({var} in r{obj_reg}) {{"));
+        self.indent += 1;
+        if let Some(g) = guard {
+            self.line(&format!("if ({g}) {{"));
+            self.indent += 1;
+            if let Err(e) = self.emit_range(body_real, step_idx) {
+                self.line(&format!("/* 结构化失败: {e} */"));
+            }
+            // 体内最后一条带副作用的表达式（如 `keys.push(k)`）落在 acc 里、没人消费 →
+            // 在这里落地成语句，否则会被外层的合并点物化到循环外面去
+            self.flush_acc_before("ForInStep");
+            self.indent -= 1;
+            self.line("}");
+        } else {
+            if let Err(e) = self.emit_range(body_real, step_idx) {
+                self.line(&format!("/* 结构化失败: {e} */"));
+            }
+            self.flush_acc_before("ForInStep");
+        }
+        self.indent -= 1;
+        self.line("}");
+        Some(exit_idx.max(i + 1))
+    }
+
+    /// `ForInNext` 之后承载键的那个寄存器（Star 序列里的第一个）。
+    fn loop_var_reg(&self, k: usize) -> Option<u32> {
+        for j in k..(k + 3).min(self.instrs.len()) {
+            let ins = &self.instrs[j];
+            let b = ins.name.split('.').next().unwrap_or(&ins.name);
+            if b == "Star" {
+                if let Some(Operand::Reg(r)) = ins.operands.first() {
+                    if *r >= 0 {
+                        return Some(*r as u32);
+                    }
+                }
+            }
+            if b.starts_with("Star") && b[4..].chars().all(|c| c.is_ascii_digit()) {
+                return b[4..].parse().ok();
+            }
+        }
+        None
+    }
+
     /// 比较链 switch 识别与重建。
     ///
     /// V8 把 `switch (v) { case 1: … case 2: … default: … }` 编译成一串
@@ -2270,6 +2391,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 self.indent -= 1;
                 self.line("}");
                 i = (back_idx + 1).max(i + 1);
+                continue;
+            }
+
+            // ③-0a for-in 枚举协议
+            if let Some(next) = self.try_emit_for_in(i, end) {
+                i = next.max(i + 1);
                 continue;
             }
 

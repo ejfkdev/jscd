@@ -95,7 +95,7 @@ let phi0, phi1, phi2, phi3, phi4;
     phi0 = r7["/* root: async_iterator_symbol */ undefined"];
     if (r7["/* root: async_iterator_symbol */ undefined"] != null) {
       r8 = r7["/* root: async_iterator_symbol */ undefined"];
-      phi1 = r8.call(r7);
+      phi1 = r7["/* root: async_iterator_symbol */ undefined"]();
       phi2 = phi1;
       if (phi1 === undefined) {
         phi2 = __runtime.ThrowSymbolAsyncIteratorInvalid(r0);
@@ -103,14 +103,14 @@ let phi0, phi1, phi2, phi3, phi4;
       phi0 = phi2;
     }
     r8 = r7["/* root: iterator_symbol */ undefined"];
-    r8 = r8.call(r7);
+    r8 = r7["/* root: iterator_symbol */ undefined"]();
     r6 = __intrinsic.CreateAsyncFromSyncIterator(r8);
     r5 = r6.next;
     r7 = false;
     r10 = __context;
     try {
       r7 = r7;
-      r13 = r5.call(r6);
+      r13 = r6.next();
       r12 = r0;
       /* generator state: SuspendGenerator */
       /* generator state: ResumeGenerator */
@@ -178,7 +178,7 @@ let phi0, phi1, phi2, phi3, phi4;
     r5 = r6.sameValue;
     r7 = nextArgumentsLength;
     r8 = 0;
-    r5.call(r6, r7, r8);
+    r6.sameValue(r7, r8);
     r6 = undefined;
     r7 = true;
     r5 = r0;

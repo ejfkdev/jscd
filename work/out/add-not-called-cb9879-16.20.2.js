@@ -76,12 +76,12 @@ function _anon_0(a0) {
   r2 = s1;
   r1 = r2.union;
   r3 = s2;
-  combined = r1.call(r2, r3);
+  combined = r2.union(r3);
   r2 = assert;
   r1 = r2.compareArray;
   r3 = [...combined];
   r4 = expected;
-  r1.call(r2, r3, r4);
+  r2.compareArray(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = combined;
@@ -115,6 +115,6 @@ function _anon_9(a0) {
   if (originalAdd === undefined) throw new ReferenceError("originalAdd");
   r3 = originalAdd;
   r2 = r3.apply;
-  return r2.call(r3, this, r1);
+  return r3.apply(this, r1);
 }
 
