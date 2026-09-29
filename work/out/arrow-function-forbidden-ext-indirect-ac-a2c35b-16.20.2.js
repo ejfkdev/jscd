@@ -77,7 +77,7 @@ let phi0;
   r1 = inner;
   r0 = r1.hasOwnProperty;
   r2 = "caller";
-  phi0 = r0.call(r1, r2);
+  phi0 = r1.hasOwnProperty(r2);
   if (!phi0) {
     return CALLER_OWN_PROPERTY_DOES_NOT_EXIST;
   }
@@ -93,7 +93,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
   r2 = r3.getOwnPropertyDescriptor;
   r4 = inner;
   r5 = "caller";
-  r0 = r2.call(r3, r4, r5);
+  r0 = r3.getOwnPropertyDescriptor(r4, r5);
   phi0 = r0;
   if (r0) {
     phi1 = r0.configurable;
@@ -136,7 +136,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
     r3 = assert;
     r2 = r3.notSameValue;
     r5 = f;
-    phi6 = r2.call(r3, r1, r5);
+    phi6 = r3.notSameValue(r1, r5);
   }
   callCount = ++callCount;
   return;

@@ -80,19 +80,19 @@ function* _anon_0(a0) {
       pushAwait = 2;
       r5 = r1();
       r4 = r5.next;
-      r4.call(r5);
+      r5.next();
       r7 = Promise;
       r8 = _anon_39;
       r7 = new r7(r8);
       r6 = r7.then;
       r8 = _anon_45;
-      r6 = r6.call(r7, r8);
+      r6 = r7.then(r8);
       r5 = r6.then;
-      r5 = r5.call(r6, r2);
+      r5 = r6.then(r2);
       r4 = r5.then;
       r6 = $DONE;
       r7 = $DONE;
-      r3 = r4.call(r5, r6, r7);
+      r3 = r5.then(r6, r7);
       return r3;
       break;
   }
@@ -103,19 +103,19 @@ function* _anon_0(a0) {
   pushAwait = 2;
   r5 = r1();
   r4 = r5.next;
-  r4.call(r5);
+  r5.next();
   r7 = Promise;
   r8 = _anon_39;
   r7 = new r7(r8);
   r6 = r7.then;
   r8 = _anon_45;
-  r6 = r6.call(r7, r8);
+  r6 = r7.then(r8);
   r5 = r6.then;
-  r5 = r5.call(r6, r2);
+  r5 = r6.then(r2);
   r4 = r5.then;
   r6 = $DONE;
   r7 = $DONE;
-  r3 = r4.call(r5, r6, r7);
+  r3 = r5.then(r6, r7);
   return r3;
 }
 
@@ -128,10 +128,10 @@ function pushAwait(a0) {
   r1 = __context;
   try {
     if (actual === undefined) throw new ReferenceError("actual");
-    r3 = r0;
+    r3 = actual;
     r2 = r3.push;
     r4 = "await";
-    r2.call(r3, r4);
+    r3.push(r4);
     r3 = undefined;
     r4 = false;
     r2 = r0;
@@ -156,6 +156,7 @@ function* callAsync(a0) {
   r0 = __intrinsic.CreateJSGeneratorObject(r2, r3);
   r4 = __context;
   try {
+    r5 = __context;
     try {
       /* generator state: SuspendGenerator */
       /* generator state: ResumeGenerator */
@@ -266,7 +267,7 @@ function _anon_39(a0) {
   r1 = actual;
   r0 = r1.push;
   r2 = 1;
-  r0.call(r1, r2);
+  r1.push(r2);
   a0();
   return;
 }
@@ -278,7 +279,7 @@ function _anon_45(a0) {
   r1 = actual;
   r0 = r1.push;
   r2 = 2;
-  r0.call(r1, r2);
+  r1.push(r2);
   return;
 }
 

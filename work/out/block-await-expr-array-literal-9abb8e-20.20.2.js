@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -72,7 +83,7 @@ function* _anon_0(a0) {
       r1 = r2;
       r2 = __context;
       try {
-        r4 = r1;
+        r4 = [];
         r3 = r0;
         /* generator state: SuspendGenerator */
         /* generator state: ResumeGenerator */
@@ -98,26 +109,23 @@ function* _anon_0(a0) {
   return r2;
   r1 = r2;
   r2 = __context;
-  try {
-    r4 = r1;
-    r3 = r0;
-    /* generator state: SuspendGenerator */
-    /* generator state: ResumeGenerator */
-    r3 = __intrinsic.AsyncFunctionAwaitUncaught(r3, r4);
-    r4 = __intrinsic.GeneratorGetResumeMode(r0);
-    if (r4 !== 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    r4 = undefined;
-    r3 = r0;
-    return __intrinsic.AsyncFunctionResolve(r3, r4);
-  } catch (e) {
-    r3 = undefined;
-    /* createcatchcontext */
-    r2 = r3;
-    r5 = __ctx.ctx2;
-    r4 = r0;
-    return __intrinsic.AsyncFunctionReject(r4, r5);
+  r4 = [];
+  r3 = r0;
+  /* generator state: SuspendGenerator */
+  /* generator state: ResumeGenerator */
+  r3 = __intrinsic.AsyncFunctionAwaitUncaught(r3, r4);
+  r4 = __intrinsic.GeneratorGetResumeMode(r0);
+  if (r4 !== 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
   }
+  r4 = undefined;
+  r3 = r0;
+  return __intrinsic.AsyncFunctionResolve(r3, r4);
+  r3 = undefined;
+  /* createcatchcontext */
+  r2 = r3;
+  r5 = __ctx.ctx2;
+  r4 = r0;
+  return __intrinsic.AsyncFunctionReject(r4, r5);
 }
 

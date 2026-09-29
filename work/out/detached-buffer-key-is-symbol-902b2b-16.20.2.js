@@ -85,7 +85,7 @@ function _anon_4(a0) {
   r2 = r3.sameValue;
   r5 = Object;
   r4 = r5.getOwnPropertyDescriptor;
-  r4 = r4.call(r5, r0, r1);
+  r4 = r5.getOwnPropertyDescriptor(r0, r1);
   r4 = r4.value;
   r5 = "baz";
   r6 = "return value from a Symbol key";

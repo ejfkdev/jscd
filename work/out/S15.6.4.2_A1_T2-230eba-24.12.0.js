@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -62,7 +73,7 @@ function _anon_0(a0) {
   r4 = r4.prototype;
   r3 = r4[""];
   r5 = true;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = /* root: search_symbol */ undefined;
   r5 = "Boolean.prototype.toString(true) must return \"false\"";
   r1.call(r2-r5);
@@ -72,7 +83,7 @@ function _anon_0(a0) {
   r4 = new r4(r0);
   r3 = r4[""];
   r5 = true;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = /* root: search_symbol */ undefined;
   r5 = "(new Boolean()).toString(true) must return \"false\"";
   r1.call(r2-r5);
@@ -83,7 +94,7 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4[""];
   r5 = true;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = /* root: search_symbol */ undefined;
   r5 = "(new Boolean(false)).toString(true) must return \"false\"";
   r1.call(r2-r5);
@@ -94,7 +105,7 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4[""];
   r5 = false;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = "";
   r5 = "(new Boolean(true)).toString(false) must return \"true\"";
   r1.call(r2-r5);
@@ -105,7 +116,7 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4[""];
   r5 = false;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = "";
   r5 = "(new Boolean(1)).toString(false) must return \"true\"";
   r1.call(r2-r5);
@@ -116,7 +127,7 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4[""];
   r5 = true;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = /* root: search_symbol */ undefined;
   r5 = "(new Boolean(0)).toString(true) must return \"false\"";
   r1.call(r2-r5);
@@ -128,7 +139,7 @@ function _anon_0(a0) {
   r4 = new r4(r5);
   r3 = r4[""];
   r5 = false;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r4 = "";
   r5 = "(new Boolean(new Object())).toString(false) must return \"true\"";
   r0 = r1.call(r2-r5);

@@ -73,7 +73,7 @@ function* _anon_0(a0) {
       r3 = r3.evaluations;
       r2 = r3.push;
       r4 = "imports-tla";
-      r1 = r2.call(r3, r4);
+      r1 = r3.push(r4);
       return r1;
       break;
   }
@@ -83,7 +83,7 @@ function* _anon_0(a0) {
   r3 = r3.evaluations;
   r2 = r3.push;
   r4 = "imports-tla";
-  r1 = r2.call(r3, r4);
+  r1 = r3.push(r4);
   return r1;
 }
 

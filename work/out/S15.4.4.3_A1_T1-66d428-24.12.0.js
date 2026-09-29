@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -74,7 +85,7 @@ r1[r2] = obj;
 arr = r1;
 r2 = arr;
 r1 = r2.toLocaleString;
-r1.call(r2);
+r2.toLocaleString();
 r0 = undefined;
 r1 = getPossibleInstantsFor;
 if (r1 !== 3) {

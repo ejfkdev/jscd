@@ -69,7 +69,7 @@ function _anon_0(a0) {
   r3 = __runtime.ResolvePossiblyDirectEval(r5, r6, r7, r8, r9, r10);
   r3 = r3(r4);
   r4 = undefined;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = eval_;
@@ -82,7 +82,7 @@ function _anon_0(a0) {
   r3 = __runtime.ResolvePossiblyDirectEval(r5, r6, r7, r8, r9, r10);
   r3 = r3(r4);
   r4 = 2;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = eval_;
@@ -95,7 +95,7 @@ function _anon_0(a0) {
   r3 = __runtime.ResolvePossiblyDirectEval(r5, r6, r7, r8, r9, r10);
   r3 = r3(r4);
   r4 = 3;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

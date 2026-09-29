@@ -62,7 +62,7 @@ function _anon_0(a0) {
   r3 = r3.prototype;
   r3 = r3.message;
   r4 = "";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = verifyProperty;
   r2 = URIError;
   r2 = r2.prototype;

@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -74,17 +85,17 @@ function* _anon_0(a0) {
     case 0:
       r3 = Date;
       r2 = r3.now;
-      __ctx_ctx3 = r2.call(r3);
+      __ctx_ctx3 = r3.now();
       r5 = "./await-import-evaluation_FIXTURE.js";
       r4 = _anon_0;
       r4 = __runtime.DynamicImportCall(r4, r5);
       r3 = r4[""];
       r5 = _anon_5;
-      r3 = r3.call(r4, r5);
+      r3 = r4[""](r5);
       r2 = r3[""];
       r4 = $DONE;
       r5 = $DONE;
-      r1 = r2.call(r3, r4, r5);
+      r1 = r3[""](r4, r5);
       return r1;
       break;
   }
@@ -92,17 +103,17 @@ function* _anon_0(a0) {
   return r2;
   r3 = Date;
   r2 = r3.now;
-  __ctx_ctx3 = r2.call(r3);
+  __ctx_ctx3 = r3.now();
   r5 = "./await-import-evaluation_FIXTURE.js";
   r4 = _anon_0;
   r4 = __runtime.DynamicImportCall(r4, r5);
   r3 = r4[""];
   r5 = _anon_5;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r2 = r3[""];
   r4 = $DONE;
   r5 = $DONE;
-  r1 = r2.call(r3, r4, r5);
+  r1 = r3[""](r4, r5);
   return r1;
 }
 
@@ -111,7 +122,7 @@ function _anon_5(a0) {
   let r0, r1, r2, r3, r4, r5;
   r2 = Date;
   r1 = r2.now;
-  r1 = r1.call(r2);
+  r1 = r2.now();
   r0 = r1 - __ctx.ctx3;
   r1 = assert;
   r2 = a0.time;

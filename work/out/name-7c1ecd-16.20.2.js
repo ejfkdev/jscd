@@ -77,7 +77,7 @@ function _anon_4(a0) {
   r0 = __intrinsic.AsyncFunctionEnter(r1, r2);
   r1 = __context;
   try {
-    r3 = r0;
+    r3 = undefined;
     r4 = false;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3, r4);
@@ -100,7 +100,7 @@ function func(a0) {
   r0 = __intrinsic.AsyncFunctionEnter(r1, r2);
   r1 = __context;
   try {
-    r3 = r0;
+    r3 = undefined;
     r4 = false;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3, r4);

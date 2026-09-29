@@ -77,7 +77,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = typeof B;
   r4 = "function";
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

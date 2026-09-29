@@ -61,7 +61,7 @@ __runtime.DeclareGlobals(r1, r2);
 r2 = Object;
 r1 = r2.create;
 r3 = null;
-badKey = r1.call(r2, r3);
+badKey = r2.create(r3);
 r2 = assert;
 r1 = r2.throws;
 r3 = TypeError;

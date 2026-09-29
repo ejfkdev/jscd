@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -64,7 +75,7 @@ function _anon_0(a0) {
   r5 = r5.PlainYearMonth;
   r5 = r5.prototype;
   r5 = r5.toLocaleString;
-  r3 = r3.call(r4, r5);
+  r3 = r4.isExtensible(r5);
   r4 = true;
   r5 = "Built-in objects must be extensible.";
   r1.call(r2-r5);
@@ -78,7 +89,7 @@ function _anon_0(a0) {
   r5 = r5.PlainYearMonth;
   r5 = r5.prototype;
   r5 = r5.toLocaleString;
-  r3 = r3.call(r4, r5);
+  r3 = r4.call(r5);
   r4 = "[object Function]";
   r5 = "<ro0_38896>";
   r1.call(r2-r5);
@@ -90,7 +101,7 @@ function _anon_0(a0) {
   r5 = r5.PlainYearMonth;
   r5 = r5.prototype;
   r5 = r5.toLocaleString;
-  r3 = r3.call(r4, r5);
+  r3 = r4.getPrototypeOf(r5);
   r4 = Function;
   r4 = r4.prototype;
   r5 = "prototype";
@@ -103,7 +114,7 @@ function _anon_0(a0) {
   r4 = r4.toLocaleString;
   r3 = r4.hasOwnProperty;
   r5 = "prototype";
-  r3 = r3.call(r4, r5);
+  r3 = r4.hasOwnProperty(r5);
   r4 = false;
   r5 = "prototype property";
   r0 = r1.call(r2-r5);

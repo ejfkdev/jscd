@@ -77,12 +77,12 @@ function _anon_4(a0) {
   r1 = r2.sameValue;
   r3 = r0.undef;
   r4 = undefined;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = r0.foo;
   r4 = "test262";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   return;
 }
 

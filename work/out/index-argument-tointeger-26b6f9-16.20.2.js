@@ -77,7 +77,7 @@ function _anon_0(a0) {
   r4 = __ctx.ctx4;
   r3 = r4.at;
   r5 = index;
-  r3 = r3.call(r4, r5);
+  r3 = r4.at(r5);
   r4 = 1;
   r5 = "a.at({valueOf() {valueOfCallCount++; return 1;}}) must return 1";
   r1.call(r2-r5);

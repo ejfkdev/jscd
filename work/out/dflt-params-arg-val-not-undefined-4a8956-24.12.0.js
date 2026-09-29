@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -87,11 +98,11 @@ r9 = obj;
 r3 = r3(r4-r9);
 r2 = r3[""];
 r4 = _anon_38;
-r2 = r2.call(r3, r4);
+r2 = r3[""](r4);
 r1 = r2[""];
 r3 = $DONE;
 r4 = $DONE;
-r1.call(r2, r3, r4);
+r2[""](r3, r4);
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r3 = falseCount;
@@ -142,8 +153,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
   r6 = __intrinsic.AsyncFunctionEnter(r7, r8);
   r7 = __context;
   try {
-    phi0 = r6;
-    if (r6 === undefined) {
+    phi0 = a0;
+    if (a0 === undefined) {
       r8 = falseCount + 1;
       falseCount = r8;
       phi0 = r8;
@@ -199,27 +210,27 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
     r9 = Symbol_split;
     r8 = r9.sameValue;
     r11 = false;
-    r8.call(r9, r0, r11);
+    r9.sameValue(r0, r11);
     r9 = Symbol_split;
     r8 = r9.sameValue;
     r11 = "";
-    r8.call(r9, r1, r11);
+    r9.sameValue(r1, r11);
     r9 = Symbol_split;
     r8 = r9.sameValue;
     r11 = _anon;
-    r8.call(r9, r2, r11);
+    r9.sameValue(r2, r11);
     r9 = Symbol_split;
     r8 = r9.sameValue;
     r11 = 0;
-    r8.call(r9, r3, r11);
+    r9.sameValue(r3, r11);
     r9 = Symbol_split;
     r8 = r9.sameValue;
     r11 = null;
-    r8.call(r9, r4, r11);
+    r9.sameValue(r4, r11);
     r9 = Symbol_split;
     r8 = r9.sameValue;
     r11 = obj;
-    r8.call(r9, r5, r11);
+    r9.sameValue(r5, r11);
     callCount = callCount + 1;
     r9 = undefined;
     r8 = r6;

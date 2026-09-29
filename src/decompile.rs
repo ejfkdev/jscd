@@ -787,6 +787,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -2358,15 +2369,15 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     .filter(|s| *s > catch_start && *s <= end)
                     .min()
                     .unwrap_or(end);
+                // 先登记这个 handler 已被消费：这样从 i 开始发射后，下一次迭代虽然还落在
+                // 同一个下标上，①也不会再匹配同一个 handler（否则 try 自我重入、嵌套爆炸）。
+                self.used_handler_starts.push(h.start as usize);
                 self.line("try {");
                 self.indent += 1;
-                // 注意：这里必须从 i+1 开始。直接从 i 开始会让①规则在下一次迭代又匹配到
-                // 同一个 handler → try 自我重入、嵌套爆炸（试过）。
-                // 遗留问题：handler 起点若正好是**循环头**（V8 把 for-of 包在迭代器 close
-                // 的 try 里就是这样），②循环规则就看不到这个头 → 循环没有 while 包裹、
-                // 回边退化成注释 → 循环只跑一次。修法应是"把已消费的 handler 起点登记下来，
-                // 让①不再匹配"，而不是扩大区间。
-                self.emit_range(i + 1, body_end)?;
+                // 从 i（而不是 i+1）开始：handler 起点可能正好落在**循环头**上
+                // （V8 把整个 for-of 包在迭代器 close 的 try 里），跳过它②循环规则就看不到
+                // 这个头 → 没有 while 包裹、回边退化成注释 → 循环只跑一次。
+                self.emit_range(i, body_end)?;
                 self.indent -= 1;
                 self.line("} catch (e) {");
                 self.indent += 1;

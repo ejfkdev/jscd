@@ -67,7 +67,7 @@ r2 = r2.BYTES_PER_ELEMENT * 2;
 buffer = new r1(r2);
 r2 = nonClampedIntArrayConstructors;
 r1 = r2.slice;
-views = r1.call(r2);
+views = r2.slice();
 r1 = testWithTypedArrayConstructors;
 r2 = _anon_9;
 r3 = views;
@@ -94,7 +94,7 @@ function _anon_15(a0) {
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_21;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   return;
 }
 

@@ -75,7 +75,7 @@ r2 = assert;
 r1 = r2.throws;
 r3 = ReferenceError;
 r4 = _anon_28;
-r1.call(r2, r3, r4);
+r2.throws(r3, r4);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = callCount;
@@ -112,7 +112,7 @@ function _anon_28(a0) {
   r1 = C;
   r1 = r1.prototype;
   r0 = r1.method;
-  r0.call(r1);
+  r1.method();
   return;
 }
 

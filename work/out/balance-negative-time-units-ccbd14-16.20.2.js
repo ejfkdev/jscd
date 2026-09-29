@@ -66,7 +66,7 @@ function _anon_0(a0) {
   datetime = new r1(r2, r3);
   r2 = datetime;
   r1 = r2.toPlainDateTime;
-  pdt = r1.call(r2);
+  pdt = r2.toPlainDateTime();
   r2 = TemporalHelpers;
   r1 = r2.assertPlainDateTime;
   r3 = pdt;

@@ -60,12 +60,12 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_4;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_14;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 
@@ -75,7 +75,7 @@ function _anon_4(a0) {
   r1 = Object;
   r0 = r1.values;
   r2 = null;
-  r0.call(r1, r2);
+  r1.values(r2);
   return;
 }
 
@@ -85,7 +85,7 @@ function _anon_14(a0) {
   r1 = Object;
   r0 = r1.values;
   r2 = undefined;
-  r0.call(r1, r2);
+  r1.values(r2);
   return;
 }
 

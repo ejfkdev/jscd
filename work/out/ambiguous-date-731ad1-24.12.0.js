@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -72,7 +83,7 @@ function _anon_0(a0) {
   r4 = __ctx.ctx3;
   r3 = r4.subtract;
   r5 = ({  });
-  r3 = r3.call(r4, r5);
+  r3 = r4.subtract(r5);
   r4 = 2020;
   r5 = 2;
   r6 = "M02";
@@ -91,7 +102,7 @@ function _anon_0(a0) {
   r3 = r4.subtract;
   r5 = ({  });
   r6 = ({  });
-  r3 = r3.call(r4, r5, r6);
+  r3 = r4.subtract(r5, r6);
   r4 = 2020;
   r5 = 2;
   r6 = "M02";
@@ -121,6 +132,6 @@ function _anon_17(a0) {
   r0 = r1.subtract;
   r2 = ({  });
   r3 = ({  });
-  return r0.call(r1, r2, r3);
+  return r1.subtract(r2, r3);
 }
 

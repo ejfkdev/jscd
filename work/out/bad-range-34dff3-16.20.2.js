@@ -80,7 +80,7 @@ function _anon_5(a0) {
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_13;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   return;
 }
 

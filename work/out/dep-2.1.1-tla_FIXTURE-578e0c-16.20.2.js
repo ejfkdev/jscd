@@ -72,15 +72,15 @@ function* _anon_0(a0) {
       r1 = r2;
       r2 = __context;
       try {
-        r4 = r1;
+        r4 = globalThis;
         r4 = r4.evaluations;
         r3 = r4.push;
         r5 = "2.1.1 start";
-        r3.call(r4, r5);
+        r4.push(r5);
         r4 = Promise;
         r3 = r4.resolve;
         r5 = 0;
-        r4 = r3.call(r4, r5);
+        r4 = r4.resolve(r5);
         r3 = r0;
         /* generator state: SuspendGenerator */
         /* generator state: ResumeGenerator */
@@ -93,7 +93,7 @@ function* _anon_0(a0) {
         r4 = r4.evaluations;
         r3 = r4.push;
         r5 = "2.1.1 end";
-        r3.call(r4, r5);
+        r4.push(r5);
         r4 = undefined;
         r5 = true;
         r3 = r0;
@@ -113,41 +113,38 @@ function* _anon_0(a0) {
   return r2;
   r1 = r2;
   r2 = __context;
-  try {
-    r4 = r1;
-    r4 = r4.evaluations;
-    r3 = r4.push;
-    r5 = "2.1.1 start";
-    r3.call(r4, r5);
-    r4 = Promise;
-    r3 = r4.resolve;
-    r5 = 0;
-    r4 = r3.call(r4, r5);
-    r3 = r0;
-    /* generator state: SuspendGenerator */
-    /* generator state: ResumeGenerator */
-    r3 = __intrinsic.AsyncFunctionAwaitUncaught(r3, r4);
-    r4 = __intrinsic.GeneratorGetResumeMode(r0);
-    if (r4 !== 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    r4 = globalThis;
-    r4 = r4.evaluations;
-    r3 = r4.push;
-    r5 = "2.1.1 end";
-    r3.call(r4, r5);
-    r4 = undefined;
-    r5 = true;
-    r3 = r0;
-    return __intrinsic.AsyncFunctionResolve(r3, r4, r5);
-  } catch (e) {
-    r3 = undefined;
-    /* createcatchcontext */
-    r2 = r3;
-    r5 = __ctx.ctx2;
-    r6 = true;
-    r4 = r0;
-    return __intrinsic.AsyncFunctionReject(r4, r5, r6);
+  r4 = globalThis;
+  r4 = r4.evaluations;
+  r3 = r4.push;
+  r5 = "2.1.1 start";
+  r4.push(r5);
+  r4 = Promise;
+  r3 = r4.resolve;
+  r5 = 0;
+  r4 = r4.resolve(r5);
+  r3 = r0;
+  /* generator state: SuspendGenerator */
+  /* generator state: ResumeGenerator */
+  r3 = __intrinsic.AsyncFunctionAwaitUncaught(r3, r4);
+  r4 = __intrinsic.GeneratorGetResumeMode(r0);
+  if (r4 !== 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
   }
+  r4 = globalThis;
+  r4 = r4.evaluations;
+  r3 = r4.push;
+  r5 = "2.1.1 end";
+  r4.push(r5);
+  r4 = undefined;
+  r5 = true;
+  r3 = r0;
+  return __intrinsic.AsyncFunctionResolve(r3, r4, r5);
+  r3 = undefined;
+  /* createcatchcontext */
+  r2 = r3;
+  r5 = __ctx.ctx2;
+  r6 = true;
+  r4 = r0;
+  return __intrinsic.AsyncFunctionReject(r4, r5, r6);
 }
 

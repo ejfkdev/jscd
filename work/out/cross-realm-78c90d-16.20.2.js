@@ -63,11 +63,11 @@ r1 = r2.getOwnPropertyDescriptor;
 r3 = RegExp;
 r3 = r3.prototype;
 r4 = "unicodeSets";
-r1 = r1.call(r2, r3, r4);
+r1 = r2.getOwnPropertyDescriptor(r3, r4);
 unicodeSets = r1.get;
 r2 = $262;
 r1 = r2.createRealm;
-r1 = r1.call(r2);
+r1 = r2.createRealm();
 other = r1.global;
 r1 = other;
 r1 = r1.RegExp;
@@ -76,7 +76,7 @@ r2 = Object;
 r1 = r2.getOwnPropertyDescriptor;
 r3 = otherRegExpProto;
 r4 = "unicodeSets";
-r1 = r1.call(r2, r3, r4);
+r1 = r2.getOwnPropertyDescriptor(r3, r4);
 otherRegExpGetter = r1.get;
 r2 = assert;
 r1 = r2.throws;
@@ -97,7 +97,7 @@ function _anon_10(a0) {
   r1 = unicodeSets;
   r0 = r1.call;
   r2 = otherRegExpProto;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -108,7 +108,7 @@ function _anon_20(a0) {
   r0 = r1.call;
   r2 = RegExp;
   r2 = r2.prototype;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 

@@ -67,7 +67,7 @@ function _anon_0(a0) {
   r2 = r2.ZonedDateTime;
   r1 = r2.from;
   r3 = arg;
-  result = r1.call(r2, r3);
+  result = r2.from(r3);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = result;
@@ -94,6 +94,6 @@ function _anon_15(a0) {
   r0 = r1.from;
   if (arg === undefined) throw new ReferenceError("arg");
   r2 = arg;
-  return r0.call(r1, r2);
+  return r1.from(r2);
 }
 

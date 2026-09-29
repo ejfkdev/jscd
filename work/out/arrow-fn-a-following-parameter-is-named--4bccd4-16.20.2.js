@@ -66,7 +66,7 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = SyntaxError;
   r4 = f;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = globalThis;

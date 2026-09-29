@@ -66,4 +66,4 @@ r3 = TypedArrayPrototype;
 r4 = Symbol;
 r3 = r3[r4.toStringTag];
 r4 = undefined;
-r0 = r1.call(r2, r3, r4);
+r0 = r2.sameValue(r3, r4);

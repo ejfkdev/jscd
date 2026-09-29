@@ -66,13 +66,13 @@ function _anon_0(a0) {
   r5 = 0;
   r4 = new r4(r5);
   r3 = r4.toUTCString;
-  r3 = r3.call(r4);
-  match = r1.call(r2, r3);
+  r3 = r4.toUTCString();
+  match = r2.exec(r3);
   r2 = assert;
   r1 = r2.notSameValue;
   r3 = null;
   r4 = match;
-  r1.call(r2, r3, r4);
+  r2.notSameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = "Wed, 01 Jan 0020 00:00:00 GMT";
@@ -80,8 +80,8 @@ function _anon_0(a0) {
   r6 = "0020-01-01T00:00:00Z";
   r5 = new r5(r6);
   r4 = r5.toUTCString;
-  r4 = r4.call(r5);
-  r0 = r1.call(r2, r3, r4);
+  r4 = r5.toUTCString();
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

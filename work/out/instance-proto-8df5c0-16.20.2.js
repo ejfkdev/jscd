@@ -62,10 +62,10 @@ function _anon_0(a0) {
   r3 = r4.getPrototypeOf;
   r5 = SyntaxError;
   r5 = new r5(r0);
-  r3 = r3.call(r4, r5);
+  r3 = r4.getPrototypeOf(r5);
   r4 = SyntaxError;
   r4 = r4.prototype;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

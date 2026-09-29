@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -77,20 +88,20 @@ function _anon_0(a0) {
   r2 = r2.method;
   r1 = r2.timeZone;
   r3 = asyncFn;
-  __ctx_ctx6 = r1.call(r2, r3);
+  __ctx_ctx6 = r2.timeZone(r3);
   r4 = __ctx.ctx6;
   r5 = 1;
   r4 = r4(r5);
   r3 = r4[""];
   r5 = _anon_43;
-  r3 = r3.call(r4, r5);
+  r3 = r4[""](r5);
   r2 = r3[""];
   r4 = _anon_50;
-  r2 = r2.call(r3, r4);
+  r2 = r3[""](r4);
   r1 = r2[""];
   r3 = $DONE;
   r4 = $DONE;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2[""](r3, r4);
   return r0;
 }
 
@@ -104,7 +115,7 @@ function _method(a0) {
   r0 = __intrinsic.AsyncFunctionEnter(r2, r3);
   r2 = __context;
   try {
-    r4 = r0;
+    r4 = _anon_21;
     r3 = r0;
     return __intrinsic.AsyncFunctionResolve(r3, r4);
   } catch (e) {
@@ -122,7 +133,7 @@ function _anon_21(a0) {
   r0 = __intrinsic.AsyncFunctionEnter(r1, r2);
   r1 = __context;
   try {
-    r3 = r0;
+    r3 = hoursInDay;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3);
   } catch (e) {
@@ -174,13 +185,13 @@ function _anon_50(a0) {
   r1 = Symbol_split;
   r0 = r1.sameValue;
   r3 = 1;
-  r0.call(r1, a0, r3);
+  r1.sameValue(a0, r3);
   r1 = Symbol_split;
   r0 = r1.sameValue;
   if (count === undefined) throw new ReferenceError("count");
   r2 = _default;
   r3 = 1;
-  r0.call(r1, r2, r3);
+  r1.sameValue(r2, r3);
   return;
 }
 

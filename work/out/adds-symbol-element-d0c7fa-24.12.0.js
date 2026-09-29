@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -70,24 +81,24 @@ r2 = map;
 r1 = r2.getOrInsert;
 r3 = foo;
 r4 = 1;
-r1.call(r2, r3, r4);
+r2.getOrInsert(r3, r4);
 r2 = map;
 r1 = r2.getOrInsert;
 r3 = bar;
 r4 = 2;
-r1.call(r2, r3, r4);
+r2.getOrInsert(r3, r4);
 r2 = map;
 r1 = r2.getOrInsert;
 r3 = _anon;
 r3 = r3["<ro0_57072>"];
 r4 = 3;
-r1.call(r2, r3, r4);
+r2.getOrInsert(r3, r4);
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r4 = map;
 r3 = r4["/* root: CodeWrapperMap */ undefined"];
 r5 = bar;
-r3 = r3.call(r4, r5);
+r3 = r4["/* root: CodeWrapperMap */ undefined"](r5);
 r4 = true;
 r5 = "Regular symbol as key";
 r1.call(r2-r5);
@@ -96,7 +107,7 @@ r1 = r2.sameValue;
 r4 = map;
 r3 = r4["/* root: ArrayBoilerplateDescriptionMap */ undefined"];
 r5 = foo;
-r3 = r3.call(r4, r5);
+r3 = r4["/* root: ArrayBoilerplateDescriptionMap */ undefined"](r5);
 r4 = 1;
 r5 = "Symbols with the same description don't overwrite each other";
 r1.call(r2-r5);
@@ -106,7 +117,7 @@ r4 = map;
 r3 = r4["/* root: CodeWrapperMap */ undefined"];
 r5 = _anon;
 r5 = r5["<ro0_57072>"];
-r3 = r3.call(r4, r5);
+r3 = r4["/* root: CodeWrapperMap */ undefined"](r5);
 r4 = true;
 r5 = "Well-known symbol as key";
 r1.call(r2-r5);
@@ -115,15 +126,15 @@ r1 = r2.sameValue;
 r4 = map;
 r3 = r4["/* root: ArrayBoilerplateDescriptionMap */ undefined"];
 r5 = bar;
-r3 = r3.call(r4, r5);
+r3 = r4["/* root: ArrayBoilerplateDescriptionMap */ undefined"](r5);
 r4 = 2;
-r1.call(r2, r3, r4);
+r2.sameValue(r3, r4);
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r4 = map;
 r3 = r4["/* root: ArrayBoilerplateDescriptionMap */ undefined"];
 r5 = _anon;
 r5 = r5["<ro0_57072>"];
-r3 = r3.call(r4, r5);
+r3 = r4["/* root: ArrayBoilerplateDescriptionMap */ undefined"](r5);
 r4 = 3;
-r0 = r1.call(r2, r3, r4);
+r0 = r2.sameValue(r3, r4);

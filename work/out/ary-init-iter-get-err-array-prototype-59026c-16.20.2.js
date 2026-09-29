@@ -64,7 +64,7 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_5;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 
@@ -86,7 +86,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11;
     phi2 = r6;
     if (!r6) {
       r6 = true;
-      r10 = r4.call(r5);
+      r10 = r5.next();
       phi3 = r10;
       if (r10 === undefined) {
         phi3 = __runtime.ThrowIteratorResultNotAnObject(r10);
@@ -107,7 +107,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11;
     phi5 = r6;
     if (!r6) {
       r6 = true;
-      r10 = r4.call(r5);
+      r10 = r5.next();
       phi6 = r10;
       if (r10 === undefined) {
         phi6 = __runtime.ThrowIteratorResultNotAnObject(r10);
@@ -128,7 +128,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11;
     phi8 = r6;
     if (!r6) {
       r6 = true;
-      r10 = r4.call(r5);
+      r10 = r5.next();
       phi9 = r10;
       if (r10 === undefined) {
         phi9 = __runtime.ThrowIteratorResultNotAnObject(r10);
@@ -153,9 +153,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11;
     if (!r6) {
       r11 = __context;
       try {
-        if (r6 != null) {
-          r12 = r6;
-          phi11 = r12.call(r5);
+        if (r5.return != null) {
+          r12 = r5.return;
+          phi11 = r5.return();
           if (phi11 === undefined) {
             r13 = phi11;
             r11 = __runtime.ThrowIteratorResultNotAnObject(r13);

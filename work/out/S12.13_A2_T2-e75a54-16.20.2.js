@@ -58,7 +58,7 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = __context;
   try {
-    throw undefined;
+    throw null;
   } catch (e) {
     r2 = undefined;
     /* createcatchcontext */

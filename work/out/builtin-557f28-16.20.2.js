@@ -64,7 +64,7 @@ function _anon_0(a0) {
   r5 = r5.PlainYearMonth;
   r5 = r5.prototype;
   r5 = r5.toLocaleString;
-  r3 = r3.call(r4, r5);
+  r3 = r4.isExtensible(r5);
   r4 = true;
   r5 = "Built-in objects must be extensible.";
   r1.call(r2-r5);
@@ -78,7 +78,7 @@ function _anon_0(a0) {
   r5 = r5.PlainYearMonth;
   r5 = r5.prototype;
   r5 = r5.toLocaleString;
-  r3 = r3.call(r4, r5);
+  r3 = r4.call(r5);
   r4 = "[object Function]";
   r5 = "Object.prototype.toString";
   r1.call(r2-r5);
@@ -90,7 +90,7 @@ function _anon_0(a0) {
   r5 = r5.PlainYearMonth;
   r5 = r5.prototype;
   r5 = r5.toLocaleString;
-  r3 = r3.call(r4, r5);
+  r3 = r4.getPrototypeOf(r5);
   r4 = Function;
   r4 = r4.prototype;
   r5 = "prototype";
@@ -103,7 +103,7 @@ function _anon_0(a0) {
   r4 = r4.toLocaleString;
   r3 = r4.hasOwnProperty;
   r5 = "prototype";
-  r3 = r3.call(r4, r5);
+  r3 = r4.hasOwnProperty(r5);
   r4 = false;
   r5 = "prototype property";
   r0 = r1.call(r2-r5);

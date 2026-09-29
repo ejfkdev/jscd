@@ -72,17 +72,17 @@ function _anon_0(a0) {
   r3 = new r3(r4, r5, r6, r7, r8, r9, r10, r11, r12);
   r3 = r3.year;
   r4 = 2021;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Temporal;
   r4 = r4.PlainDateTime;
   r3 = r4.from;
   r5 = "2019-03-15T15:30:26";
-  r3 = r3.call(r4, r5);
+  r3 = r4.from(r5);
   r3 = r3.year;
   r4 = 2019;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

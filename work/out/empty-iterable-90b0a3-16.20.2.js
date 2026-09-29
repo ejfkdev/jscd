@@ -73,10 +73,10 @@ r1 = r2.sameValue;
 r4 = Object;
 r3 = r4.getPrototypeOf;
 r5 = map;
-r3 = r3.call(r4, r5);
+r3 = r4.getPrototypeOf(r5);
 r4 = WeakMap;
 r4 = r4.prototype;
-r1.call(r2, r3, r4);
+r2.sameValue(r3, r4);
 r1 = assert;
 r2 = map;
 r2 = r2 instanceof WeakMap;
@@ -93,6 +93,6 @@ function _anon_6(a0) {
   counter = ++counter;
   r1 = set;
   r0 = r1.call;
-  return r0.call(r1, this, a0);
+  return r1.call(this, a0);
 }
 

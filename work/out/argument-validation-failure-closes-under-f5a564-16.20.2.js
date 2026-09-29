@@ -76,23 +76,23 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_25;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_32;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 
@@ -119,7 +119,7 @@ function _anon_25(a0) {
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = closable;
   r0 = r1.find;
-  r0.call(r1);
+  r1.find();
   return;
 }
 
@@ -130,7 +130,7 @@ function _anon_32(a0) {
   r1 = closable;
   r0 = r1.find;
   r2 = ({  });
-  r0.call(r1, r2);
+  r1.find(r2);
   return;
 }
 

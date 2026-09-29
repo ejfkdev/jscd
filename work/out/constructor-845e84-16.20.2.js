@@ -62,14 +62,14 @@ function _anon_0(a0) {
   r3 = r3.prototype;
   r3 = r3.constructor;
   r4 = WeakMap;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = WeakMap;
   r3 = new r3(r0);
   r3 = r3.constructor;
   r4 = WeakMap;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = verifyProperty;
   r2 = WeakMap;
   r2 = r2.prototype;

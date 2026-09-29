@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -82,7 +93,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({  });
-  __ctx_ctx4 = r1.call(r2, r3);
+  __ctx_ctx4 = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = __ctx.ctx4;
@@ -97,7 +108,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({  });
-  __ctx_ctx5 = r1.call(r2, r3);
+  __ctx_ctx5 = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = __ctx.ctx5;
@@ -112,7 +123,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({  });
-  __ctx_ctx6 = r1.call(r2, r3);
+  __ctx_ctx6 = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = __ctx.ctx6;
@@ -127,7 +138,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({  });
-  __ctx_ctx7 = r1.call(r2, r3);
+  __ctx_ctx7 = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = __ctx.ctx7;
@@ -142,7 +153,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({  });
-  __ctx_ctx8 = r1.call(r2, r3);
+  __ctx_ctx8 = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = __ctx.ctx8;
@@ -157,7 +168,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({  });
-  combined = r1.call(r2, r3);
+  combined = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = combined;
@@ -172,7 +183,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({ ["8"]: "" });
-  plural = r1.call(r2, r3);
+  plural = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = plural;
@@ -187,7 +198,7 @@ function _anon_0(a0) {
   r2 = EnumCacheMap;
   r1 = r2[""];
   r3 = ({ ["8"]: "" });
-  __ctx_ctx11 = r1.call(r2, r3);
+  __ctx_ctx11 = r2[""](r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = __ctx.ctx11;

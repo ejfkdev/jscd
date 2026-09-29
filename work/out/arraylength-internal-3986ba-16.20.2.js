@@ -81,7 +81,7 @@ function _anon_4(a0, a1) {
   r3.call(r4-r7);
   r3 = r0.map;
   r5 = _anon_11;
-  r3.call(r0, r5);
+  r0.map(r5);
   r4 = assert;
   r3 = r4.sameValue;
   r5 = loop;
@@ -101,7 +101,7 @@ function _anon_4(a0, a1) {
   r3.call(r4-r7);
   r3 = r1.map;
   r5 = _anon_27;
-  r3.call(r1, r5);
+  r1.map(r5);
   r4 = assert;
   r3 = r4.sameValue;
   r5 = loop;

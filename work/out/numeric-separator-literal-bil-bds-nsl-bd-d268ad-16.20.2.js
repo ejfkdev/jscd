@@ -60,12 +60,12 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = 2;
   r4 = 2;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = 2;
   r4 = 2;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

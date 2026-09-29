@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -61,7 +72,7 @@ function _anon_0(a0) {
   r4 = _anon;
   r4 = r4.prototype;
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = 0;
   r5 = "Number.prototype.valueOf() must return 0";
   r1.call(r2-r5);
@@ -70,7 +81,7 @@ function _anon_0(a0) {
   r4 = _anon;
   r4 = new r4(r0);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = 0;
   r5 = "(new Number()).valueOf() must return 0";
   r1.call(r2-r5);
@@ -80,7 +91,7 @@ function _anon_0(a0) {
   r5 = 0;
   r4 = new r4(r5);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = 0;
   r5 = "(new Number(0)).valueOf() must return 0";
   r1.call(r2-r5);
@@ -90,7 +101,7 @@ function _anon_0(a0) {
   r5 = 0;
   r4 = new r4(r5);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = 0;
   r5 = "(new Number(-1)).valueOf() must return -1";
   r1.call(r2-r5);
@@ -100,7 +111,7 @@ function _anon_0(a0) {
   r5 = 1;
   r4 = new r4(r5);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = 1;
   r5 = "(new Number(1)).valueOf() must return 1";
   r1.call(r2-r5);
@@ -110,7 +121,7 @@ function _anon_0(a0) {
   r5 = _anon;
   r4 = new r4(r5);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = _anon;
   r5 = "new Number(NaN).valueOf() returns NaN";
   r1.call(r2-r5);
@@ -121,7 +132,7 @@ function _anon_0(a0) {
   r5 = r5["<ro0_55728>"];
   r4 = new r4(r5);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = _anon;
   r4 = r4["<ro0_55728>"];
   r5 = "(new Number(Number.POSITIVE_INFINITY)).valueOf() returns Number.POSITIVE_INFINITY";
@@ -133,7 +144,7 @@ function _anon_0(a0) {
   r5 = r5["<ro0_55688>"];
   r4 = new r4(r5);
   r3 = r4[""];
-  r3 = r3.call(r4);
+  r3 = r4[""]();
   r4 = _anon;
   r4 = r4["<ro0_55688>"];
   r5 = "(new Number(Number.NEGATIVE_INFINITY)).valueOf() returns Number.NEGATIVE_INFINITY";

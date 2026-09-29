@@ -73,9 +73,9 @@ function _anon_4(a0) {
   r2 = r3.hasOwnProperty;
   r4 = Symbol;
   r4 = r4.toStringTag;
-  r2 = r2.call(r3, r4);
+  r2 = r3.hasOwnProperty(r4);
   r3 = false;
-  r0.call(r1, r2, r3);
+  r1.sameValue(r2, r3);
   return;
 }
 

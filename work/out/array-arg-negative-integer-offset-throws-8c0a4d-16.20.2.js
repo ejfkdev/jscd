@@ -103,7 +103,7 @@ function _anon_10(a0) {
   r0 = r1.set;
   r2 = [1];
   r3 = 0;
-  r0.call(r1, r2, r3);
+  r1.set(r2, r3);
   return;
 }
 
@@ -114,7 +114,7 @@ function _anon_21(a0) {
   r0 = r1.set;
   r2 = [1];
   r3 = -1.00001;
-  r0.call(r1, r2, r3);
+  r1.set(r2, r3);
   return;
 }
 
@@ -125,7 +125,7 @@ function _anon_30(a0) {
   r0 = r1.set;
   r2 = [1];
   r3 = -Infinity;
-  r0.call(r1, r2, r3);
+  r1.set(r2, r3);
   return;
 }
 

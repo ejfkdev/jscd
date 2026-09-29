@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -80,19 +91,19 @@ function* _anon_0(a0) {
       iterations = 2;
       r4 = r1();
       r3 = r4[""];
-      r3.call(r4);
+      r4[""]();
       r6 = _anon;
       r7 = _anon_42;
       r6 = new r6(r7);
       r5 = r6[""];
       r7 = _anon_49;
-      r5 = r5.call(r6, r7);
+      r5 = r6[""](r7);
       r4 = r5[""];
-      r4 = r4.call(r5, r2);
+      r4 = r5[""](r2);
       r3 = r4[""];
       r5 = $DONE;
       r6 = $DONE;
-      r3.call(r4, r5, r6);
+      r4[""](r5, r6);
       return;
       break;
   }
@@ -103,19 +114,19 @@ function* _anon_0(a0) {
   iterations = 2;
   r4 = r1();
   r3 = r4[""];
-  r3.call(r4);
+  r4[""]();
   r6 = _anon;
   r7 = _anon_42;
   r6 = new r6(r7);
   r5 = r6[""];
   r7 = _anon_49;
-  r5 = r5.call(r6, r7);
+  r5 = r6[""](r7);
   r4 = r5[""];
-  r4 = r4.call(r5, r2);
+  r4 = r5[""](r2);
   r3 = r4[""];
   r5 = $DONE;
   r6 = $DONE;
-  r3.call(r4, r5, r6);
+  r4[""](r5, r6);
   return;
 }
 
@@ -128,10 +139,10 @@ function pushAwait(a0) {
   r1 = __context;
   try {
     if (actual === undefined) throw new ReferenceError("actual");
-    r3 = r0;
+    r3 = actual;
     r2 = r3.push;
     r4 = "await";
-    r2.call(r3, r4);
+    r3.push(r4);
     r3 = undefined;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3);
@@ -152,10 +163,11 @@ function* callAsync(a0) {
   r4 = undefined /* hole */;
   r5 = __context;
   try {
+    r6 = __context;
     try {
       /* generator state: SuspendGenerator */
       /* generator state: ResumeGenerator */
-      r7 = r4;
+      r7 = r0;
       switch (__intrinsic.GeneratorGetResumeMode(r0)) {
         case 2:
           __intrinsic.GeneratorGetResumeMode(r0);
@@ -255,7 +267,7 @@ function _anon_42(a0) {
   r1 = actual;
   r0 = r1.push;
   r2 = 1;
-  r0.call(r1, r2);
+  r1.push(r2);
   a0();
   return;
 }
@@ -267,7 +279,7 @@ function _anon_49(a0) {
   r1 = actual;
   r0 = r1.push;
   r2 = 2;
-  r0.call(r1, r2);
+  r1.push(r2);
   return;
 }
 

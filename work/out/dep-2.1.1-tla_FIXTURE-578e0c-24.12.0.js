@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -75,11 +86,11 @@ function* _anon_0(a0) {
         r3 = r3.evaluations;
         r2 = r3.push;
         r4 = "2.1.1 start";
-        r2.call(r3, r4);
+        r3.push(r4);
         r3 = _anon;
         r2 = r3[""];
         r4 = 0;
-        r3 = r2.call(r3, r4);
+        r3 = r3[""](r4);
         r2 = r0;
         /* generator state: SuspendGenerator */
         /* generator state: ResumeGenerator */
@@ -92,7 +103,7 @@ function* _anon_0(a0) {
         r3 = r3.evaluations;
         r2 = r3.push;
         r4 = "2.1.1 end";
-        r2.call(r3, r4);
+        r3.push(r4);
         r3 = undefined;
         r2 = r0;
         return __intrinsic.AsyncFunctionResolve(r2, r3);
@@ -107,11 +118,11 @@ function* _anon_0(a0) {
     r3 = r3.evaluations;
     r2 = r3.push;
     r4 = "2.1.1 start";
-    r2.call(r3, r4);
+    r3.push(r4);
     r3 = _anon;
     r2 = r3[""];
     r4 = 0;
-    r3 = r2.call(r3, r4);
+    r3 = r3[""](r4);
     r2 = r0;
     /* generator state: SuspendGenerator */
     /* generator state: ResumeGenerator */
@@ -124,7 +135,7 @@ function* _anon_0(a0) {
     r3 = r3.evaluations;
     r2 = r3.push;
     r4 = "2.1.1 end";
-    r2.call(r3, r4);
+    r3.push(r4);
     r3 = undefined;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3);

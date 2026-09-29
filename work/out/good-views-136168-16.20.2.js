@@ -244,7 +244,7 @@ function _anon_57(a0) {
   r2 = view;
   r1 = r2.fill;
   r3 = /* BigIntMap(61) */ undefined;
-  r1.call(r2, r3);
+  r2.fill(r3);
   r2 = Atomics;
   r1 = r2.store;
   if (view === undefined) throw new ReferenceError("view");

@@ -60,12 +60,12 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_4;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_15;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 
@@ -78,7 +78,7 @@ function _anon_4(a0) {
   r0 = r1.call;
   r2 = Set;
   r2 = new r2(r0);
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -91,7 +91,7 @@ function _anon_15(a0) {
   r1 = r2.call;
   r3 = Set;
   r3 = new r3(r0);
-  r1.call(r2, r3);
+  r2.call(r3);
   return;
 }
 

@@ -67,7 +67,7 @@ function _anon_0(a0) {
   r2 = invalidStrings;
   r1 = r2.forEach;
   r3 = _anon_21;
-  r0 = r1.call(r2, r3);
+  r0 = r2.forEach(r3);
   return r0;
 }
 
@@ -90,7 +90,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8;
     phi2 = r5;
     if (!r5) {
       r5 = true;
-      r9 = r3.call(r4);
+      r9 = r4.next();
       phi3 = r9;
       if (r9 === undefined) {
         phi3 = __runtime.ThrowIteratorResultNotAnObject(r9);
@@ -111,7 +111,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8;
     phi5 = r5;
     if (!r5) {
       r5 = true;
-      r9 = r3.call(r4);
+      r9 = r4.next();
       phi6 = r9;
       if (r9 === undefined) {
         phi6 = __runtime.ThrowIteratorResultNotAnObject(r9);
@@ -136,9 +136,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8;
     if (!r5) {
       r10 = __context;
       try {
-        if (r5 != null) {
-          r11 = r5;
-          phi8 = r11.call(r4);
+        if (r4.return != null) {
+          r11 = r4.return;
+          phi8 = r4.return();
           if (phi8 === undefined) {
             r12 = phi8;
             r10 = __runtime.ThrowIteratorResultNotAnObject(r12);
@@ -182,6 +182,6 @@ function _anon_30(a0) {
   r0 = r1.equals;
   if (arg === undefined) throw new ReferenceError("arg");
   r2 = arg;
-  return r0.call(r1, r2);
+  return r1.equals(r2);
 }
 

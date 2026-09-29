@@ -62,7 +62,7 @@ callCount = 0;
 r2 = f;
 r2 = r2();
 r1 = r2.next;
-r1.call(r2);
+r2.next();
 r2 = assert;
 r1 = r2.sameValue;
 r3 = callCount;
@@ -90,9 +90,9 @@ function* f(a0) {
       r4 = f;
       r3 = r4.hasOwnProperty;
       r5 = "caller";
-      r3 = r3.call(r4, r5);
+      r3 = r4.hasOwnProperty(r5);
       r4 = false;
-      r1.call(r2, r3, r4);
+      r2.sameValue(r3, r4);
       callCount = ++callCount;
       return;
       break;
@@ -104,9 +104,9 @@ function* f(a0) {
   r4 = f;
   r3 = r4.hasOwnProperty;
   r5 = "caller";
-  r3 = r3.call(r4, r5);
+  r3 = r4.hasOwnProperty(r5);
   r4 = false;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   callCount = ++callCount;
   return;
 }

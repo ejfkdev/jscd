@@ -69,7 +69,7 @@ function _anon_0(a0) {
   r2 = instance;
   r1 = r2.equals;
   r3 = arg;
-  result1 = r1.call(r2, r3);
+  result1 = r2.equals(r3);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = result1;
@@ -80,7 +80,7 @@ function _anon_0(a0) {
   r2 = instance;
   r1 = r2.equals;
   r3 = arg;
-  result2 = r1.call(r2, r3);
+  result2 = r2.equals(r3);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = result2;

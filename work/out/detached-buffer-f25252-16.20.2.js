@@ -79,7 +79,7 @@ function _anon_4(a0, a1) {
   r4 = Symbol;
   r3 = r0[r4.toStringTag];
   r4 = a0.name;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   return;
 }
 

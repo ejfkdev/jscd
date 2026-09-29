@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -75,7 +86,7 @@ function _anon_6(a0, a1) {
   results = [];
   r2 = r0.every;
   r4 = _anon_15;
-  r2.call(r0, r4);
+  r0.every(r4);
   r3 = Symbol_split;
   r2 = r3.sameValue;
   r4 = results;
@@ -188,7 +199,7 @@ function _anon_15(a0) {
   r0 = arguments;
   r2 = results;
   r1 = r2.push;
-  r1.call(r2, r0);
+  r2.push(r0);
   return true;
 }
 

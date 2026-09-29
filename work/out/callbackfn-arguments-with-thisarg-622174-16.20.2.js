@@ -76,7 +76,7 @@ function _anon_4(a0, a1) {
   r1 = ["test262", 0, "ecma262", 0];
   r3 = r0.some;
   r5 = _anon_16;
-  r3.call(r0, r5, r1);
+  r0.some(r5, r1);
   r4 = assert;
   r3 = r4.sameValue;
   r5 = results;
@@ -195,7 +195,7 @@ function _anon_16(a0) {
   r0 = arguments;
   r2 = results;
   r1 = r2.push;
-  r1.call(r2, r0);
+  r2.push(r0);
   return;
 }
 

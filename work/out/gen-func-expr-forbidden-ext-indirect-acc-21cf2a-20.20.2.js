@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -65,7 +76,7 @@ _ro0_14088_ = _anon_16;
 r2 = _ro0_14088_;
 r2 = r2();
 r1 = r2[""];
-r1.call(r2);
+r2[""]();
 r2 = assert;
 r1 = r2.sameValue;
 r3 = callCount;
@@ -79,7 +90,7 @@ let phi0;
   r1 = inner;
   r0 = r1.hasOwnProperty;
   r2 = "caller";
-  phi0 = r0.call(r1, r2);
+  phi0 = r1.hasOwnProperty(r2);
   if (!phi0) {
     return CALLER_OWN_PROPERTY_DOES_NOT_EXIST;
   }
@@ -108,7 +119,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       r3 = r4.getOwnPropertyDescriptor;
       r5 = inner;
       r6 = "caller";
-      r1 = r3.call(r4, r5, r6);
+      r1 = r4.getOwnPropertyDescriptor(r5, r6);
       phi0 = r1;
       if (r1) {
         phi1 = r1.configurable;
@@ -150,7 +161,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         r4 = assert;
         r3 = r4.notSameValue;
         r6 = _ro0_14088_;
-        phi6 = r3.call(r4, r2, r6);
+        phi6 = r4.notSameValue(r2, r6);
       }
       callCount = ++callCount;
       return;
@@ -162,7 +173,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r3 = r4.getOwnPropertyDescriptor;
   r5 = inner;
   r6 = "caller";
-  r1 = r3.call(r4, r5, r6);
+  r1 = r4.getOwnPropertyDescriptor(r5, r6);
   phi7 = r1;
   if (r1) {
     phi8 = r1.configurable;
@@ -204,7 +215,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
     r4 = assert;
     r3 = r4.notSameValue;
     r6 = _ro0_14088_;
-    phi13 = r3.call(r4, r2, r6);
+    phi13 = r4.notSameValue(r2, r6);
   }
   callCount = ++callCount;
   return;

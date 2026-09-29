@@ -79,7 +79,7 @@ function _anon_4(a0, a1) {
   r1 = r2.throws;
   r3 = TypeError;
   r4 = _anon_10;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   return;
 }
 

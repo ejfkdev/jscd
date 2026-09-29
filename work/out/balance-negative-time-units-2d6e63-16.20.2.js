@@ -69,19 +69,19 @@ function _anon_0(a0) {
   r3 = datetime;
   r3 = r3.minute;
   r4 = 58;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = datetime;
   r3 = r3.microsecond;
   r4 = 1;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = datetime;
   r3 = r3.nanosecond;
   r4 = 1;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

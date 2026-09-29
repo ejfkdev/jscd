@@ -103,7 +103,7 @@ function _anon_4(a0) {
   r1 = r1.slice;
   r0 = r1.call;
   r2 = undefined;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -115,7 +115,7 @@ function _anon_15(a0) {
   r1 = r1.slice;
   r0 = r1.call;
   r2 = null;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -127,7 +127,7 @@ function _anon_21(a0) {
   r1 = r1.slice;
   r0 = r1.call;
   r2 = true;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -139,7 +139,7 @@ function _anon_27(a0) {
   r1 = r1.slice;
   r0 = r1.call;
   r2 = "";
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -152,7 +152,7 @@ function _anon_33(a0) {
   r0 = r1.call;
   r2 = Symbol;
   r2 = r2();
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -164,7 +164,7 @@ function _anon_39(a0) {
   r1 = r1.slice;
   r0 = r1.call;
   r2 = 1;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 

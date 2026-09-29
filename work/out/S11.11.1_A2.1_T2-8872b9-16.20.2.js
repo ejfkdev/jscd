@@ -59,8 +59,8 @@ function _anon_0(a0) {
 let phi0, phi1;
   r1 = __context;
   try {
-    phi0 = undefined;
-    if (true) {
+    phi0 = x;
+    if (x) {
       phi0 = true;
     }
     r2 = Test262Error;

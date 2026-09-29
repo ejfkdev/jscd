@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -63,20 +74,20 @@ r2 = hoursInDay;
 r1 = r2.slice;
 r3 = 0;
 r4 = 3;
-arr = r1.call(r2, r3, r4);
+arr = r2.slice(r3, r4);
 r1 = arr;
 r2 = _anon;
 r2 = r2.prototype;
 r1.getClass = r2[""];
 r2 = arr;
 r1 = r2.getClass;
-r1 = r1.call(r2);
+r1 = r2.getClass();
 if (r1 !== "[object Array]") {
   r1 = Test262Error;
   r2 = "#1: var x = [0,1,2,3,4]; var arr = x.slice(0,3); arr is Array object. Actual: ";
   r4 = arr;
   r3 = r4.getClass;
-  r2 = r2 + r3.call(r4);
+  r2 = r2 + r4.getClass();
   throw new r1(r2);
 }
 r1 = arr;

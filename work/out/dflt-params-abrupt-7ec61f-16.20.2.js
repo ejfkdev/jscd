@@ -74,7 +74,7 @@ r2 = assert;
 r1 = r2.throws;
 r3 = Test262Error;
 r4 = _anon_33;
-r1.call(r2, r3, r4);
+r2.throws(r3, r4);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = callCount;
@@ -116,7 +116,7 @@ function _anon_33(a0) {
   if (C === undefined) throw new ReferenceError("C");
   r1 = C;
   r0 = r1.method;
-  r0.call(r1);
+  r1.method();
   return;
 }
 

@@ -92,7 +92,7 @@ function testSequence(a0, a1, a2, a3) {
   r6 = r6(r7);
   r5 = r6.fill;
   r7 = "pad";
-  r4.padding = r5.call(r6, r7);
+  r4.padding = r6.fill(r7);
   r5 = "options = { mode: 'longest', padding: ['pad', 'pad', ..., 'pad'] }";
   r6 = _anon_50;
   r0(r4-r6);
@@ -119,7 +119,7 @@ function test(a0, a1, a2) {
   r8 = Iterator;
   r7 = r8.zip;
   r9 = inputs;
-  r1 = r7.call(r8, r9, a0);
+  r1 = r8.zip(r9, a0);
   r7 = assertZipped;
   r9 = inputs;
   r10 = minLength;
@@ -133,7 +133,7 @@ function test(a0, a1, a2) {
     r7 = r0 + ", step ";
     r2 = r7 + minLength;
     r7 = r1.next;
-    r3 = r7.call(r1);
+    r3 = r1.next();
     r4 = r3.value;
     r7 = assertIteratorResult;
     r10 = false;
@@ -144,7 +144,7 @@ function test(a0, a1, a2) {
     r8 = inputs;
     r7 = r8.map;
     r9 = _anon_26;
-    r5 = r7.call(r8, r9);
+    r5 = r8.map(r9);
     r8 = assert;
     r7 = r8.compareArray;
     r11 = r2 + ": values";
@@ -156,7 +156,7 @@ function test(a0, a1, a2) {
   }
   r7 = assertIteratorResult;
   r8 = r1.next;
-  r8 = r8.call(r1);
+  r8 = r1.next();
   r9 = undefined;
   r10 = true;
   r11 = r0 + ": after completion";

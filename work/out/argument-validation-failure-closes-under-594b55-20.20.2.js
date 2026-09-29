@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -76,45 +87,45 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_25;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_32;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_38;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_45;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   /* createblockcontext */
   r5 = undefined /* hole */;
@@ -127,12 +138,12 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = ShouldNotGetValueOf;
   r4 = _anon_56;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 
@@ -159,7 +170,7 @@ function _anon_25(a0) {
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = closable;
   r0 = r1.take;
-  r0.call(r1);
+  r1.take();
   return;
 }
 
@@ -170,7 +181,7 @@ function _anon_32(a0) {
   r1 = closable;
   r0 = r1.take;
   r2 = NaN;
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 
@@ -182,7 +193,7 @@ function _anon_38(a0) {
   r0 = r1.take;
   r2 = Number;
   r2 = r2.MAX_SAFE_INTEGER + 1;
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 
@@ -193,7 +204,7 @@ function _anon_45(a0) {
   r1 = closable;
   r0 = r1.take;
   r2 = 0;
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 
@@ -215,7 +226,7 @@ function _anon_56(a0) {
   r7 = 0;
   r3 = r2;
   __runtime.DefineAccessorPropertyUnchecked(r3, r4, r5, r6, r7);
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 

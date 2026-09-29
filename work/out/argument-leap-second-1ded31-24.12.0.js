@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -69,7 +80,7 @@ function _anon_0(a0) {
   r2 = arg;
   r1 = r2.equals;
   r3 = result1;
-  result2 = r1.call(r2, r3);
+  result2 = r2.equals(r3);
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = result2;
@@ -80,7 +91,7 @@ function _anon_0(a0) {
   r2 = arg;
   r1 = r2.equals;
   r3 = result1;
-  __ctx_ctx6 = r1.call(r2, r3);
+  __ctx_ctx6 = r2.equals(r3);
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = __ctx.ctx6;

@@ -83,7 +83,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = o;
   r3 = r4.compoundAssignment;
-  r3 = r3.call(r4);
+  r3 = r4.compoundAssignment();
   r4 = false;
   r5 = "The expression should evaluate to the result";
   r1.call(r2-r5);
@@ -91,7 +91,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = o;
   r3 = r4.setterCalledWithValue;
-  r3 = r3.call(r4);
+  r3 = r4.setterCalledWithValue();
   r4 = false;
   r5 = "PutValue should call the setter with the result";
   r0 = r1.call(r2-r5);

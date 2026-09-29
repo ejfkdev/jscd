@@ -62,9 +62,9 @@ function _anon_0(a0) {
   r5 = NaN;
   r4 = new r4(r5);
   r3 = r4.toTimeString;
-  r3 = r3.call(r4);
+  r3 = r4.toTimeString();
   r4 = "Invalid Date";
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

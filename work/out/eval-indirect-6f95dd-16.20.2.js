@@ -62,21 +62,21 @@ function _anon_0(a0) {
   r4 = "#!\n";
   r3 = r3(r4);
   r4 = undefined;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = eval_;
   r4 = "#!\n1";
   r3 = r3(r4);
   r4 = 1;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = eval_;
   r4 = "#!2\n";
   r3 = r3(r4);
   r4 = undefined;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

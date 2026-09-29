@@ -99,7 +99,7 @@ function _anon_17(a0, a1) {
   r3 = r0;
   r1.call(r2-r5);
   r1 = r0.reverse;
-  r1.call(r0);
+  r0.reverse();
   r2 = assert;
   r1 = r2.sameValue;
   r3 = getCalls;

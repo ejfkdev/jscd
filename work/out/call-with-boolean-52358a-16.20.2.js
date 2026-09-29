@@ -63,7 +63,7 @@ function _anon_0(a0) {
   r4 = r4.includes;
   r3 = r4.call;
   r5 = true;
-  r3 = r3.call(r4, r5);
+  r3 = r4.call(r5);
   r4 = false;
   r5 = "Array.prototype.includes.call(true) must return false";
   r1.call(r2-r5);
@@ -74,7 +74,7 @@ function _anon_0(a0) {
   r4 = r4.includes;
   r3 = r4.call;
   r5 = false;
-  r3 = r3.call(r4, r5);
+  r3 = r4.call(r5);
   r4 = false;
   r5 = "Array.prototype.includes.call(false) must return false";
   r0 = r1.call(r2-r5);

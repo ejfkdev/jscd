@@ -75,7 +75,7 @@ function _anon_4(a0, a1) {
   results = [];
   r2 = r0.reduce;
   r4 = _anon_15;
-  r2.call(r0, r4);
+  r0.reduce(r4);
   r3 = assert;
   r2 = r3.sameValue;
   r4 = results;
@@ -174,7 +174,7 @@ function _anon_15(a0) {
   r0 = arguments;
   r3 = accumulator;
   r2 = r3.push;
-  r2.call(r3, r0);
+  r3.push(r0);
   r2 = accumulator;
   return r2 - /* BigIntMap(21) */ undefined;
 }

@@ -76,7 +76,7 @@ function _anon_0(a0) {
   r3 = instance;
   r3 = r3.hour;
   r4 = 12;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

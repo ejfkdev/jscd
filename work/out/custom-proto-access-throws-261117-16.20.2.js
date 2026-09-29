@@ -64,7 +64,7 @@ __runtime.DeclareGlobals(r1, r2);
 r2 = _anon_5;
 r1 = r2.bind;
 r3 = null;
-newTarget = r1.call(r2, r3);
+newTarget = r2.bind(r3);
 r2 = Object;
 r1 = r2.defineProperty;
 r3 = newTarget;
@@ -98,7 +98,7 @@ function _anon_19(a0) {
   r1 = r2.throws;
   r3 = Test262Error;
   r4 = _anon_25;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   return;
 }
 

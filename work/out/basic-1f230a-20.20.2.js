@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -82,7 +93,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ hour: 3 });
-  hour = r1.call(r2, r3);
+  hour = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = hour;
@@ -97,7 +108,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ minute: 3 });
-  minute = r1.call(r2, r3);
+  minute = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = minute;
@@ -112,7 +123,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ second: 3 });
-  second = r1.call(r2, r3);
+  second = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = second;
@@ -127,7 +138,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ millisecond: 3 });
-  millisecond = r1.call(r2, r3);
+  millisecond = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = millisecond;
@@ -142,7 +153,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ microsecond: 3 });
-  microsecond = r1.call(r2, r3);
+  microsecond = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = microsecond;
@@ -157,7 +168,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ nanosecond: 3 });
-  nanosecond = r1.call(r2, r3);
+  nanosecond = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = nanosecond;
@@ -172,7 +183,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ minute: 8, nanosecond: 3 });
-  combined = r1.call(r2, r3);
+  combined = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = combined;
@@ -187,7 +198,7 @@ function _anon_0(a0) {
   r2 = plainTime;
   r1 = r2.with;
   r3 = ({ minutes: 8, nanosecond: 3 });
-  plural = r1.call(r2, r3);
+  plural = r2.with(r3);
   r2 = TemporalHelpers;
   r1 = r2.assertPlainTime;
   r3 = plural;

@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -72,7 +83,7 @@ function _anon_6(a0, a1) {
   r2 = compareArray;
   r3 = r0.subarray;
   r5 = -___root__RegExpDataWrapperMap____undefined;
-  r3 = r3.call(r0, r5);
+  r3 = r0.subarray(r5);
   r4 = /* ?unknown(18) */ undefined;
   r2 = r2(r3, r4);
   r3 = "begin == -Infinity";
@@ -81,7 +92,7 @@ function _anon_6(a0, a1) {
   r2 = compareArray;
   r3 = r0.subarray;
   r5 = ___root__RegExpDataWrapperMap____undefined;
-  r3 = r3.call(r0, r5);
+  r3 = r0.subarray(r5);
   r4 = [];
   r2 = r2(r3, r4);
   r3 = "being == Infinity";
@@ -91,7 +102,7 @@ function _anon_6(a0, a1) {
   r3 = r0.subarray;
   r5 = 0;
   r6 = -___root__RegExpDataWrapperMap____undefined;
-  r3 = r3.call(r0, r5, r6);
+  r3 = r0.subarray(r5, r6);
   r4 = [];
   r2 = r2(r3, r4);
   r3 = "end == -Infinity";
@@ -101,7 +112,7 @@ function _anon_6(a0, a1) {
   r3 = r0.subarray;
   r5 = 0;
   r6 = ___root__RegExpDataWrapperMap____undefined;
-  r3 = r3.call(r0, r5, r6);
+  r3 = r0.subarray(r5, r6);
   r4 = /* ?unknown(27) */ undefined;
   r2 = r2(r3, r4);
   r3 = "end == Infinity";

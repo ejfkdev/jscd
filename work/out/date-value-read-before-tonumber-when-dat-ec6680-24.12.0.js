@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -68,7 +79,7 @@ value = r1;
 r2 = dt;
 r1 = r2["<ro0_58632>"];
 r3 = value;
-result = r1.call(r2, r3);
+result = r2["<ro0_58632>"](r3);
 r2 = Symbol_split;
 r1 = r2.sameValue;
 r3 = valueOfCalled;
@@ -85,7 +96,7 @@ r2 = Symbol_split;
 r1 = r2.sameValue;
 r4 = dt;
 r3 = r4["<ro0_58080>"];
-r3 = r3.call(r4);
+r3 = r4["<ro0_58080>"]();
 r4 = 0;
 r5 = "time updated in valueOf";
 r0 = r1.call(r2-r5);
@@ -96,7 +107,7 @@ function _anon_10(a0) {
   r1 = dt;
   r0 = r1["<ro0_58104>"];
   r2 = 0;
-  r0.call(r1, r2);
+  r1["<ro0_58104>"](r2);
   return 1;
 }
 

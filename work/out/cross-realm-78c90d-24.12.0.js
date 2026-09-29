@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -63,11 +74,11 @@ r1 = r2["/* root: AsyncGeneratorRequestMap */ undefined"];
 r3 = _anon;
 r3 = r3.prototype;
 r4 = "";
-r1 = r1.call(r2, r3, r4);
+r1 = r2["/* root: AsyncGeneratorRequestMap */ undefined"](r3, r4);
 _anon = r1["/* root: ArrayBoilerplateDescriptionMap */ undefined"];
 r2 = $262;
 r1 = r2.createRealm;
-r1 = r1.call(r2);
+r1 = r2.createRealm();
 _anon = r1["/* root: BytecodeWrapperMap */ undefined"];
 r1 = _anon;
 r1 = r1[""];
@@ -76,7 +87,7 @@ r2 = _anon;
 r1 = r2["/* root: AsyncGeneratorRequestMap */ undefined"];
 r3 = otherRegExpProto;
 r4 = "";
-r1 = r1.call(r2, r3, r4);
+r1 = r2["/* root: AsyncGeneratorRequestMap */ undefined"](r3, r4);
 otherRegExpGetter = r1["/* root: ArrayBoilerplateDescriptionMap */ undefined"];
 r2 = Symbol_split;
 r1 = r2.throws;
@@ -97,7 +108,7 @@ function _anon_11(a0) {
   r1 = _anon;
   r0 = r1.call;
   r2 = otherRegExpProto;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 
@@ -108,7 +119,7 @@ function _anon_21(a0) {
   r0 = r1.call;
   r2 = _anon;
   r2 = r2.prototype;
-  r0.call(r1, r2);
+  r1.call(r2);
   return;
 }
 

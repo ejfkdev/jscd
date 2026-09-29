@@ -61,13 +61,13 @@ function _anon_0(a0) {
   r3 = Math;
   r3 = typeof r3.E;
   r4 = "number";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.notSameValue;
   r3 = Math;
   r3 = r3.E;
   r4 = NaN;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.notSameValue(r3, r4);
   return r0;
 }
 

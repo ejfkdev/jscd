@@ -59,7 +59,7 @@ function _anon_0(a0) {
   r1 = 3;
   r2 = __context;
   try {
-    throw r1;
+    throw "stuff2";
   } catch (e) {
     r3 = undefined;
     /* createcatchcontext */
@@ -68,17 +68,17 @@ function _anon_0(a0) {
     r4 = r5.sameValue;
     r6 = __ctx.ctx2;
     r7 = "stuff2";
-    r4.call(r5, r6, r7);
+    r5.sameValue(r6, r7);
     __ctx_ctx2 = 4;
     r5 = assert;
     r4 = r5.sameValue;
     r6 = __ctx.ctx2;
     r7 = 4;
-    r4.call(r5, r6, r7);
+    r5.sameValue(r6, r7);
     r3 = assert;
     r2 = r3.sameValue;
     r5 = 3;
-    r0 = r2.call(r3, r1, r5);
+    r0 = r3.sameValue(r1, r5);
     return r0;
   }
 }

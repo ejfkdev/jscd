@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -71,9 +82,9 @@ r3 = _default;
 r2 = r3.method;
 r4 = undefined;
 r5 = undefined;
-r2 = r2.call(r3, r4, r5);
+r2 = r3.method(r4, r5);
 r1 = r2[""];
-r1.call(r2);
+r2[""]();
 r1 = _default;
 ref = r1.method;
 r2 = Symbol_split;
@@ -128,15 +139,15 @@ let phi0, phi1, phi2;
       r5 = Symbol_split;
       r4 = r5.sameValue;
       r7 = 23;
-      r4.call(r5, r0, r7);
+      r5.sameValue(r0, r7);
       r5 = Symbol_split;
       r4 = r5.sameValue;
       r7 = 45;
-      r4.call(r5, r1, r7);
+      r5.sameValue(r1, r7);
       r5 = Symbol_split;
       r4 = r5.sameValue;
       r7 = 99;
-      r4.call(r5, r2, r7);
+      r5.sameValue(r2, r7);
       callCount = callCount + 1;
       return;
       break;
@@ -146,15 +157,15 @@ let phi0, phi1, phi2;
   r5 = Symbol_split;
   r4 = r5.sameValue;
   r7 = 23;
-  r4.call(r5, r0, r7);
+  r5.sameValue(r0, r7);
   r5 = Symbol_split;
   r4 = r5.sameValue;
   r7 = 45;
-  r4.call(r5, r1, r7);
+  r5.sameValue(r1, r7);
   r5 = Symbol_split;
   r4 = r5.sameValue;
   r7 = 99;
-  r4.call(r5, r2, r7);
+  r5.sameValue(r2, r7);
   callCount = callCount + 1;
   return;
 }

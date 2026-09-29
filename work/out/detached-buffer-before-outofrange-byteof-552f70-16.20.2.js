@@ -80,6 +80,6 @@ function _anon_8(a0) {
   r1 = sample;
   r0 = r1.getBigInt64;
   r2 = 13;
-  return r0.call(r1, r2);
+  return r1.getBigInt64(r2);
 }
 

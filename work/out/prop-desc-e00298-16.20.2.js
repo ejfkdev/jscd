@@ -61,7 +61,7 @@ function _anon_0(a0) {
   r3 = Symbol;
   r3 = typeof r3.toStringTag;
   r4 = "symbol";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = verifyProperty;
   r2 = Symbol;
   r3 = "toStringTag";

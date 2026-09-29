@@ -73,7 +73,7 @@ function _anon_4(a0, a1) {
   r3 = assert;
   r2 = r3.sameValue;
   r4 = r1.buffer;
-  r2.call(r3, r4, r0);
+  r3.sameValue(r4, r0);
   return;
 }
 

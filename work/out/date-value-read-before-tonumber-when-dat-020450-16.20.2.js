@@ -68,7 +68,7 @@ value = r1;
 r2 = dt;
 r1 = r2.setUTCMilliseconds;
 r3 = value;
-result = r1.call(r2, r3);
+result = r2.setUTCMilliseconds(r3);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = valueOfCalled;
@@ -85,7 +85,7 @@ r2 = assert;
 r1 = r2.sameValue;
 r4 = dt;
 r3 = r4.getTime;
-r3 = r3.call(r4);
+r3 = r4.getTime();
 r4 = 0;
 r5 = "time updated in valueOf";
 r0 = r1.call(r2-r5);
@@ -96,7 +96,7 @@ function valueOf(a0) {
   r1 = dt;
   r0 = r1.setTime;
   r2 = 0;
-  r0.call(r1, r2);
+  r1.setTime(r2);
   return 1;
 }
 

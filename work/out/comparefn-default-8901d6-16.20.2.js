@@ -70,17 +70,17 @@ function _anon_4(a0) {
   r4 = [4, 2, 1, 3];
   r3 = new a0(r4);
   r2 = r3.toSorted;
-  r2 = r2.call(r3);
+  r2 = r3.toSorted();
   r3 = [1, 2, 3, 4];
-  r0.call(r1, r2, r3);
+  r1.compareArray(r2, r3);
   r1 = assert;
   r0 = r1.compareArray;
   r4 = [111, 33, 22, 11, 3, 2, 1];
   r3 = new a0(r4);
   r2 = r3.toSorted;
-  r2 = r2.call(r3);
+  r2 = r3.toSorted();
   r3 = [1, 2, 3, 11, 22, 33, 111];
-  r0.call(r1, r2, r3);
+  r1.compareArray(r2, r3);
   return;
 }
 

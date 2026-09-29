@@ -76,45 +76,45 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_26;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_33;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_39;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   r2 = assert;
   r1 = r2.throws;
   r3 = RangeError;
   r4 = _anon_46;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closed = false;
   /* createblockcontext */
   r5 = undefined /* hole */;
@@ -127,12 +127,12 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = ShouldNotGetValueOf;
   r4 = _anon_57;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = assert;
   r1 = r2.sameValue;
   r3 = closed;
   r4 = true;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 
@@ -159,7 +159,7 @@ function _anon_26(a0) {
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = closable;
   r0 = r1.take;
-  r0.call(r1);
+  r1.take();
   return;
 }
 
@@ -170,7 +170,7 @@ function _anon_33(a0) {
   r1 = closable;
   r0 = r1.take;
   r2 = NaN;
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 
@@ -182,7 +182,7 @@ function _anon_39(a0) {
   r0 = r1.take;
   r2 = Number;
   r2 = r2.MAX_SAFE_INTEGER + 1;
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 
@@ -193,7 +193,7 @@ function _anon_46(a0) {
   r1 = closable;
   r0 = r1.take;
   r2 = 0;
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 
@@ -215,7 +215,7 @@ function _anon_57(a0) {
   r7 = 0;
   r3 = r2;
   __runtime.DefineAccessorPropertyUnchecked(r3, r4, r5, r6, r7);
-  r0.call(r1, r2);
+  r1.take(r2);
   return;
 }
 

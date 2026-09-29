@@ -72,7 +72,7 @@ function _anon_4(a0, a1) {
   r2 = compareArray;
   r3 = r0.subarray;
   r5 = -Infinity;
-  r3 = r3.call(r0, r5);
+  r3 = r0.subarray(r5);
   r4 = [/* BigIntMap(17) */ undefined, /* BigIntMap(18) */ undefined, /* BigIntMap(19) */ undefined, /* BigIntMap(20) */ undefined];
   r2 = r2(r3, r4);
   r3 = "begin == -Infinity";
@@ -81,7 +81,7 @@ function _anon_4(a0, a1) {
   r2 = compareArray;
   r3 = r0.subarray;
   r5 = Infinity;
-  r3 = r3.call(r0, r5);
+  r3 = r0.subarray(r5);
   r4 = [];
   r2 = r2(r3, r4);
   r3 = "being == Infinity";
@@ -91,7 +91,7 @@ function _anon_4(a0, a1) {
   r3 = r0.subarray;
   r5 = 0;
   r6 = -Infinity;
-  r3 = r3.call(r0, r5, r6);
+  r3 = r0.subarray(r5, r6);
   r4 = [];
   r2 = r2(r3, r4);
   r3 = "end == -Infinity";
@@ -101,7 +101,7 @@ function _anon_4(a0, a1) {
   r3 = r0.subarray;
   r5 = 0;
   r6 = Infinity;
-  r3 = r3.call(r0, r5, r6);
+  r3 = r0.subarray(r5, r6);
   r4 = [/* BigIntMap(26) */ undefined, /* BigIntMap(27) */ undefined, /* BigIntMap(28) */ undefined, /* BigIntMap(29) */ undefined];
   r2 = r2(r3, r4);
   r3 = "end == Infinity";

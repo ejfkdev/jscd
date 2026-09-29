@@ -83,9 +83,9 @@ function _anon_4(a0, a1) {
   r5 = sample;
   r4 = r5.includes;
   r6 = undefined;
-  r4 = r4.call(r5, r6, r0);
+  r4 = r5.includes(r6, r0);
   r5 = true;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   return;
 }
 

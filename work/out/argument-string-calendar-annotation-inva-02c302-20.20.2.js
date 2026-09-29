@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -67,7 +78,7 @@ function _anon_0(a0) {
   r2 = invalidStrings;
   r1 = r2.forEach;
   r3 = _anon_21;
-  r0 = r1.call(r2, r3);
+  r0 = r2.forEach(r3);
   return r0;
 }
 
@@ -85,7 +96,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
     phi0 = r5;
     if (!r5) {
       r5 = true;
-      r9 = r3.call(r4);
+      r9 = r4[""]();
       phi1 = r9;
       if (r9 === undefined) {
         phi1 = __runtime.ThrowIteratorResultNotAnObject(r9);
@@ -106,7 +117,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
     phi3 = r5;
     if (!r5) {
       r5 = true;
-      r9 = r3.call(r4);
+      r9 = r4[""]();
       phi4 = r9;
       if (r9 === undefined) {
         phi4 = __runtime.ThrowIteratorResultNotAnObject(r9);
@@ -131,9 +142,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
     if (!r5) {
       r10 = __context;
       try {
-        if (r5 != null) {
-          r11 = r5;
-          phi6 = r11.call(r4);
+        if (r4.return != null) {
+          r11 = r4.return;
+          phi6 = r4.return();
           if (phi6 === undefined) {
             r12 = phi6;
             r10 = __runtime.ThrowIteratorResultNotAnObject(r12);
@@ -177,6 +188,6 @@ function _anon_30(a0) {
   r0 = r1.equals;
   if (arg === undefined) throw new ReferenceError("arg");
   r2 = arg;
-  return r0.call(r1, r2);
+  return r1.equals(r2);
 }
 

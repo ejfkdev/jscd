@@ -77,20 +77,20 @@ function _anon_0(a0) {
   r2 = r2.method;
   r1 = r2.bind;
   r3 = c;
-  asyncFn = r1.call(r2, r3);
+  asyncFn = r2.bind(r3);
   r4 = asyncFn;
   r5 = 1;
   r4 = r4(r5);
   r3 = r4.then;
   r5 = _anon_42;
-  r3 = r3.call(r4, r5);
+  r3 = r4.then(r5);
   r2 = r3.then;
   r4 = _anon_48;
-  r2 = r2.call(r3, r4);
+  r2 = r3.then(r4);
   r1 = r2.then;
   r3 = $DONE;
   r4 = $DONE;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.then(r3, r4);
   return r0;
 }
 
@@ -104,7 +104,7 @@ function _method(a0) {
   r0 = __intrinsic.AsyncFunctionEnter(r2, r3);
   r2 = __context;
   try {
-    r4 = r0;
+    r4 = _anon_20;
     r5 = false;
     r3 = r0;
     return __intrinsic.AsyncFunctionResolve(r3, r4, r5);
@@ -127,7 +127,7 @@ function _anon_20(a0) {
   r0 = __intrinsic.AsyncFunctionEnter(r1, r2);
   r1 = __context;
   try {
-    r3 = r0;
+    r3 = x;
     r4 = false;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3, r4);
@@ -194,13 +194,13 @@ function _anon_48(a0) {
   r1 = assert;
   r0 = r1.sameValue;
   r3 = 1;
-  r0.call(r1, a0, r3);
+  r1.sameValue(a0, r3);
   r1 = assert;
   r0 = r1.sameValue;
   if (count === undefined) throw new ReferenceError("count");
   r2 = count;
   r3 = 1;
-  r0.call(r1, r2, r3);
+  r1.sameValue(r2, r3);
   return;
 }
 

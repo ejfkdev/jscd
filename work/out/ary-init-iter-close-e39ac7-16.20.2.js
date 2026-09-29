@@ -113,7 +113,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
     phi2 = r4;
     if (!r4) {
       r4 = true;
-      r8 = r2.call(r3);
+      r8 = r3.next();
       phi3 = r8;
       if (r8 === undefined) {
         phi3 = __runtime.ThrowIteratorResultNotAnObject(r8);
@@ -138,9 +138,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
     if (!r4) {
       r9 = __context;
       try {
-        if (r4 != null) {
-          r10 = r4;
-          phi5 = r10.call(r3);
+        if (r3.return != null) {
+          r10 = r3.return;
+          phi5 = r3.return();
           if (phi5 === undefined) {
             r11 = phi5;
             r9 = __runtime.ThrowIteratorResultNotAnObject(r11);
@@ -168,7 +168,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5;
   r1 = r2.sameValue;
   r3 = doneCallCount;
   r4 = 1;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   callCount = callCount + 1;
   return;
 }

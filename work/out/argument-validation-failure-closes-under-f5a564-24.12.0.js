@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -76,23 +87,23 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = _anon;
   r4 = _anon_28;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = closable;
   r4 = true;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   closable = false;
   r2 = Symbol_split;
   r1 = r2.throws;
   r3 = _anon;
   r4 = _anon_35;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = closable;
   r4 = true;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 
@@ -119,7 +130,7 @@ function _anon_28(a0) {
   if (closable === undefined) throw new ReferenceError("closable");
   r1 = __ctx.ctx4;
   r0 = r1.find;
-  r0.call(r1);
+  r1.find();
   return;
 }
 
@@ -130,7 +141,7 @@ function _anon_35(a0) {
   r1 = __ctx.ctx4;
   r0 = r1.find;
   r2 = ({  });
-  r0.call(r1, r2);
+  r1.find(r2);
   return;
 }
 

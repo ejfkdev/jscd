@@ -73,7 +73,7 @@ r4 = r4[r5.toPrimitive];
 r3 = r4.call;
 r5 = obj;
 r6 = "default";
-r3 = r3.call(r4, r5, r6);
+r3 = r4.call(r5, r6);
 r4 = "valueOf test262";
 r5 = "`valueOf` is used as a fallback when `toString` returns an object";
 r1.call(r2-r5);

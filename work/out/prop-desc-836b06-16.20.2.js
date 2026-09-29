@@ -62,14 +62,14 @@ function _anon_0(a0) {
   r3 = r3.ZonedDateTime;
   r3 = typeof r3.prototype;
   r4 = "object";
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r2 = assert;
   r1 = r2.notSameValue;
   r3 = Temporal;
   r3 = r3.ZonedDateTime;
   r3 = r3.prototype;
   r4 = null;
-  r1.call(r2, r3, r4);
+  r2.notSameValue(r3, r4);
   r1 = verifyProperty;
   r2 = Temporal;
   r2 = r2.ZonedDateTime;

@@ -90,7 +90,7 @@ function _anon_16(a0) {
   r1 = r2.throws;
   r3 = Test262Error;
   r4 = _anon_22;
-  r1.call(r2, r3, r4);
+  r2.throws(r3, r4);
   return;
 }
 
@@ -100,7 +100,7 @@ function _anon_22(a0) {
   r1 = TA;
   r0 = r1.from;
   r2 = arrayLike;
-  r0.call(r1, r2);
+  r1.from(r2);
   return;
 }
 

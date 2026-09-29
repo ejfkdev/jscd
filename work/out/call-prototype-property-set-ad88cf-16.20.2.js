@@ -70,7 +70,7 @@ r1.call(r2-r5);
 r2 = Object;
 r1 = r2.create;
 r3 = proto;
-target = r1.call(r2, r3);
+target = r2.create(r3);
 r2 = Reflect;
 r1 = r2.set;
 r3 = target;

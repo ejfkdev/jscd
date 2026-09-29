@@ -71,7 +71,7 @@ function _anon_4(a0) {
   r1 = assert;
   r3 = Object;
   r2 = r3.isExtensible;
-  r2 = r2.call(r3, r0);
+  r2 = r3.isExtensible(r0);
   r1(r2);
   return;
 }

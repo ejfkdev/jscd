@@ -60,7 +60,7 @@ function _anon_0(a0) {
   r1 = r2.throws;
   r3 = Test262Error;
   r4 = _anon_5;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.throws(r3, r4);
   return r0;
 }
 
@@ -71,7 +71,7 @@ function _anon_5(a0) {
   r2 = Map;
   r1 = r2.groupBy;
   r4 = _anon_11;
-  r1.call(r2, r0, r4);
+  r2.groupBy(r0, r4);
   return;
 }
 

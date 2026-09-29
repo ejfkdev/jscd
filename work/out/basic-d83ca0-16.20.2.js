@@ -77,7 +77,7 @@ function _anon_0(a0) {
   r3 = instance;
   r3 = r3.hours;
   r4 = 5;
-  r1.call(r2, r3, r4);
+  r2.sameValue(r3, r4);
   r1 = Temporal;
   r1 = r1.Duration;
   r2 = 0;
@@ -96,7 +96,7 @@ function _anon_0(a0) {
   r3 = negInstance;
   r3 = r3.hours;
   r4 = 0;
-  r0 = r1.call(r2, r3, r4);
+  r0 = r2.sameValue(r3, r4);
   return r0;
 }
 

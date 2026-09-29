@@ -75,7 +75,7 @@ function _anon_4(a0, a1) {
   results = [];
   r2 = r0.every;
   r4 = _anon_12;
-  r2.call(r0, r4);
+  r0.every(r4);
   r3 = assert;
   r2 = r3.sameValue;
   r4 = results;
@@ -188,7 +188,7 @@ function _anon_12(a0) {
   r0 = arguments;
   r2 = results;
   r1 = r2.push;
-  r1.call(r2, r0);
+  r2.push(r0);
   return true;
 }
 

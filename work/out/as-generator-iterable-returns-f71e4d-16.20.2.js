@@ -74,28 +74,28 @@ function _anon_4(a0) {
   r2 = r3.sameValue;
   r4 = r1.length;
   r5 = 2;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   r3 = assert;
   r2 = r3.sameValue;
   r4 = r1[0];
   r5 = /* BigIntMap(18) */ undefined;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   r3 = assert;
   r2 = r3.sameValue;
   r4 = r1[1];
   r5 = /* BigIntMap(19) */ undefined;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   r3 = assert;
   r2 = r3.sameValue;
   r4 = r1.constructor;
-  r2.call(r3, r4, a0);
+  r3.sameValue(r4, a0);
   r3 = assert;
   r2 = r3.sameValue;
   r5 = Object;
   r4 = r5.getPrototypeOf;
-  r4 = r4.call(r5, r1);
+  r4 = r5.getPrototypeOf(r1);
   r5 = a0.prototype;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   return;
 }
 

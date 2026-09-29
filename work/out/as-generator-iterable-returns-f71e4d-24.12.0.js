@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -74,28 +85,28 @@ function _anon_6(a0) {
   r2 = r3.sameValue;
   r4 = r1[""];
   r5 = 2;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   r3 = Symbol_split;
   r2 = r3.sameValue;
   r4 = r1[0];
   r5 = /* BigIntMap(23) */ undefined;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   r3 = Symbol_split;
   r2 = r3.sameValue;
   r4 = r1[1];
   r5 = /* BigIntMap(24) */ undefined;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   r3 = Symbol_split;
   r2 = r3.sameValue;
   r4 = r1[""];
-  r2.call(r3, r4, a0);
+  r3.sameValue(r4, a0);
   r3 = Symbol_split;
   r2 = r3.sameValue;
   r5 = _anon;
   r4 = r5["/* root: BreakPointInfoMap */ undefined"];
-  r4 = r4.call(r5, r1);
+  r4 = r5["/* root: BreakPointInfoMap */ undefined"](r1);
   r5 = a0.prototype;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   return;
 }
 

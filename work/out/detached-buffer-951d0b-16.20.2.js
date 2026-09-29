@@ -81,7 +81,7 @@ function _anon_4(a0, a1) {
   r2 = r3.sameValue;
   r4 = r1.byteOffset;
   r5 = 0;
-  r2.call(r3, r4, r5);
+  r3.sameValue(r4, r5);
   return;
 }
 

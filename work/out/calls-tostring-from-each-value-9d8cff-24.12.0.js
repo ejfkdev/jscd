@@ -43,6 +43,17 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    var out = {};
+    if (src == null) return out;
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
@@ -60,7 +71,7 @@ r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = /* ?unknown(10) */ undefined;
 r1 = r2.toLocaleString;
-separator = r1.call(r2);
+separator = r2.toLocaleString();
 r1 = _this_function;
 r1 = r1.prototype;
 r1.toLocaleString = _anon_12;
@@ -68,7 +79,7 @@ arr = /* ?unknown(50) */ undefined;
 r2 = /* ?unknown(54) */ undefined;
 r1 = r2.join;
 r3 = separator;
-expected = r1.call(r2, r3);
+expected = r2.join(r3);
 r1 = testWithBigIntTypedArrayConstructors;
 r2 = _anon_38;
 r0 = r1(r2);
@@ -107,7 +118,7 @@ function _anon_38(a0, a1) {
   r2 = Symbol_split;
   r1 = r2.sameValue;
   r3 = r0.toLocaleString;
-  r3 = r3.call(r0);
+  r3 = r0.toLocaleString();
   r4 = expected;
   r5 = "returns expected value";
   r1.call(r2-r5);

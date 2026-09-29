@@ -71,7 +71,7 @@ r1.call(r2-r5);
 r2 = s;
 r1 = r2.delete;
 r3 = 0;
-result = r1.call(r2, r3);
+result = r2.delete(r3);
 r2 = assert;
 r1 = r2.sameValue;
 r3 = s;

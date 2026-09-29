@@ -63,7 +63,7 @@ let t0;
   t0 = r1(r2, r3);
   r1 = __context;
   try {
-    r3 = t0;
+    r3 = assert;
     r2 = r3.sameValue;
     r4 = Number;
     delete r4["MIN_VALUE"];
