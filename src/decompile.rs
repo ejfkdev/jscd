@@ -643,6 +643,8 @@ struct FnCtx<'a, 'b> {
     last_ctx_slot: Option<usize>,
     /// 槽号 → 变量名（由 TDZ 检查常量池反推，弥补外层 ScopeInfo 缺失）
     slot_aliases: HashMap<usize, String>,
+    /// 已被 try/finally 规则消费的 handler 起点（旧 try/catch 规则不再重复包）
+    used_handler_starts: Vec<usize>,
     /// 已生成的语句
     out: String,
     indent: usize,
@@ -1131,6 +1133,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             inline_body,
             last_ctx_slot: None,
             slot_aliases,
+            used_handler_starts: Vec::new(),
             out: String::new(),
             indent: 0,
             loops: Vec::new(),
@@ -1836,11 +1839,16 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 }
             }
         }
-        let join = join?;
+        // 体以 return/throw 收尾时没有"跳向 join"的 Jump —— 此时 join 就是范围末尾
+        // （`case 0: return …` 这种 V8 把每个 case 体做成独立返回块）。
+        let join = join.unwrap_or(end);
         for &t in &targets {
             if t >= join {
                 return None;
             }
+        }
+        if join == 0 {
+            return None;
         }
         // ── 发射 ──
         self.flush_acc_before("SwitchOnSmiNoFeedback");
@@ -1891,6 +1899,230 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         Some(join)
     }
 
+    /// try/catch/finally 重建。
+    ///
+    /// handler 表在 V8 里是成对的（本机实测）：
+    ///   外侧条目 start=3  end=73 target=73   → try→finally（target == end）
+    ///   内侧条目 start=6  end=41 target=41   → try→catch  （target == end，catch 体从 target 起）
+    /// try 体尾部是 `Star v; LdaSmi 1; Star0; Jump <finally>`（完成码 1 = return），
+    /// catch 体同样；finally 之后是 `switch (完成码)` 分发（0 → 重抛）。这些在 JS 里
+    /// 正好对应原生 `try {} catch (e) {} finally {}`，于是完成码与分发整段丢掉。
+    fn try_emit_try_finally(&mut self, i: usize, end: usize) -> Option<usize> {
+        // 外侧 = try→finally 条目（target == end），且当前 walk 恰好在它起点
+        let ho = self
+            .handlers
+            .iter()
+            .find(|h| {
+                h.target == h.end
+                    && (h.end as usize) < usize::MAX
+                    && self.idx_of.get(&(h.start as usize)) == Some(&i)
+            })
+            .copied()?;
+        // 内侧 = try→catch 条目（起点落在外侧范围内，target == end）
+        let hi = self
+            .handlers
+            .iter()
+            .find(|h| {
+                h.target == h.end
+                    && h.start >= ho.start
+                    && h.end <= ho.end
+                    && h.start != ho.start
+            })
+            .copied()?;
+        let try_start = *self.idx_of.get(&(hi.start as usize))?;
+        let try_end = *self.idx_of.get(&(hi.end as usize))?;
+        let catch_start = *self.idx_of.get(&(hi.target as usize))?;
+        let finally_hint = *self.idx_of.get(&(ho.target as usize))?;
+        if try_end <= try_start || catch_start < try_end || finally_hint < catch_start {
+            return None;
+        }
+        // 完成码设置（`Star v; LdaSmi 1; Star0`）把 try / catch 体切开
+        let try_setup = self.completion_setup_start(try_start, try_end)?;
+        let try_val = self.completion_return_reg(try_setup + 2)?;
+        let catch_setup = self.completion_setup_start(catch_start, finally_hint)?;
+        let catch_val = self.completion_return_reg(catch_setup + 2)?;
+        // catch 体尾部那条 Jump 指向 finally 本体
+        let finally_start = self.jump_target_before(catch_setup)?;
+        // finally 之后是完成码分发
+        let disp = self.find_completion_dispatch(finally_start, end)?;
+        let disp_end = self.completion_dispatch_end(disp, end)?;
+        // ── 发射 ──（先登记 handler，避免发射内部时旧规则再包一层）
+        self.used_handler_starts.push(hi.start as usize);
+        self.used_handler_starts.push(ho.start as usize);
+        self.line("try {");
+        self.indent += 1;
+        // 区间要**包含**那条 `Star v`（返回值就是它存的）——否则 Add 的结果落在区间外，
+        // 合成的 `return rV` 读到的是旧值。
+        if let Err(e) = self.emit_range(try_start, try_setup + 1) {
+            self.line(&format!("/* 结构化失败: {e} */"));
+        }
+        self.line(&format!("return r{try_val};"));
+        self.indent -= 1;
+        let resolved = self
+            .catch_scope_of(catch_start)
+            .and_then(|s| self.d.scope_by_id(s))
+            .and_then(|sc| sc.context_locals.first().cloned())
+            .filter(|n| !n.is_empty())
+            .map(|n| sanitize_var(&n));
+        let catch_var = resolved.unwrap_or_else(|| "e".to_string());
+        // catch 体里读异常走的是 catch context 槽 2 → 绑到同一个名字，
+        // 否则参数叫 e、引用却是 __ctx.ctx2（还曾在参数位置输出 `__ctx.catch` → 语法错误）
+        self.slot_aliases.insert(2, catch_var.clone());
+        self.line(&format!("}} catch ({catch_var}) {{"));
+        self.indent += 1;
+        if let Err(e) = self.emit_range(catch_start, catch_setup + 1) {
+            self.line(&format!("/* 结构化失败: {e} */"));
+        }
+        self.line(&format!("return r{catch_val};"));
+        self.indent -= 1;
+        self.line("} finally {");
+        self.indent += 1;
+        if let Err(e) = self.emit_range(finally_start, disp) {
+            self.line(&format!("/* 结构化失败: {e} */"));
+        }
+        self.indent -= 1;
+        self.line("}");
+        Some(disp_end.max(i + 1))
+    }
+
+    /// [a, b) 尾部若是 `Star v; LdaSmi 1; Star0`（完成码=1 → return）→ 返回 v。
+    fn completion_return_reg(&self, b: usize) -> Option<u32> {
+        if b == 0 || b > self.instrs.len() {
+            return None;
+        }
+        let base = |k: usize| {
+            self.instrs[k]
+                .name
+                .split('.')
+                .next()
+                .unwrap_or(&self.instrs[k].name)
+                .to_string()
+        };
+        // b 指向 `LdaSmi 1`：前一条是 Star（承载返回值）
+        if base(b - 1) == "LdaSmi" {
+            let st = &self.instrs[b - 2];
+            if st.name == "Star" {
+                return match st.operands.first() {
+                    Some(Operand::Reg(r)) if *r >= 0 => Some(*r as u32),
+                    _ => None,
+                };
+            }
+            if st.name.starts_with("Star") && st.name[4..].chars().all(|c| c.is_ascii_digit()) {
+                return st.name[4..].parse().ok();
+            }
+        }
+        None
+    }
+
+    /// 区间末尾前一条 Jump 的目标下标（catch 体尾部跳向 finally）。
+    fn jump_target_before(&self, b: usize) -> Option<usize> {
+        if b == 0 || b > self.instrs.len() {
+            return None;
+        }
+        // 完成码设置块以一条 Jump 收尾（`Star v; LdaSmi 1; Star0; Jump <finally>`）
+        for k in b..(b + 4).min(self.instrs.len()) {
+            let name = &self.instrs[k].name;
+            if !name.starts_with("Jump") {
+                continue;
+            }
+            if let Some(t) = self.uncond_jump_target(&self.instrs[k].clone()) {
+                if let Some(&idx) = self.idx_of.get(&t) {
+                    return Some(idx);
+                }
+            }
+        }
+        None
+    }
+
+    /// 在 [start, limit) 内找"完成码设置"起点（`LdaSmi 1` 的前一条 Star）。
+    fn completion_setup_start(&self, start: usize, limit: usize) -> Option<usize> {
+        let mut found = None;
+        for k in start..limit.min(self.instrs.len()) {
+            let b = self.instrs[k].name.split('.').next().unwrap_or(&self.instrs[k].name);
+            if b == "LdaSmi" && k > start {
+                let prev = &self.instrs[k - 1];
+                if prev.name == "Star" || (prev.name.starts_with("Star") && prev.name[4..].chars().all(|c| c.is_ascii_digit())) {
+                    found = Some(k - 1);
+                }
+            }
+        }
+        found
+    }
+
+    /// 分发起点：finally 之后第一个 `SwitchOnSmiNoFeedback` 的取值指令。
+    fn find_completion_dispatch(&self, start: usize, limit: usize) -> Option<usize> {
+        for k in start..limit.min(self.instrs.len()) {
+            let b = self.instrs[k].name.split('.').next().unwrap_or(&self.instrs[k].name);
+            if b == "SwitchOnSmiNoFeedback" {
+                return Some(k.saturating_sub(1));
+            }
+        }
+        None
+    }
+
+    /// 分发区间结束：各 case 体（return/rethrow 短块）之后。
+    fn completion_dispatch_end(&self, start: usize, limit: usize) -> Option<usize> {
+        let sw = start + 1;
+        let ins = self.instrs.get(sw)?.clone();
+        let ops: Vec<String> = ins
+            .operands
+            .iter()
+            .map(|o| Decoder::new(self.d.table, self.d.layout, 0).render_operand(o))
+            .collect();
+        let table_start = ops
+            .first()
+            .and_then(|s| s.trim_matches(['[', ']']).parse::<usize>().ok())?;
+        let size = ops
+            .get(1)
+            .and_then(|s| s.trim_matches(['[', ']']).parse::<usize>().ok())?;
+        let prefix = if ins.scale > 1 { 1 } else { 0 };
+        let mut last = sw;
+        for k in 0..size {
+            let Some(v) = self
+                .pool
+                .and_then(|p| self.d.cache.array_elem(p, table_start + k))
+                .and_then(|e| e.as_smi())
+            else {
+                continue;
+            };
+            if let Some(&idx) = self.idx_of.get(&(ins.offset + prefix + v as usize)) {
+                last = last.max(idx);
+            }
+        }
+        let mut k = last.min(limit);
+        while k < limit.min(self.instrs.len()) {
+            let b = self.instrs[k].name.split('.').next().unwrap_or(&self.instrs[k].name);
+            if matches!(b, "Return" | "Throw" | "ReThrow") {
+                return Some(k + 1);
+            }
+            k += 1;
+        }
+        Some(limit)
+    }
+
+    /// catch 入口附近 `CreateCatchContext [池索引]` 的 ScopeInfo 对象。
+    fn catch_scope_of(&self, catch_start: usize) -> Option<ObjId> {
+        for k in catch_start..(catch_start + 6).min(self.instrs.len()) {
+            let ins = &self.instrs[k];
+            let b = ins.name.split('.').next().unwrap_or(&ins.name);
+            if b != "CreateCatchContext" {
+                continue;
+            }
+            let Some(Operand::Idx(i)) = ins.operands.first() else {
+                return None;
+            };
+            return match self.pool.and_then(|p| self.d.cache.array_elem(p, *i as usize)) {
+                Some(Elem::Ref(Ref::Object(o)))
+                    if self.d.cache.obj(o).ty.is(self.d.table, "ScopeInfo") =>
+                {
+                    Some(o)
+                }
+                _ => None,
+            };
+        }
+        None
+    }
+
     /// 发射一段指令范围（结构化控制流重建的核心）。
     ///
     /// 规则（覆盖 V8 常见模式）：
@@ -1913,11 +2145,21 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 continue;
             }
 
+            // ①-0 try/catch/finally（V8 的完成码形态）
+            if let Some(next) = self.try_emit_try_finally(i, end) {
+                i = next.max(i + 1);
+                continue;
+            }
+
             // ① try/catch：handler 覆盖的区间包一层
             if let Some(h) = self
                 .handlers
                 .iter()
-                .find(|h| self.idx_of.get(&(h.start as usize)) == Some(&i) && (h.end as usize) < usize::MAX)
+                .find(|h| {
+                    self.idx_of.get(&(h.start as usize)) == Some(&i)
+                        && (h.end as usize) < usize::MAX
+                        && !self.used_handler_starts.contains(&(h.start as usize))
+                })
                 .copied()
             {
                 let body_end = self
@@ -3652,31 +3894,59 @@ fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId) -> Vec<Handler> {
     else {
         return Vec::new();
     };
-    let len = d.cache.array_len(h);
-    if len < 6 {
+    // HandlerTable 是 ByteArray：头部占 2 个 tagged 槽（map + 长度），
+    // 长度是第二个槽里的**高 32 位**（指针压缩下 Smi 只占 4 字节）。
+    // 之前把表头当成了条目起点、又按 Smi 解长度 —— 于是整个表解析成空，
+    // try/catch 从来没能重建出来。
+    let len = d
+        .cache
+        .raw_at(h, ts, ts)
+        .and_then(|x| x.get(4..8))
+        .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
+        .unwrap_or(0);
+    if len < 16 {
         return Vec::new();
     }
-    let rd = |i: usize| -> Option<i32> {
-        d.cache
-            .raw_at_ts(h, i, 4, ts)
-            .map(|x| i32::from_le_bytes(x.try_into().unwrap()))
-    };
+    // 逐槽读取（每个槽是独立的 Raw 段，跨段读会失败）：
+    // slot0 = map 的两半，slot1 = 长度（高 32 位），其余每槽两个 int32 字段。
+    let mut words: Vec<i32> = Vec::new();
+    let slots = 2 + len / 8 + 1;
+    for k in 0..slots {
+        // 非 Raw 段（如 map 字段是引用）不能中断解析，否则索引错位
+        match d.cache.raw_at_ts(h, k * ts, ts, ts) {
+            Some(w) => {
+                let mut c = 0;
+                while c + 4 <= w.len() {
+                    words.push(i32::from_le_bytes(w[c..c + 4].try_into().unwrap()));
+                    c += 4;
+                }
+            }
+            None => {
+                for _ in 0..(ts / 4).max(1) {
+                    words.push(0);
+                }
+            }
+        }
+    }
+    let f = |i: usize| -> Option<i32> { words.get(4 + i).copied() };
     let mut out = Vec::new();
-    // 布局：[start, end, handler, depth, ...]
+    // 条目：[start, end, handler, data]（各 1 个 int32，连续排布）
+    let avail = words.len().saturating_sub(4);
     let mut i = 0usize;
-    while i + 12 <= len {
-        let (Some(start), Some(end), Some(target), Some(depth)) =
-            (rd(i), rd(i + 4), rd(i + 8), rd(i + 12).or(Some(0)))
-        else {
+    while i + 4 <= avail {
+        let (Some(start), Some(end), Some(handler)) = (f(i), f(i + 1), f(i + 2)) else {
             break;
         };
+        let data = f(i + 3).unwrap_or(0);
+        let _ = len;
         out.push(Handler {
             start: start as u32,
             end: end as u32,
-            target: target as u32,
-            depth: (depth as u32) / 2,
+            // 低 3 位是标志（如是否是 try-finally），偏移本身要右移
+            target: (handler as u32) >> 3,
+            depth: (data as u32) / 2,
         });
-        i += 16;
+        i += 4;
     }
     out
 }
