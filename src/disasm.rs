@@ -42,7 +42,7 @@ pub struct Disassembler<'a> {
 
 impl<'a> Disassembler<'a> {
     /// SFI 槽位：function_data（含 13.6 的 trusted/untrusted 拆分）。
-    fn sfi_function_data_slots(&self) -> Vec<usize> {
+    pub fn sfi_function_data_slots(&self) -> Vec<usize> {
         let ts = self.layout.tagged_size;
         if let Some(sfi) = &self.table.shared_function_info {
             let v: Vec<usize> = ["function_data", "trusted_function_data", "untrusted_function_data"]
@@ -535,6 +535,16 @@ impl<'a> Disassembler<'a> {
         Some(out)
     }
 
+    /// 供 CLI 使用的公开入口。
+    pub fn array_elem_public(&self, id: ObjId, index: usize) -> Option<ArrayElem> {
+        self.array_elem(id, index)
+    }
+
+    /// parameter_count 是否直接是计数（13.x+）。
+    pub fn parameter_count_direct(&self) -> bool {
+        self.table.parameter_count.map(|c| c.direct).unwrap_or(false)
+    }
+
     /// FixedArray 元素（按字节偏移取值；length 槽在 offset=ts，元素 i 在 (2+i)*ts）。
     fn array_elem(&self, id: ObjId, index: usize) -> Option<ArrayElem> {
         let off = (2 + index) * self.layout.tagged_size;
@@ -578,7 +588,7 @@ impl<'a> Disassembler<'a> {
     }
 
     /// FixedArray 元素数（length 槽 = Smi）。
-    fn fixed_array_len(&self, id: ObjId) -> usize {
+    pub fn fixed_array_len(&self, id: ObjId) -> usize {
         let ts = self.layout.tagged_size;
         self.cache
             .raw_at(id, ts, 4)
@@ -678,7 +688,7 @@ impl<'a> Disassembler<'a> {
         self.source_len
     }
 
-    fn string_value(&self, id: ObjId) -> Option<String> {
+    pub fn string_value(&self, id: ObjId) -> Option<String> {
         let obj = self.cache.obj(id);
         // 字符串布局（真机实证，含压缩/非压缩家族一致）：
         //   @0 map | @8 hash_field(int32) | @12 length(int32) | @16 chars

@@ -43,3 +43,20 @@ fn debug_parse_probe_payload() {
     }
     println!("{stdout}");
 }
+
+#[test]
+fn functions_and_strings_smoke() {
+    let Some(p) = std::path::PathBuf::from("/tmp/probe_16.20.2.jsc").exists().then(|| {
+        std::path::PathBuf::from("/tmp/probe_16.20.2.jsc")
+    }) else {
+        eprintln!("skip: probe not found");
+        return;
+    };
+    let (code, out, err) = run_jscd(&["functions", p.to_str().unwrap()]);
+    assert_eq!(code, 0, "functions failed: {err}");
+    assert!(out.contains("[0]"), "expected function ids: {out}");
+
+    let (code, out, err) = run_jscd(&["strings", p.to_str().unwrap()]);
+    assert_eq!(code, 0, "strings failed: {err}");
+    assert!(!out.trim().is_empty(), "expected some strings");
+}

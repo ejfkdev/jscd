@@ -171,12 +171,186 @@ fn info_cmd(file: &Path, common: &Common) -> Result<(), String> {
     emit(common, &text, &header.render_json(file, &ident))
 }
 
-fn strings_cmd(_file: &Path, _common: &Common) -> Result<(), String> {
-    Err("strings: needs the payload deserializer, landing in this milestone (not wired yet)".into())
+/// 常量池字符串提取：遍历对象图取全部字符串字面量（去重保序）。
+fn strings_cmd(file: &Path, common: &Common) -> Result<(), String> {
+    let data = load_input(file)?;
+    let (h, table, cache) = parse_cache(&data)?;
+    let layout = crate::bytecode::FamilyLayout::from_table(&table);
+    let d = crate::disasm::Disassembler::new(&cache, &table, layout).with_source_len(h.source_length());
+
+    let mut seen = std::collections::HashSet::new();
+    let mut values: Vec<String> = Vec::new();
+    for id in 0..cache.objects.len() {
+        let obj = cache.obj(id);
+        if !obj.type_name.contains("String") {
+            continue;
+        }
+        if let Some(v) = d.string_value(id) {
+            if seen.insert(v.clone()) {
+                values.push(v);
+            }
+        }
+    }
+    // 根表里的 internalized 字符串（脚本未序列化时也能给出线索）
+    let mut roots: Vec<String> = Vec::new();
+    for (i, name) in table.roots.iter().enumerate() {
+        if let Some(lit) = name.strip_prefix("String:") {
+            if !lit.is_empty() && seen.insert(lit.to_string()) {
+                values.push(lit.to_string());
+                roots.push(format!("root#{i}"));
+            }
+        }
+    }
+    let mut text = String::new();
+    for v in &values {
+        text.push_str(v);
+        text.push('\n');
+    }
+    let json = serde_json::json!({ "count": values.len(), "strings": values, "from_roots": roots });
+    emit(common, &text, &json.to_string())
 }
 
-fn functions_cmd(_file: &Path, _common: &Common) -> Result<(), String> {
-    Err("functions: needs the payload deserializer, landing in this milestone (not wired yet)".into())
+/// 函数树：列出全部 SharedFunctionInfo（名字/参数/字节码长度/嵌套层级）。
+fn functions_cmd(file: &Path, common: &Common) -> Result<(), String> {
+    use std::fmt::Write as _;
+    let data = load_input(file)?;
+    let (h, table, cache) = parse_cache(&data)?;
+    let layout = crate::bytecode::FamilyLayout::from_table(&table);
+    let d = crate::disasm::Disassembler::new(&cache, &table, layout).with_source_len(h.source_length());
+    let ts = table.tagged_size as usize;
+    let ba = table
+        .bytecode_array
+        .clone()
+        .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(ts));
+
+    // 嵌套关系：SFI 的常量池里引用到的子 SFI（常量池元素恒为指针槽，直接读槽即可）
+    let mut children: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
+    let mut all_sfis: Vec<usize> = Vec::new();
+    let pool_slot = ba.fields.get("constant_pool").map(|o| o / ts).unwrap_or(2);
+    for id in 0..cache.objects.len() {
+        if cache.obj(id).type_name != "SharedFunctionInfo" {
+            continue;
+        }
+        all_sfis.push(id);
+        let Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(b))) =
+            d.sfi_function_data_slots()
+                .iter()
+                .find_map(|s| match cache.slot_at(id, *s) {
+                    Some(v @ crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(b)))
+                        if cache.obj(*b).type_name == "BytecodeArray" =>
+                    {
+                        Some(v)
+                    }
+                    _ => None,
+                })
+        else {
+            continue;
+        };
+        let Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(pool))) =
+            cache.slot_at(*b, pool_slot)
+        else {
+            continue;
+        };
+        for slot in &cache.obj(*pool).slots {
+            if slot.index < 2 {
+                continue; // map / length
+            }
+            if let crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(c)) =
+                &slot.value
+            {
+                if cache.obj(*c).type_name == "SharedFunctionInfo" {
+                    children.entry(id).or_default().push(*c);
+                }
+            }
+        }
+    }
+    let mut roots: Vec<usize> = all_sfis
+        .iter()
+        .copied()
+        .filter(|id| !children.values().any(|v| v.contains(id)))
+        .collect();
+    roots.sort_unstable();
+
+    let mut text = String::new();
+    let mut json_items = Vec::new();
+    let mut visited = std::collections::HashSet::new();
+    fn walk(
+        id: usize,
+        depth: usize,
+        d: &crate::disasm::Disassembler,
+        cache: &crate::serializer::CodeCache,
+        ba: &crate::tables::BytecodeArrayLayout,
+        ts: usize,
+        children: &std::collections::HashMap<usize, Vec<usize>>,
+        visited: &mut std::collections::HashSet<usize>,
+        text: &mut String,
+        json_items: &mut Vec<serde_json::Value>,
+    ) {
+        if !visited.insert(id) {
+            return;
+        }
+        let name = d.sfi_name(id);
+        let bca = d.sfi_function_data_slots().iter().find_map(|slot| {
+            match cache.slot_at(id, *slot) {
+                Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(b)))
+                    if cache.obj(*b).type_name == "BytecodeArray" =>
+                {
+                    Some(*b)
+                }
+                _ => None,
+            }
+        });
+        let (bc_len, params, frame) = match bca {
+            Some(b) => {
+                let len = cache
+                    .raw_at(b, ts, ts)
+                    .map(|x| u64::from_le_bytes({
+                        let mut v = [0u8; 8];
+                        v[..x.len()].copy_from_slice(x);
+                        v
+                    }) >> 32)
+                    .unwrap_or(0);
+                let params = ba
+                    .off("parameter_size")
+                    .and_then(|o| cache.raw_at(b, o, 4))
+                    .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
+                    .unwrap_or(0);
+                let params = if d.parameter_count_direct() { params & 0xFFFF } else { params / 8 };
+                let frame = ba
+                    .off("frame_size")
+                    .and_then(|o| cache.raw_at(b, o, 4))
+                    .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
+                    .unwrap_or(0);
+                (len as usize, params, frame)
+            }
+            None => (0, 0, 0),
+        };
+        let marker = if bca.is_some() { "" } else { "  (uncompiled)" };
+        let _ = writeln!(
+            text,
+            "{:indent$}{}  [{}] params={} frame={} bytecode={}{}",
+            "",
+            if name.is_empty() { "<anonymous>" } else { &name },
+            id,
+            params,
+            frame,
+            bc_len,
+            marker,
+            indent = depth * 2
+        );
+        json_items.push(serde_json::json!({
+            "id": id, "name": name, "depth": depth, "compiled": bca.is_some(),
+            "params": params, "frame_size": frame, "bytecode_length": bc_len,
+        }));
+        for c in children.get(&id).into_iter().flatten() {
+            walk(*c, depth + 1, d, cache, ba, ts, children, visited, text, json_items);
+        }
+    }
+    for r in roots {
+        walk(r, 0, &d, &cache, &ba, ts, &children, &mut visited, &mut text, &mut json_items);
+    }
+    let json = serde_json::json!({ "count": json_items.len(), "functions": json_items });
+    emit(common, &text, &json.to_string())
 }
 
 fn disasm_cmd(file: &Path, common: &Common, filter: Option<&str>) -> Result<(), String> {
