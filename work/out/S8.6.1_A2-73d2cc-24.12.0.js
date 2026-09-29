@@ -90,7 +90,7 @@ while (true) {
   phi0 = __forin_unsupported();
   phi1 = phi0;
   if (phi0 !== undefined) {
-    value = phi0;
+    p = phi0;
     count = ++count;
     phi1 = ++count;
   }

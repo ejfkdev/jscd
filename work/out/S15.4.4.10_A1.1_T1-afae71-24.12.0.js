@@ -66,11 +66,11 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4;
-r1 = ["cardinal", "arr"];
+r1 = ["x", "arr"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-cardinal = /* ?unknown(7) */ undefined;
-r2 = cardinal;
+x = [0, 1, 2, 3, 4];
+r2 = x;
 r1 = r2.slice;
 r3 = 0;
 r4 = 3;
@@ -91,12 +91,12 @@ if (r1 !== "[object Array]") {
   throw new r1(r2);
 }
 r1 = arr;
-r1 = r1[""];
+r1 = r1.length;
 if (r1 !== 3) {
   r1 = Test262Error;
   r2 = "#2: var x = [0,1,2,3,4]; var arr = x.slice(0,3); arr.length === 3. Actual: ";
   r3 = arr;
-  r2 = r2 + r3[""];
+  r2 = r2 + r3.length;
   throw new r1(r2);
 }
 r1 = arr;

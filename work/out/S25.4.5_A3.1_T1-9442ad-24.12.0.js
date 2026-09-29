@@ -71,7 +71,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = Promise;
   r3 = r3.prototype;
-  r3 = r3[""];
+  r3 = r3.constructor;
   r4 = Promise;
   r5 = "The value of Promise.prototype.constructor is expected to equal the value of Promise";
   r0 = r1.call(r2-r5);

@@ -72,7 +72,7 @@ let phi0;
   r2 = r2.prototype;
   r2 = r2.lastIndexOf;
   r1 = r2["<ro0_54152>"];
-  r3 = "";
+  r3 = "length";
   phi0 = r2["<ro0_54152>"](r3);
   if (!phi0) {
     r1 = Test262Error;
@@ -81,7 +81,7 @@ let phi0;
     r4 = r4.prototype;
     r4 = r4.lastIndexOf;
     r3 = r4["<ro0_54152>"];
-    r5 = "";
+    r5 = "length";
     r2 = r2 + r4["<ro0_54152>"](r5);
     throw new r1(r2);
   }
@@ -89,14 +89,14 @@ let phi0;
   r1 = String;
   r1 = r1.prototype;
   r1 = r1.lastIndexOf;
-  r1 = r1[""];
+  r1 = r1.length;
   if (r1 !== 1) {
     r1 = Test262Error;
     r2 = "#2: String.prototype.lastIndexOf.length === 1. Actual: ";
     r3 = String;
     r3 = r3.prototype;
     r3 = r3.lastIndexOf;
-    r2 = r2 + r3[""];
+    r2 = r2 + r3.length;
     throw new r1(r2);
   }
   return r0;

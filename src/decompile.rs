@@ -1076,6 +1076,39 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .and_then(|v| v.as_ref())
             .and_then(|r| d.cache.ref_object(r));
         let handlers = read_handler_table(d, bca);
+        if std::env::var("JSCD_DBG_POOL").is_ok() {
+            match pool {
+                Some(pid) => {
+                    let ty = d.cache.obj(pid).ty.name(d.table);
+                    let len = d.cache.array_len(pid);
+                    let mut elems = Vec::new();
+                    for k in 0..len.min(6) {
+                        let e = match d.cache.array_elem(pid, k) {
+                            Some(Elem::Ref(Ref::Object(o))) => {
+                                let o = o;
+                                let t2 = d.cache.obj(o).ty;
+                                if t2.is_string(d.table) {
+                                    format!("str({:?})", d.dis.string_value(o))
+                                } else {
+                                    format!("obj{o}:{}", t2.name(d.table))
+                                }
+                            }
+                            Some(Elem::Ref(Ref::RoRef(c, off))) => format!("ro{c}/{off}"),
+                            Some(Elem::Ref(Ref::Root(r))) => format!("root{r}"),
+                            Some(Elem::Smi(v)) => format!("smi{v}"),
+                            other => format!("{other:?}"),
+                        };
+                        elems.push(e);
+                    }
+                    eprintln!(
+                        "[pool] bca={bca} slot={} pool={pid} ty={ty} len={len} {:?}",
+                        d.dis.bca_constant_pool_slot(),
+                        elems
+                    );
+                }
+                None => eprintln!("[pool] bca={bca} 池未解析"),
+            }
+        }
 
         // 预扫：V8 的 TDZ 检查（`X; ThrowReferenceErrorIfHole [池索引]`）紧跟在 context 槽
         // 读取之后 → 用它把槽号绑到变量名。模块/外层 ScopeInfo 不在链上时，这是拿到真名的

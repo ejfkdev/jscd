@@ -71,7 +71,7 @@ function _anon_0(a0) {
   try {
     r2 = Test262Error;
     r3 = "#1.1: x / 1 throw ReferenceError. Actual: ";
-    r3 = r3 + cardinal / 1;
+    r3 = r3 + x / 1;
     throw new r2(r3);
   } catch (e) {
     r4 = undefined;

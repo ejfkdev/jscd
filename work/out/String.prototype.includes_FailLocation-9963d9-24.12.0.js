@@ -71,7 +71,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r4 = "word";
   r3 = r4.includes;
-  r5 = "configurable";
+  r5 = "o";
   r6 = 3;
   r3 = r4.includes(r5, r6);
   r4 = false;

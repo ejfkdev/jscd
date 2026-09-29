@@ -66,7 +66,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["approximatelySign"];
+r1 = ["s"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = Object;
@@ -75,10 +75,10 @@ r2 = r2.toString;
 r1 = r2.call;
 r3 = RegExp;
 r3 = r3.prototype;
-approximatelySign = r2.call(r3);
+s = r2.call(r3);
 r2 = assert;
 r1 = r2.sameValue;
-r3 = approximatelySign;
+r3 = s;
 r4 = "[object Object]";
-r5 = "approximatelySign";
+r5 = "s";
 r0 = r1.call(r2-r5);

@@ -70,7 +70,7 @@ r1 = [/* function callbackfn */ callbackfn, 0, "testResult"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = Math;
-r1[""] = 1;
+r1.length = 1;
 r1 = Math;
 r2 = 0;
 r1[r2] = 1;

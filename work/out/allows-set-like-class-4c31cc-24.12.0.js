@@ -71,12 +71,12 @@ var s1, s2;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8;
   r1 = Set;
-  r2 = /* ?unknown(5) */ undefined;
+  r2 = [1, 2];
   s2 = new r1(r2);
   /* createblockcontext */
   r5 = undefined /* hole */;
   r2 = _anon_16;
-  r3 = /* ?unknown(11) */ undefined;
+  r3 = /* ClassBoilerplateMap(11) */ undefined;
   r6 = get_size;
   r7 = has;
   r8 = keys;

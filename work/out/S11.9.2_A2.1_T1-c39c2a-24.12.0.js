@@ -66,7 +66,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2;
-r1 = ["cardinal", "caseFirst", "cardinal", "caseFirst", "objectx", "objecty"];
+r1 = ["x", "y", "x", "y", "objectx", "objecty"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = 1;
@@ -76,26 +76,26 @@ if (r1 !== false) {
   r2 = "#1: (1 != 1) === false";
   throw new r1(r2);
 }
-cardinal = 1;
-r1 = cardinal;
+x = 1;
+r1 = x;
 r1 = r1 != 1;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#2: var x = 1; (x != 1) === false";
   throw new r1(r2);
 }
-caseFirst = 1;
+y = 1;
 r1 = 1;
-r1 = r1 != caseFirst;
+r1 = r1 != y;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#3: var y = 1; (1 != y) === false";
   throw new r1(r2);
 }
-cardinal = 1;
-caseFirst = 1;
-r1 = cardinal;
-r1 = r1 != caseFirst;
+x = 1;
+y = 1;
+r1 = x;
+r1 = r1 != y;
 if (r1 !== false) {
   r1 = Test262Error;
   r2 = "#4: var x = 1; var y = 1; (x != y) === false";

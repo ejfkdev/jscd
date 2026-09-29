@@ -74,18 +74,18 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
   r6 = Temporal;
   r6 = r6.PlainTime;
   cases = new r6(r0);
-  __ctx_ctx4 = /* ?unknown(8) */ undefined;
+  __ctx_ctx4 = [[{ milliseconds: 4503599627370497000 }, "case where floating point inaccuracy brings total below limit, positive"], [{ milliseconds: -4503599627370497000 }, "case where floating point inaccuracy brings total below limit, negative"]];
   r1 = undefined;
   r8 = __ctx.ctx4;
   r7 = r8[Symbol.iterator]();
-  r6 = r7[""];
+  r6 = r7.next;
   r8 = false;
   r11 = undefined /* hole */;
   r12 = __context;
   try {
     while (true) {
       r8 = true;
-      r13 = r7[""]();
+      r13 = r7.next();
       phi0 = r13;
       if (r13 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r13);
@@ -95,7 +95,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
       r8 = false;
       r0 = r13;
       r15 = r0[Symbol.iterator]();
-      r14 = r15[""];
+      r14 = r15.next;
       r16 = false;
       r19 = undefined /* hole */;
       r20 = __context;
@@ -103,7 +103,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         phi1 = r16;
         if (!r16) {
           r16 = true;
-          r21 = r15[""]();
+          r21 = r15.next();
           phi2 = r21;
           if (r21 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r21);
@@ -124,7 +124,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         phi4 = r16;
         if (!r16) {
           r16 = true;
-          r21 = r15[""]();
+          r21 = r15.next();
           phi5 = r21;
           if (r21 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r21);

@@ -71,7 +71,7 @@ function _anon_0(a0) {
   r1 = r2.sameValue;
   r3 = Object;
   r3 = r3.freeze;
-  r3 = r3[""];
+  r3 = r3.length;
   r4 = 1;
   r5 = "Object.freeze.length";
   r0 = r1.call(r2-r5);

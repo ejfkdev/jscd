@@ -77,31 +77,31 @@ let phi0, phi1;
   r5 = 11;
   r6 = 18;
   numbers = new r3(r4, r5, r6);
-  __ctx_ctx4 = /* ?unknown(8) */ undefined;
+  __ctx_ctx4 = [1, 19761118, -19761118, 1234567890];
   r1 = undefined;
   r5 = __ctx.ctx4;
   r4 = r5[Symbol.iterator]();
-  r3 = r4[""];
+  r3 = r4.next;
   r5 = false;
   r8 = undefined /* hole */;
   r9 = __context;
   try {
     while (true) {
       r5 = true;
-      r10 = r4[""]();
+      r10 = r4.next();
       phi0 = r10;
       if (r10 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r10);
       }
-      if (r10["/* root: error_stack_symbol */ undefined"]) break;
+      if (r10.done) break;
       r10 = r10.value;
       r5 = false;
       r0 = r10;
       /* createblockcontext */
       arg = r0;
-      r12 = Symbol_split;
+      r12 = assert;
       r11 = r12.throws;
-      r13 = _anon;
+      r13 = TypeError;
       r14 = _anon_16;
       r15 = "A number (";
       r15 = r15 + arg;
@@ -118,9 +118,9 @@ let phi0, phi1;
     if (!r5) {
       r11 = __context;
       try {
-        if (r4[""] != null) {
-          r12 = r4[""];
-          phi1 = r4[""]();
+        if (r4.return != null) {
+          r12 = r4.return;
+          phi1 = r4.return();
           if (phi1 === undefined) {
             r13 = phi1;
             r11 = __runtime.ThrowIteratorResultNotAnObject(r13);

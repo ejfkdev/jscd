@@ -93,20 +93,20 @@ let phi0, phi1, phi2, phi3;
   r9 = 24;
   r10 = "fractional strings";
   r5.call(r6-r10);
-  r5 = /* ?unknown(17) */ undefined;
+  r5 = [0, /* BigIntMap(19) */ undefined];
   r6 = 0;
   r7 = Symbol;
   r5[r6] = r7();
   r7();
   r6 = r5[Symbol.iterator]();
-  r5 = r6[""];
+  r5 = r6.next;
   r7 = false;
   r10 = undefined /* hole */;
   r11 = __context;
   try {
     while (true) {
       r7 = true;
-      r12 = r6[""]();
+      r12 = r6.next();
       phi0 = r12;
       if (r12 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r12);
@@ -164,18 +164,18 @@ let phi0, phi1, phi2, phi3;
       if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
     }
     r2 = undefined;
-    r5 = /* ?unknown(57) */ undefined;
+    r5 = [0, "invalid"];
     r6 = 0;
     r5[r6] = undefined;
     r6 = r5[Symbol.iterator]();
-    r5 = r6[""];
+    r5 = r6.next;
     r7 = false;
     r10 = undefined /* hole */;
     r11 = __context;
     try {
       while (true) {
         r7 = true;
-        r12 = r6[""]();
+        r12 = r6.next();
         phi2 = r12;
         if (r12 === undefined) {
           phi2 = __runtime.ThrowIteratorResultNotAnObject(r12);

@@ -71,12 +71,12 @@ var s1, s2, expected, originalAdd, combined;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
   r1 = Set;
-  r2 = /* ?unknown(5) */ undefined;
+  r2 = [1, 2];
   s2 = new r1(r2);
   r1 = Set;
-  r2 = /* ?unknown(7) */ undefined;
+  r2 = [2, 3];
   expected = new r1(r2);
-  originalAdd = /* ?unknown(9) */ undefined;
+  originalAdd = [1, 2, 3];
   r1 = Set;
   r1 = r1.prototype;
   __ctx_ctx6 = r1.add;

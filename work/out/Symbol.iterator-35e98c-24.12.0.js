@@ -70,7 +70,7 @@ function _anon_0(a0) {
   r1 = testWithTypedArrayConstructors;
   r2 = _anon_6;
   r3 = null;
-  r4 = /* ?unknown(17) */ undefined;
+  r4 = ["passthrough"];
   r0 = r1(r2-r4);
   return r0;
 }

@@ -92,13 +92,13 @@ let phi0;
   r0 = undefined;
   r1 = String;
   r1 = r1.fromCharCode;
-  r1 = r1[""];
+  r1 = r1.length;
   if (r1 !== 1) {
     r1 = Test262Error;
     r2 = "#3: String.fromCharCode.length === 1. Actual: String.fromCharCode.length ===";
     r3 = String;
     r3 = r3.fromCharCode;
-    r2 = r2 + r3[""];
+    r2 = r2 + r3.length;
     throw new r1(r2);
   }
   return r0;

@@ -66,7 +66,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4;
-r1 = ["cardinal", "caseFirst", "cardinal", "caseFirst", "objectx", "objecty"];
+r1 = ["x", "y", "x", "y", "objectx", "objecty"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = 0;
@@ -75,31 +75,31 @@ if (r1 !== 0) {
   r2 = "#1: (1 ^ 1) === 0. Actual: " + 0;
   throw new r1(r2);
 }
-cardinal = 1;
-r1 = cardinal ^ 1;
+x = 1;
+r1 = x ^ 1;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#2: var x = 1; (x ^ 1) === 0. Actual: ";
-  r2 = r2 + (cardinal ^ 1);
+  r2 = r2 + (x ^ 1);
   throw new r1(r2);
 }
-caseFirst = 1;
-r1 = caseFirst ^ 1;
+y = 1;
+r1 = y ^ 1;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#3: var y = 1; (1 ^ y) === 0. Actual: ";
-  r2 = r2 + (caseFirst ^ 1);
+  r2 = r2 + (y ^ 1);
   throw new r1(r2);
 }
-cardinal = 1;
-caseFirst = 1;
-r1 = cardinal;
-r1 = r1 ^ caseFirst;
+x = 1;
+y = 1;
+r1 = x;
+r1 = r1 ^ y;
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#4: var x = 1; var y = 1; (x ^ y) === 0. Actual: ";
-  r3 = cardinal;
-  r2 = r2 + (r3 ^ caseFirst);
+  r3 = x;
+  r2 = r2 + (r3 ^ y);
   throw new r1(r2);
 }
 r1 = Object;

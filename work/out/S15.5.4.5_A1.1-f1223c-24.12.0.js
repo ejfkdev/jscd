@@ -80,7 +80,7 @@ r0 = undefined;
 r2 = __instance;
 r1 = r2.charCodeAt;
 r3 = eval_;
-r4 = "dateFromFields";
+r4 = "1";
 r8 = 0;
 r9 = 3;
 r10 = 560;
@@ -99,7 +99,7 @@ if (r1 !== 105) {
   r4 = __instance;
   r3 = r4.charCodeAt;
   r5 = eval_;
-  r6 = "dateFromFields";
+  r6 = "1";
   r10 = 0;
   r11 = 4;
   r12 = 766;

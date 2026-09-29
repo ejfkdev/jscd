@@ -73,7 +73,7 @@ __runtime.DeclareGlobals(r1, r2);
 vals = [];
 r1 = vals;
 r3 = r1[Symbol.iterator]();
-r2 = r3[""];
+r2 = r3.next;
 r4 = false;
 r7 = undefined /* hole */;
 r8 = __context;
@@ -81,13 +81,13 @@ try {
   phi0 = r4;
   if (!r4) {
     r4 = true;
-    r9 = r3[""]();
+    r9 = r3.next();
     phi1 = r9;
     if (r9 === undefined) {
       phi1 = __runtime.ThrowIteratorResultNotAnObject(r9);
     }
-    phi2 = r9["/* root: error_stack_symbol */ undefined"];
-    if (!r9["/* root: error_stack_symbol */ undefined"]) {
+    phi2 = r9.done;
+    if (!r9.done) {
       r9 = r9.value;
       r4 = false;
       if (r9 === undefined) {
@@ -107,9 +107,9 @@ try {
   if (!r4) {
     r10 = __context;
     try {
-      if (r3[""] != null) {
-        r11 = r3[""];
-        phi4 = r3[""]();
+      if (r3.return != null) {
+        r11 = r3.return;
+        phi4 = r3.return();
         if (phi4 === undefined) {
           r12 = phi4;
           r10 = __runtime.ThrowIteratorResultNotAnObject(r12);
@@ -134,7 +134,7 @@ try {
   r3 = "name";
   r4 = ({ enumerable: false, writable: false, configurable: true });
   r1(r2-r4);
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.sameValue;
   r3 = result;
   r4 = vals;

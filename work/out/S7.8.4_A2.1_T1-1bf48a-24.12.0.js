@@ -69,8 +69,8 @@ let r0, r1, r2, r3;
 r1 = ["unicode", "character", "index"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-unicode = /* ?unknown(6) */ undefined;
-character = /* ?unknown(8) */ undefined;
+unicode = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+character = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
 r0 = undefined;
 index = 0;
 while (true) {
@@ -82,10 +82,10 @@ while (true) {
   r2 = character;
   if (r1 !== r2[index]) {
     r1 = Test262Error;
-    r2 = "caller";
+    r2 = "#";
     r3 = character;
     r2 = r2 + r3[index];
-    r2 = r2 + "CompileError";
+    r2 = r2 + " ";
     throw new r1(r2);
   }
   index = ++index;

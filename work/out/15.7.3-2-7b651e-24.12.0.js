@@ -66,17 +66,17 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["value"];
+r1 = ["p"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r2 = Object;
 r1 = r2.getPrototypeOf;
 r3 = Number;
-value = r2.getPrototypeOf(r3);
+p = r2.getPrototypeOf(r3);
 r2 = assert;
 r1 = r2.sameValue;
-r3 = value;
+r3 = p;
 r4 = Function;
 r4 = r4.prototype;
-r5 = "value";
+r5 = "p";
 r0 = r1.call(r2-r5);

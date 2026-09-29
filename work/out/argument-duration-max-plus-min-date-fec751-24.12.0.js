@@ -76,17 +76,17 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r13 = r14.from;
   r15 = ({ year: 275760, month: 9 });
   maxCases = r14.from(r15);
-  __ctx_ctx4 = /* ?unknown(9) */ undefined;
+  __ctx_ctx4 = [["P547581Y4M23DT23H59M59.999999999S", "string with max years"], [{ years: 547581, months: 4, days: 23 }, "property bag with max years"], ["P6570976M23DT23H59M59.999999999S", "string with max months"], [{ months: 6570976, days: 23 }, "property bag with max months"], ["P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: 28571428, days: 4 }, "property bag with max weeks"], ["P200000000DT23H59M59.999999999S", "string with max days"], [{ days: 200000000 }, "property bag with max days"], ["PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: 4800000023, minutes: 59, seconds: 59, milliseconds: 999, microseconds: 999 }, "property bag with max hours"], ["PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: 288000001439, seconds: 59, milliseconds: 999, microseconds: 999 }, "property bag with max minutes"], ["PT17280000086399.999999999S", "string with max seconds"], [{ seconds: 17280000086399 }, "property bag with max seconds"]];
   r15 = __ctx.ctx4;
   r14 = r15[Symbol.iterator]();
-  r13 = r14[""];
+  r13 = r14.next;
   r15 = false;
   r18 = undefined /* hole */;
   r19 = __context;
   try {
     while (true) {
       r15 = true;
-      r20 = r14[""]();
+      r20 = r14.next();
       phi0 = r20;
       if (r20 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r20);
@@ -96,7 +96,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       r15 = false;
       r0 = r20;
       r22 = r0[Symbol.iterator]();
-      r21 = r22[""];
+      r21 = r22.next;
       r23 = false;
       r26 = undefined /* hole */;
       r27 = __context;
@@ -104,7 +104,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi1 = r23;
         if (!r23) {
           r23 = true;
-          r28 = r22[""]();
+          r28 = r22.next();
           phi2 = r28;
           if (r28 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r28);
@@ -125,7 +125,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi4 = r23;
         if (!r23) {
           r23 = true;
-          r28 = r22[""]();
+          r28 = r22.next();
           phi5 = r28;
           if (r28 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r28);
@@ -236,18 +236,18 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
     r13 = r14.from;
     r15 = ({ year: -271821, month: 4, day: 19 });
     minCases = r14.from(r15);
-    __ctx_ctx6 = /* ?unknown(80) */ undefined;
+    __ctx_ctx6 = [["-P547581Y4M24DT23H59M59.999999999S", "string with max years"], [{ years: -547581, months: -4, days: -24 }, "property bag with max years"], ["-P6570976M24DT23H59M59.999999999S", "string with max months"], [{ months: -6570976, days: -24 }, "property bag with max months"], ["-P28571428W4DT23H59M59.999999999S", "string with max weeks"], [{ weeks: -28571428, days: -4 }, "property bag with max weeks"], ["-P200000000DT23H59M59.999999999S", "string with max days"], [{ days: -200000000 }, "property bag with max days"], ["-PT4800000023H59M59.999999999S", "string with max hours"], [{ hours: -4800000023, minutes: -59, seconds: -59, milliseconds: -999, microseconds: -999 }, "property bag with max hours"], ["-PT288000001439M59.999999999S", "string with max minutes"], [{ minutes: -288000001439, seconds: -59, milliseconds: -999, microseconds: -999 }, "property bag with max minutes"], ["-PT17280000086399.999999999S", "string with max seconds"], [{ seconds: -17280000086399 }, "property bag with max seconds"]];
     r2 = undefined;
     r15 = __ctx.ctx6;
     r14 = r15[Symbol.iterator]();
-    r13 = r14[""];
+    r13 = r14.next;
     r15 = false;
     r18 = undefined /* hole */;
     r19 = __context;
     try {
       while (true) {
         r15 = true;
-        r20 = r14[""]();
+        r20 = r14.next();
         phi10 = r20;
         if (r20 === undefined) {
           phi10 = __runtime.ThrowIteratorResultNotAnObject(r20);
@@ -257,7 +257,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         r15 = false;
         r1 = r20;
         r22 = r1[Symbol.iterator]();
-        r21 = r22[""];
+        r21 = r22.next;
         r23 = false;
         r26 = undefined /* hole */;
         r27 = __context;
@@ -265,7 +265,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           phi11 = r23;
           if (!r23) {
             r23 = true;
-            r28 = r22[""]();
+            r28 = r22.next();
             phi12 = r28;
             if (r28 === undefined) {
               phi12 = __runtime.ThrowIteratorResultNotAnObject(r28);
@@ -286,7 +286,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           phi14 = r23;
           if (!r23) {
             r23 = true;
-            r28 = r22[""]();
+            r28 = r22.next();
             phi15 = r28;
             if (r28 === undefined) {
               phi15 = __runtime.ThrowIteratorResultNotAnObject(r28);

@@ -70,7 +70,7 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Uint8Array;
-  r5 = /* ?unknown(6) */ undefined;
+  r5 = [199, 239, 242];
   r4 = new r4(r5);
   r3 = r4.toBase64;
   r3 = r4.toBase64();
@@ -79,7 +79,7 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Uint8Array;
-  r5 = /* ?unknown(10) */ undefined;
+  r5 = [199, 239, 242];
   r4 = new r4(r5);
   r3 = r4.toBase64;
   r5 = ({  });
@@ -89,7 +89,7 @@ function _anon_0(a0) {
   r2 = assert;
   r1 = r2.sameValue;
   r4 = Uint8Array;
-  r5 = /* ?unknown(14) */ undefined;
+  r5 = [199, 239, 242];
   r4 = new r4(r5);
   r3 = r4.toBase64;
   r5 = ({  });
@@ -108,7 +108,7 @@ function _anon_0(a0) {
 function _anon_20(a0) {
   let r0, r1, r2;
   r1 = Uint8Array;
-  r2 = /* ?unknown(25) */ undefined;
+  r2 = [199, 239, 242];
   r1 = new r1(r2);
   r0 = r1.toBase64;
   r2 = ({  });

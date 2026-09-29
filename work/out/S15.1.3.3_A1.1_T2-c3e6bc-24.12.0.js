@@ -115,20 +115,20 @@ while (true) {
             r2 = indexO;
             hexO = r1(r2);
             r1 = Test262Error;
-            r2 = "caller";
+            r2 = "#";
             r2 = r2 + hexO;
-            r2 = r2 + "current";
+            r2 = r2 + "-";
             r2 = r2 + hexP;
-            r2 = r2 + "CompileError";
+            r2 = r2 + " ";
             throw new r1(r2);
           }
           r1 = decimalToHexString;
           r2 = indexP;
           hexP = r1(r2);
           r1 = Test262Error;
-          r2 = "caller";
+          r2 = "#";
           r2 = r2 + hexP;
-          r2 = r2 + "CompileError";
+          r2 = r2 + " ";
           throw new r1(r2);
         }
       }
@@ -153,19 +153,19 @@ if (r1 > 0) {
     r2 = indexO;
     hexO = r1(r2);
     r1 = Test262Error;
-    r2 = "caller";
+    r2 = "#";
     r2 = r2 + hexO;
-    r2 = r2 + "current";
+    r2 = r2 + "-";
     r2 = r2 + hexP;
-    r2 = r2 + "CompileError";
+    r2 = r2 + " ";
     throw new r1(r2);
   }
   r1 = decimalToHexString;
   r2 = indexP;
   hexP = r1(r2);
   r1 = Test262Error;
-  r2 = "caller";
+  r2 = "#";
   r2 = r2 + hexP;
-  r2 = r2 + "CompileError";
+  r2 = r2 + " ";
   throw new r1(r2);
 }

@@ -66,7 +66,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3;
-r1 = ["base", "exponents", "Generator"];
+r1 = ["base", "exponents", "i"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 base = Infinity;
@@ -84,25 +84,25 @@ r1 = exponents;
 r2 = 0;
 r1[r2] = 0.000000000000001;
 r0 = undefined;
-Generator = 0;
+i = 0;
 while (true) {
-  r1 = Generator;
+  r1 = i;
   r2 = exponents;
-  if (!(r1 < r2[""])) break;
+  if (!(r1 < r2.length)) break;
   r0 = undefined;
   r1 = base;
   r2 = exponents;
-  r1 = r1 ** r2[Generator];
+  r1 = r1 ** r2[i];
   if (r1 !== Infinity) {
     r1 = Test262Error;
-    r2 = "<computed>";
+    r2 = "(";
     r2 = r2 + base;
     r2 = r2 + " ** ";
     r3 = exponents;
-    r2 = r2 + r3[Generator];
+    r2 = r2 + r3[i];
     r2 = r2 + ") !== +Infinity";
     throw new r1(r2);
   }
-  Generator = ++Generator;
+  i = ++i;
   continue;
 }

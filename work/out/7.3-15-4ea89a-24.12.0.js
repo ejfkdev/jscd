@@ -73,7 +73,7 @@ prop = "aÿ";
 r2 = assert;
 r1 = r2.sameValue;
 r3 = prop;
-r3 = r3[""];
+r3 = r3.length;
 r4 = 3;
 r5 = "prop.length";
 r1.call(r2-r5);

@@ -66,13 +66,13 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["configurable"];
+r1 = ["o"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-configurable = {  };
+o = {  };
 r2 = assert;
 r1 = r2.sameValue;
-r4 = configurable;
+r4 = o;
 r3 = r4["<ro0_54152>"];
 r5 = "foo";
 r3 = r4["<ro0_54152>"](r5);

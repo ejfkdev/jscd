@@ -74,7 +74,7 @@ function _anon_0(a0) {
   r2 = _anon_6;
   r3 = null;
   r4 = null;
-  r5 = /* ?unknown(48) */ undefined;
+  r5 = ["immutable"];
   r0 = r1(r2-r5);
   return r0;
 }
@@ -86,23 +86,23 @@ function _anon_6(a0, a1) {
   r3 = 4;
   r2 = a1(r3);
   sample = new a0(r2);
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.throws;
-  r3 = _anon;
+  r3 = RangeError;
   r4 = _anon_14;
   r5 = "-1";
   r1.call(r2-r5);
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.throws;
-  r3 = _anon;
+  r3 = RangeError;
   r4 = _anon_26;
   r5 = "-1.00001";
   r1.call(r2-r5);
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.throws;
-  r3 = _anon;
+  r3 = RangeError;
   r4 = _anon_36;
-  r5 = "";
+  r5 = "-Infinity";
   r1.call(r2-r5);
   return;
 }
@@ -111,10 +111,10 @@ function _anon_6(a0, a1) {
 function _anon_14(a0) {
   let r0, r1, r2, r3;
   r1 = sample;
-  r0 = r1[""];
-  r2 = /* ?unknown(19) */ undefined;
+  r0 = r1.set;
+  r2 = [1];
   r3 = 0;
-  r1[""](r2, r3);
+  r1.set(r2, r3);
   return;
 }
 
@@ -122,10 +122,10 @@ function _anon_14(a0) {
 function _anon_26(a0) {
   let r0, r1, r2, r3;
   r1 = sample;
-  r0 = r1[""];
-  r2 = /* ?unknown(31) */ undefined;
+  r0 = r1.set;
+  r2 = [1];
   r3 = -1.00001;
-  r1[""](r2, r3);
+  r1.set(r2, r3);
   return;
 }
 
@@ -133,10 +133,10 @@ function _anon_26(a0) {
 function _anon_36(a0) {
   let r0, r1, r2, r3;
   r1 = sample;
-  r0 = r1[""];
-  r2 = /* ?unknown(41) */ undefined;
-  r3 = -___root__RegExpDataWrapperMap____undefined;
-  r1[""](r2, r3);
+  r0 = r1.set;
+  r2 = [1];
+  r3 = -Infinity;
+  r1.set(r2, r3);
   return;
 }
 

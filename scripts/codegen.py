@@ -293,11 +293,22 @@ def extract_roots(text, symbols_text=None, defs_text=None):
                 break
             ident = m.group(1)
             j = body.index("(", m.start())
-            d, k = 0, j
+            d, k, in_str = 0, j, None
             while k < len(body):
-                if body[k] == "(":
+                ch = body[k]
+                # 字符串字面量里的括号不算配平 —— V8 里就有 `"function ("` 这种条目，
+                # 早先不看引号会把它整条漏掉（后来发现正是 13.6 根索引差一的元凶）。
+                if in_str:
+                    if ch == "\\":
+                        k += 2
+                        continue
+                    if ch == in_str:
+                        in_str = None
+                elif ch in ("\"", "'"):
+                    in_str = ch
+                elif ch == "(":
                     d += 1
-                elif body[k] == ")":
+                elif ch == ")":
                     d -= 1
                     if d == 0:
                         break
@@ -342,7 +353,10 @@ def extract_roots(text, symbols_text=None, defs_text=None):
         is_generator = "_GENERATOR" in name
         my_mode = "maps" if name.endswith("_MAPS_LIST") else mode
         for ident, inner in invocations(body):
-            if ident == "V":
+            # V_ 是 V8 的变体宏（"重要性较低"的字符串/符号根），同样占一个根索引 ——
+            # 早先只认 `V(` 会把这类条目整批丢掉（":"/"|"/"-" 就是这样消失的，
+            # 直接导致 13.6 的根索引错位、常量池字符串全错）。
+            if ident in ("V", "V_"):
                 if is_generator:
                     add_generator_entry(name, inner, my_mode)
                 else:
@@ -362,12 +376,22 @@ def extract_roots(text, symbols_text=None, defs_text=None):
 
     for top in ("READ_ONLY_ROOT_LIST", "MUTABLE_ROOT_LIST"):
         expand_macro(top)
-    # torque 生成段（TORQUE_DEFINED_MAP_ROOT_LIST）起点之后的索引不可静态复现，
-    # 直接截断：调用方对超出范围的 Root 引用走结构指纹分类，避免错分类。
+    # torque 生成段（TORQUE_DEFINED_MAP_ROOT_LIST）：每张实例类型的 map 一个根，源码里看不到，
+    # 但它的**条数**能用真值锚点解出来（见 TORQUE_MAP_COUNT 注释）。占位补齐后**继续保留
+    # 后面的尾部**（ALLOCATION_SITE / NAME_FOR_PROTECTOR / DATA_HANDLER 等）—— 早先整段截断，
+    # 导致 "length"/"join" 这类保护器字符串根缺失、node24 的属性名解析错。
+    n = TORQUE_MAP_COUNT
     if "__torque_map_list_unresolved__" in order:
         cutoff = order.index("__torque_map_list_unresolved__")
-        order = order[:cutoff]
+        head, tail = order[:cutoff], order[cutoff + 1 :]
+        order = head + [f"__torque_map_{i}__" for i in range(n)] + tail
     return order
+
+
+# torque 生成段（TORQUE_DEFINED_MAP_ROOT_LIST）的条数：源码里没有这张列表，
+# 用真实 .jsc 的根引用解出来 —— 13.6 上 `root1007` 是 "length"（保护器字符串根），
+# 解得该段为 36（见提交信息里的推导）。
+TORQUE_MAP_COUNT = 36
 
 
 # ------------------------------------------------------------ code-serializer
@@ -906,10 +930,10 @@ def main():
                 "legacy": extract_legacy_tags(src_t),
             },
             "roots": extract_roots(src_r, src_s, src_d) if src_r else [],
-            # 根索引校准：13.x 起只读根列表里插进了一整块"生成型"条目（torque 产生，
-            # 源码里看不到），我们的提取拿不到 → 之后所有序号偏移。实测 13.6 偏移 256
-            # （序列化引用 849 = 本表 593 的 String:target）。查询端自校验使用。
-            "roots_shift": 256 if maj >= 13 else 0,
+            # 根索引校准：13.x 的 RootIndex 枚举在只读根之前还有一位（源码列表里看不到），
+            # 实测校正在表首补一个占位即可对齐（依据：真实 .jsc 里 ":"→377、"-"→364、
+            # "target"→849，与补位后的表逐一对上）。12.x 及更早无需补。
+            "roots_shift": 0,
             "frame": extract_frame_layout(src_frame),
             "scope_info": extract_scope_info(src_scope, src_globals),
             "parameter_count": extract_parameter_count_semantics(src_ba_inl),

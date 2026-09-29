@@ -75,14 +75,14 @@ function _anon_0(a0) {
   r2 = /* BigIntMap(7) */ undefined;
   arg = new r1(r2);
   result = {  };
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.throws;
-  r3 = _anon;
+  r3 = RangeError;
   r4 = _anon_9;
   r5 = "[object Object] is not a valid ISO string";
   r1.call(r2-r5);
   r1 = result;
-  r1[""] = _anon_24;
+  r1.toString = _anon_24;
   r2 = arg;
   r1 = r2.until;
   r3 = result;

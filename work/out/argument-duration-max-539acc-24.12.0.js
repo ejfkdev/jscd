@@ -74,17 +74,17 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
   r13 = Temporal;
   r13 = r13.PlainTime;
   maxCases = new r13(r0);
-  minCases = /* ?unknown(8) */ undefined;
+  minCases = [["P4294967295Y104249991374DT7H36M31.999999999S", "string with max years"], [{ years: 4294967295, days: 104249991374 }, "property bag with max years"], ["P4294967295M104249991374DT7H36M31.999999999S", "string with max weeks"], [{ months: 4294967295, days: 104249991374 }, "property bag with max months"], ["P4294967295W104249991374DT7H36M31.999999999S", "string with max weeks"], [{ weeks: 4294967295, days: 104249991374 }, "property bag with max weeks"], ["P104249991374DT7H36M31.999999999S", "string with max days"], [{ days: 104249991374 }, "property bag with max days"], ["PT2501999792983H36M31.999999999S", "string with max hours"], [{ hours: 2501999792983 }, "property bag with max hours"], ["PT150119987579016M31.999999999S", "string with max minutes"], [{ minutes: 150119987579016 }, "property bag with max minutes"], ["PT9007199254740991.999999999S", "string with max seconds"], [{ seconds: 9007199254740991 }, "property bag with max seconds"]];
   r15 = minCases;
   r14 = r15[Symbol.iterator]();
-  r13 = r14[""];
+  r13 = r14.next;
   r15 = false;
   r18 = undefined /* hole */;
   r19 = __context;
   try {
     while (true) {
       r15 = true;
-      r20 = r14[""]();
+      r20 = r14.next();
       phi0 = r20;
       if (r20 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r20);
@@ -94,7 +94,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       r15 = false;
       r0 = r20;
       r22 = r0[Symbol.iterator]();
-      r21 = r22[""];
+      r21 = r22.next;
       r23 = false;
       r26 = undefined /* hole */;
       r27 = __context;
@@ -102,7 +102,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
         phi1 = r23;
         if (!r23) {
           r23 = true;
-          r28 = r22[""]();
+          r28 = r22.next();
           phi2 = r28;
           if (r28 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r28);
@@ -123,7 +123,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
         phi4 = r23;
         if (!r23) {
           r23 = true;
-          r28 = r22[""]();
+          r28 = r22.next();
           phi5 = r28;
           if (r28 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r28);
