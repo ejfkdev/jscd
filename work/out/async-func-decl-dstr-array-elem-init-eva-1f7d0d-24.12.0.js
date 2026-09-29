@@ -166,7 +166,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11;
       r21 = true;
       if (flag1 === undefined) throw new ReferenceError("flag1");
       flag2 = r21;
-      r21 = r21;
+      r21 = flag2;
       if (_ === undefined) throw new ReferenceError("_");
       iterCount = r21;
       phi6 = r15;
@@ -190,9 +190,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11;
       r21 = true;
       if (flag2 === undefined) throw new ReferenceError("flag2");
       _ = r21;
-      iterCount = r21;
+      iterCount = _;
     } catch (e) {
-      r17 = r21;
+      r17 = iterCount;
       r16 = 0;
       r18 = undefined /* hole */;
       if (!r15) {

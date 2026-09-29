@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -44,9 +67,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -54,10 +79,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -66,208 +99,71 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
-r1 = [".default", "method"];
+r1 = ["C", "method"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r1 = Symbol_iterator;
+r1 = Array;
 r1 = r1.prototype;
-r2 = _anon;
+r2 = Symbol;
 delete r1[r2.iterator];
 /* createblockcontext */
 r5 = undefined /* hole */;
-r2 = _default;
-r3 = /* ?unknown(8) */ undefined;
+r2 = C;
+r3 = ({ n: 0, i: { "constructor": 1, "method": 3 } });
 r6 = method;
 r4 = r2;
 __runtime.DefineClass(r3, r4, r5, r6);
-_default = r4;
-r1 = _default;
+C = r4;
+r1 = C;
 r1 = r1.prototype;
 method = r1.method;
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.throws;
-r3 = _anon;
+r3 = TypeError;
 r4 = _anon_28;
 r0 = r2.throws(r3, r4);
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
-function _default(a0) {
+function C(a0) {
   return;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function* method(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
-let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
-  /* generator state: SwitchOnGeneratorState */
-  r4 = method;
-  r5 = this;
-  r3 = __intrinsic.CreateJSGeneratorObject(r4, r5);
-  r6 = a0[Symbol.iterator]();
-  r5 = r6[""];
-  r7 = false;
-  r4 = a0;
-  r10 = undefined /* hole */;
-  r11 = __context;
-  try {
-    phi0 = r7;
-    if (!r7) {
-      r7 = true;
-      r12 = r6[""]();
-      phi1 = r12;
-      if (r12 === undefined) {
-        phi1 = __runtime.ThrowIteratorResultNotAnObject(r12);
-      }
-      phi2 = r12["/* root: error_stack_symbol */ undefined"];
-      if (!r12["/* root: error_stack_symbol */ undefined"]) {
-        r12 = r12.value;
-        r7 = false;
-        phi2 = r12;
-      } else {
-        phi2 = undefined;
-      }
-      phi0 = phi2;
-    } else {
-      phi0 = undefined;
-    }
-    r0 = phi0;
-    phi3 = r7;
-    if (!r7) {
-      r7 = true;
-      r12 = r6[""]();
-      phi4 = r12;
-      if (r12 === undefined) {
-        phi4 = __runtime.ThrowIteratorResultNotAnObject(r12);
-      }
-      phi5 = r12["/* root: error_stack_symbol */ undefined"];
-      if (!r12["/* root: error_stack_symbol */ undefined"]) {
-        r12 = r12.value;
-        r7 = false;
-        phi5 = r12;
-      } else {
-        phi5 = undefined;
-      }
-      phi3 = phi5;
-    } else {
-      phi3 = undefined;
-    }
-    r1 = phi3;
-    phi6 = r7;
-    if (!r7) {
-      r7 = true;
-      r12 = r6[""]();
-      phi7 = r12;
-      if (r12 === undefined) {
-        phi7 = __runtime.ThrowIteratorResultNotAnObject(r12);
-      }
-      phi8 = r12["/* root: error_stack_symbol */ undefined"];
-      if (!r12["/* root: error_stack_symbol */ undefined"]) {
-        r12 = r12.value;
-        r7 = false;
-        phi8 = r12;
-      } else {
-        phi8 = undefined;
-      }
-      phi6 = phi8;
-    } else {
-      phi6 = undefined;
-    }
-    r2 = phi6;
-  } catch (e) {
-    r9 = 0;
-    r8 = r9;
-    r9 = r8;
-    r8 = 0;
-    r10 = undefined /* hole */;
-    if (!r7) {
-      r13 = __context;
-      try {
-        if (r6[""] != null) {
-          r14 = r6[""];
-          phi9 = r6[""]();
-          if (phi9 === undefined) {
-            r15 = phi9;
-            r13 = __runtime.ThrowIteratorResultNotAnObject(r15);
-            if (r8 !== 0) {
-              if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-            }
-          }
-        }
-      } catch (e) {
-        r13 = r13;
-        if (r8 !== 0) {
-          if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-        }
-      }
-    }
-    if (r8 === 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    r6 = undefined /* hole */;
-    r7 = __context;
-    try {
-      r8 = __context;
-      try {
-        /* generator state: SuspendGenerator */
-        /* generator state: ResumeGenerator */
-        r9 = r3;
-        switch (__intrinsic.GeneratorGetResumeMode(r3)) {
-          case 2:
-            __intrinsic.GeneratorGetResumeMode(r3);
-            throw r9;
-            break;
-          case 1:
-            r4 = 1;
-            r5 = r9;
-            break;
-          case 0:
-            r5 = undefined;
-            r4 = 1;
-            r10 = r4;
-            r9 = r3;
-            r5 = __intrinsic.AsyncGeneratorReject(r9, r10);
-            r4 = 2;
-            r5 = r4;
-            r4 = 0;
-            r6 = undefined /* hole */;
-            break;
-        }
-      } catch (e) {
-        r10 = r6;
-        r9 = r3;
-        r5 = __intrinsic.AsyncGeneratorReject(r9, r10);
-        r4 = 2;
-      }
-    } catch (e) {
-      r5 = r4;
-      r4 = 0;
-      r6 = undefined /* hole */;
-      __intrinsic.GeneratorClose(r3);
-      switch (r4) {
-        case 0:
-          r11 = true;
-          r9 = r3;
-          r10 = r5;
-          return __intrinsic.AsyncGeneratorResolve(r9, r10, r11);
-          break;
-        case 1:
-          return r5;
-          break;
-      }
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  r5 = undefined;
+  r4 = 1;
+  r10 = r4;
+  r9 = r3;
+  r5 = __intrinsic.AsyncGeneratorReject(r9, r10);
+  r4 = 2;
+  r5 = r4;
+  r4 = 0;
+  r6 = undefined /* hole */;
+  __intrinsic.GeneratorClose(r3);
+  switch (r4) {
+    case 0:
       r11 = true;
       r9 = r3;
       r10 = r5;
       return __intrinsic.AsyncGeneratorResolve(r9, r10, r11);
+      break;
+    case 1:
       return r5;
-    }
+      break;
   }
+  if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  r11 = true;
+  r9 = r3;
+  r10 = r5;
+  return __intrinsic.AsyncGeneratorResolve(r9, r10, r11);
+  return r5;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function _anon_28(a0) {
   let r0, r1;
   r0 = method;
-  r1 = /* ?unknown(33) */ undefined;
+  r1 = [1, 2, 3];
   r0(r1);
   return;
 }

@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -44,9 +67,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -54,10 +79,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -66,167 +99,132 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["CALLER_OWN_PROPERTY_DOES_NOT_EXIST", /* function inner */ inner, 2, "callCount", "function () { [native code] }"];
+r1 = ["CALLER_OWN_PROPERTY_DOES_NOT_EXIST", /* function inner */ inner, 2, "callCount", "f"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r1 = _anon;
+r1 = Symbol;
 CALLER_OWN_PROPERTY_DOES_NOT_EXIST = r1();
 callCount = 0;
-function_______native_code___ = function_______native_code___;
-r4 = (function_______native_code___);
+f = f;
+r4 = f;
 r4 = r4();
-r3 = r4[""];
-r3 = r4[""]();
-r2 = r3[""];
+r3 = r4.next;
+r3 = r4.next();
+r2 = r3.then;
 r4 = _anon_36;
 r5 = $DONE;
-r2 = r3[""](r4, r5);
-r1 = r2[""];
+r2 = r3.then(r4, r5);
+r1 = r2.then;
 r3 = $DONE;
 r4 = $DONE;
-r0 = r2[""](r3, r4);
+r0 = r2.then(r3, r4);
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function inner(a0) {
   let r0, r1, r2;
 let phi0;
   r1 = inner;
-  r0 = r1["<ro0_54152>"];
-  r2 = "[object Undefined]";
-  phi0 = r1["<ro0_54152>"](r2);
+  r0 = r1.hasOwnProperty;
+  r2 = "caller";
+  phi0 = r1.hasOwnProperty(r2);
   if (!phi0) {
     return CALLER_OWN_PROPERTY_DOES_NOT_EXIST;
   }
   r0 = inner;
-  return r0["[object Undefined]"];
+  return r0.caller;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
-function* function_______native_code___(a0) {
+function* f(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12;
 let phi0, phi1, phi2, phi3, phi4, phi5, phi6;
-  /* generator state: SwitchOnGeneratorState */
-  r3 = (function_______native_code___);
-  r4 = this;
-  r0 = __intrinsic.CreateJSGeneratorObject(r3, r4);
-  r5 = undefined /* hole */;
-  r6 = __context;
-  try {
-    r7 = __context;
-    try {
-      /* generator state: SuspendGenerator */
-      /* generator state: ResumeGenerator */
-      r8 = r0;
-      switch (__intrinsic.GeneratorGetResumeMode(r0)) {
-        case 2:
-          __intrinsic.GeneratorGetResumeMode(r0);
-          throw r8;
-          break;
-        case 1:
-          r3 = 1;
-          r4 = r8;
-          break;
-        case 0:
-          r9 = _anon;
-          r8 = r9["/* root: AsyncGeneratorRequestMap */ undefined"];
-          r10 = inner;
-          r11 = "[object Undefined]";
-          r1 = r9["/* root: AsyncGeneratorRequestMap */ undefined"](r10, r11);
-          phi0 = r1;
-          if (r1) {
-            phi1 = r1.configurable;
-            if (r1.configurable) {
-              phi2 = true;
-              if (true) {
-                r9 = _anon;
-                r8 = r9["/* root: class_fields_symbol */ undefined"];
-                r10 = inner;
-                r11 = "[object Undefined]";
-                r12 = ({  });
-                r12["/* root: ArrayBoilerplateDescriptionMap */ undefined"] = _anon_25;
-                phi2 = r8.call(r9-r12);
-              }
-              phi1 = phi2;
-            }
-            phi0 = phi1;
-          }
-          r8 = inner;
-          r2 = r8();
-          phi3 = r1;
-          if (r1) {
-            phi4 = r1.configurable;
-            if (r1.configurable) {
-              phi5 = true;
-              if (true) {
-                r9 = Symbol_split;
-                r8 = r9.sameValue;
-                r11 = 1;
-                r12 = "If this test defined an own \"caller\" property on the inner function, then it should be accessible and should return the value it was set to.";
-                r10 = r2;
-                phi5 = r8.call(r9-r12);
-              }
-              phi4 = phi5;
-            }
-            phi3 = phi4;
-          }
-          phi6 = r2 === CALLER_OWN_PROPERTY_DOES_NOT_EXIST;
-          if (r2 !== CALLER_OWN_PROPERTY_DOES_NOT_EXIST) {
-            r9 = Symbol_split;
-            r8 = r9.notSameValue;
-            r11 = (function_______native_code___);
-            phi6 = r9.notSameValue(r2, r11);
-          }
-          callCount = ++callCount;
-          r4 = undefined;
-          r3 = 1;
-          r9 = r3;
-          r8 = r0;
-          r4 = __intrinsic.AsyncGeneratorReject(r8, r9);
-          r3 = 2;
-          r4 = r3;
-          r3 = 0;
-          r5 = undefined /* hole */;
-          break;
+  r9 = Object;
+  r8 = r9.getOwnPropertyDescriptor;
+  r10 = inner;
+  r11 = "caller";
+  r1 = r9.getOwnPropertyDescriptor(r10, r11);
+  phi0 = r1;
+  if (r1) {
+    phi1 = r1.configurable;
+    if (r1.configurable) {
+      phi2 = true;
+      if (true) {
+        r9 = Object;
+        r8 = r9.defineProperty;
+        r10 = inner;
+        r11 = "caller";
+        r12 = ({ get: undefined });
+        r12.get = get;
+        phi2 = r8.call(r9-r12);
       }
-    } catch (e) {
-      r9 = r5;
-      r8 = r0;
-      r4 = __intrinsic.AsyncGeneratorReject(r8, r9);
-      r3 = 2;
+      phi1 = phi2;
     }
-  } catch (e) {
-    r4 = r3;
-    r3 = 0;
-    r5 = undefined /* hole */;
-    __intrinsic.GeneratorClose(r0);
-    switch (r3) {
-      case 0:
-        r10 = true;
-        r8 = r0;
-        r9 = r4;
-        return __intrinsic.AsyncGeneratorResolve(r8, r9, r10);
-        break;
-      case 1:
-        return r4;
-        break;
-    }
-    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    r10 = true;
-    r8 = r0;
-    r9 = r4;
-    return __intrinsic.AsyncGeneratorResolve(r8, r9, r10);
-    return r4;
+    phi0 = phi1;
   }
+  r8 = inner;
+  r2 = r8();
+  phi3 = r1;
+  if (r1) {
+    phi4 = r1.configurable;
+    if (r1.configurable) {
+      phi5 = true;
+      if (true) {
+        r9 = assert;
+        r8 = r9.sameValue;
+        r11 = 1;
+        r12 = "If this test defined an own \"caller\" property on the inner function, then it should be accessible and should return the value it was set to.";
+        r10 = r2;
+        phi5 = r8.call(r9-r12);
+      }
+      phi4 = phi5;
+    }
+    phi3 = phi4;
+  }
+  phi6 = r2 === CALLER_OWN_PROPERTY_DOES_NOT_EXIST;
+  if (r2 !== CALLER_OWN_PROPERTY_DOES_NOT_EXIST) {
+    r9 = assert;
+    r8 = r9.notSameValue;
+    r11 = f;
+    phi6 = r9.notSameValue(r2, r11);
+  }
+  callCount = ++callCount;
+  r4 = undefined;
+  r3 = 1;
+  r9 = r3;
+  r8 = r0;
+  r4 = __intrinsic.AsyncGeneratorReject(r8, r9);
+  r3 = 2;
+  r4 = r3;
+  r3 = 0;
+  r5 = undefined /* hole */;
+  __intrinsic.GeneratorClose(r0);
+  switch (r3) {
+    case 0:
+      r10 = true;
+      r8 = r0;
+      r9 = r4;
+      return __intrinsic.AsyncGeneratorResolve(r8, r9, r10);
+      break;
+    case 1:
+      return r4;
+      break;
+  }
+  if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  r10 = true;
+  r8 = r0;
+  r9 = r4;
+  return __intrinsic.AsyncGeneratorResolve(r8, r9, r10);
+  return r4;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
-function ArrayBoilerplateDescriptionMap(a0) {
+function get(a0) {
   return 1;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function _anon_36(a0) {
   let r0, r1, r2, r3, r4;
-  r1 = Symbol_split;
+  r1 = assert;
   r0 = r1.sameValue;
   r2 = callCount;
   r3 = 1;

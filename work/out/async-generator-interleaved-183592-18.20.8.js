@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -43,10 +66,31 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
+    var out = {};
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -54,33 +98,32 @@ function __anonymous() {}
 var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // 共享绑定（闭包捕获的变量被摊平为文件级 var，便于直接运行）
-var actual, expected, iterations;
+var actual, expected, iterations, pushAwait;
 
-// ── 模块/脚本顶层代码 ─────────────────────────────
-let r0, r1, r2, r3, r4, r5;
-r1 = [/* function pushAwait */ pushAwait, 2, /* function callAsync */ __uncompiled.callAsync, 3, /* function checkAssertions */ checkAssertions, 4];
-r2 = __anonymous;
-__runtime.DeclareGlobals(r1, r2);
-actual = [];
-expected = ["await", 1, "await", 2];
-iterations = 2;
-r2 = callAsync;
-r2 = r2();
-r1 = r2.next;
-r1.call(r2);
-r4 = Promise;
-r5 = _anon_39;
-r4 = new r4(r5);
-r3 = r4.then;
-r5 = _anon_45;
-r3 = r3.call(r4, r5);
-r2 = r3.then;
-r4 = checkAssertions;
-r2 = r2.call(r3, r4);
-r1 = r2.then;
-r3 = $DONE;
-r4 = $DONE;
-r0 = r1.call(r2, r3, r4);
+// @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
+function* _anon_0(a0) {
+  let r0, r1, r2, r3, r4, r5, r6, r7, r8;
+  expected = [];
+  iterations = ["await", 1, "await", 2];
+  pushAwait = 2;
+  r5 = r1();
+  r4 = r5.next;
+  r5.next();
+  r7 = Promise;
+  r8 = _anon_39;
+  r7 = new r7(r8);
+  r6 = r7.then;
+  r8 = _anon_45;
+  r6 = r7.then(r8);
+  r5 = r6.then;
+  r5 = r6.then(r2);
+  r4 = r5.then;
+  r6 = $DONE;
+  r7 = $DONE;
+  r3 = r5.then(r6, r7);
+  return r3;
+}
+
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function pushAwait(a0) {
   let r0, r1, r2, r3, r4;
@@ -90,10 +133,10 @@ function pushAwait(a0) {
   r1 = __context;
   try {
     if (actual === undefined) throw new ReferenceError("actual");
-    r3 = r0;
+    r3 = actual;
     r2 = r3.push;
     r4 = "await";
-    r2.call(r3, r4);
+    r3.push(r4);
     r3 = undefined;
     r2 = r0;
     return __intrinsic.AsyncFunctionResolve(r2, r3);
@@ -110,99 +153,65 @@ function pushAwait(a0) {
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function* callAsync(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8;
-  /* generator state: SwitchOnGeneratorState */
-  r2 = callAsync;
-  r3 = this;
-  r0 = __intrinsic.CreateJSGeneratorObject(r2, r3);
-  r4 = __context;
-  try {
-    try {
-      /* generator state: SuspendGenerator */
-      /* generator state: ResumeGenerator */
-      r6 = r0;
-      switch (__intrinsic.GeneratorGetResumeMode(r0)) {
-        case 1:
-          __intrinsic.GeneratorGetResumeMode(r0);
-          r2 = 1;
-          r3 = r6;
-          break;
-        case 0:
-          r1 = 0;
-          while (true) {
-            if (iterations === undefined) throw new ReferenceError("iterations");
-            if (!(r1 < iterations)) break;
-            r6 = pushAwait;
-            r7 = r6();
-            r6 = r0;
-            /* generator state: SuspendGenerator */
-            /* generator state: ResumeGenerator */
-            r6 = __intrinsic.AsyncGeneratorAwaitUncaught(r6, r7);
-            r7 = __intrinsic.GeneratorGetResumeMode(r0);
-            if (r7 !== 0) {
-              if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
-            }
-            r1 = ++r1;
-            continue;
-          }
-          r7 = 0;
-          r6 = r0;
-          /* generator state: SuspendGenerator */
-          /* generator state: ResumeGenerator */
-          r6 = __intrinsic.AsyncGeneratorAwaitUncaught(r6, r7);
-          r7 = __intrinsic.GeneratorGetResumeMode(r0);
-          if (r7 !== 0) {
-            if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
-          }
-          r2 = 1;
-          r3 = r6;
-          r6 = r2;
-          /* createcatchcontext */
-          r5 = r6;
-          r8 = actual;
-          r7 = r0;
-          r3 = __intrinsic.AsyncGeneratorReject(r7, r8);
-          r2 = 2;
-          r3 = r2;
-          r2 = 0;
-          break;
-      }
-    } catch (e) {
-      r6 = r2;
-      /* createcatchcontext */
-      r5 = r6;
-      r8 = actual;
-      r7 = r0;
-      r3 = __intrinsic.AsyncGeneratorReject(r7, r8);
-      r2 = 2;
+  r1 = 0;
+  while (true) {
+    if (iterations === undefined) throw new ReferenceError("iterations");
+    if (!(r1 < iterations)) break;
+    r6 = __ctx.ctx6;
+    r7 = r6();
+    r6 = r0;
+    __intrinsic.AsyncGeneratorAwaitUncaught(r6, r7);
+    r6 = yield undefined;
+    r7 = __intrinsic.GeneratorGetResumeMode(r0);
+    if (r7 !== 0) {
+      if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
     }
-  } catch (e) {
-    r3 = r2;
-    r2 = 0;
-    r4 = undefined /* hole */;
-    __intrinsic.GeneratorClose(r0);
-    switch (r2) {
-      case 0:
-        if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
-        break;
-      case 1:
-        r7 = true;
-        r5 = r0;
-        r6 = r3;
-        return __intrinsic.AsyncGeneratorResolve(r5, r6, r7);
-        break;
-      case 2:
-        return r3;
-        return;
-        break;
-    }
-    if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
-    r7 = true;
-    r5 = r0;
-    r6 = r3;
-    return __intrinsic.AsyncGeneratorResolve(r5, r6, r7);
-    return r3;
-    return;
+    r1 = ++r1;
+    continue;
   }
+  r7 = 0;
+  r6 = r0;
+  __intrinsic.AsyncGeneratorAwaitUncaught(r6, r7);
+  r6 = yield undefined;
+  r7 = __intrinsic.GeneratorGetResumeMode(r0);
+  if (r7 !== 0) {
+    if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
+  }
+  r2 = 1;
+  r3 = r6;
+  r6 = r2;
+  /* createcatchcontext */
+  r5 = r6;
+  r8 = actual;
+  r7 = r0;
+  r3 = __intrinsic.AsyncGeneratorReject(r7, r8);
+  r2 = 2;
+  r3 = r2;
+  r2 = 0;
+  r4 = undefined /* hole */;
+  __intrinsic.GeneratorClose(r0);
+  switch (r2) {
+    case 0:
+      if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
+      break;
+    case 1:
+      r7 = true;
+      r5 = r0;
+      r6 = r3;
+      return __intrinsic.AsyncGeneratorResolve(r5, r6, r7);
+      break;
+    case 2:
+      return r3;
+      return;
+      break;
+  }
+  if (actual !== undefined) throw actual; // rethrow（仅当有挂起异常）
+  r7 = true;
+  r5 = r0;
+  r6 = r3;
+  return __intrinsic.AsyncGeneratorResolve(r5, r6, r7);
+  return r3;
+  return;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
@@ -226,7 +235,7 @@ function _anon_39(a0) {
   r1 = actual;
   r0 = r1.push;
   r2 = 1;
-  r0.call(r1, r2);
+  r1.push(r2);
   a0();
   return;
 }
@@ -238,7 +247,7 @@ function _anon_45(a0) {
   r1 = actual;
   r0 = r1.push;
   r2 = 2;
-  r0.call(r1, r2);
+  r1.push(r2);
   return;
 }
 

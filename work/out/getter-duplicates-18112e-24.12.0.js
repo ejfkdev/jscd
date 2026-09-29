@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -44,9 +67,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -54,10 +79,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -66,86 +99,86 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6;
-r1 = [".brand", ".catch", ".default", ".for"];
+r1 = ["A", "B", "C", "D"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = /* root: EmptyObjectBoilerplateDescription */ undefined;
-r3 = "Float32Array";
+r3 = "a";
 r4 = _anon_6;
 r5 = 0;
 r2 = r1;
 __runtime.DefineGetterPropertyUnchecked(r2, r3, r4, r5);
-_brand = r2;
-r2 = Symbol_split;
+A = r2;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = _brand;
-r3 = r3.Float32Array;
-r4 = ".brand";
+r3 = A;
+r3 = r3.a;
+r4 = "A";
 r5 = "The value of `A.a` is `'A'`";
 r1.call(r2-r5);
-r1 = ({  });
-r3 = "Float64Array";
+r1 = ({ b: undefined });
+r3 = "b";
 r4 = get_b;
 r5 = null;
 r6 = 0;
 r2 = r1;
 __runtime.DefineAccessorPropertyUnchecked(r2, r3, r4, r5, r6);
-r3 = "Float64Array";
+r3 = "b";
 r4 = _anon_25;
 r5 = 0;
 __runtime.DefineGetterPropertyUnchecked(r2, r3, r4, r5);
-_catch = r2;
-r2 = Symbol_split;
+B = r2;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = _catch;
-r3 = r3.Float64Array;
-r4 = ".catch";
+r3 = B;
+r3 = r3.b;
+r4 = "B";
 r5 = "The value of `B.b` is `'B'`";
 r1.call(r2-r5);
-r1 = ({  });
-r3 = "fractionalSecondDigits";
+r1 = ({ c: undefined });
+r3 = "c";
 r4 = get_c;
 r5 = null;
 r6 = 0;
 r2 = r1;
 __runtime.DefineAccessorPropertyUnchecked(r2, r3, r4, r5, r6);
-r3 = "fractionalSecondDigits";
+r3 = "c";
 r4 = _anon_40;
 r5 = 0;
 __runtime.DefineGetterPropertyUnchecked(r2, r3, r4, r5);
-r3 = "fractionalSecondDigits";
+r3 = "c";
 r4 = _anon_48;
 r5 = 0;
 __runtime.DefineGetterPropertyUnchecked(r2, r3, r4, r5);
-_default = r2;
-r2 = Symbol_split;
+C = r2;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = _default;
-r3 = r3.fractionalSecondDigits;
-r4 = ".default";
+r3 = C;
+r3 = r3.c;
+r4 = "C";
 r5 = "The value of `C.c` is `'C'`";
 r1.call(r2-r5);
 r1 = /* root: EmptyObjectBoilerplateDescription */ undefined;
-r3 = "from";
+r3 = "d";
 r4 = _anon_54;
 r5 = 0;
 r2 = r1;
 __runtime.DefineGetterPropertyUnchecked(r2, r3, r4, r5);
-r3 = "from";
+r3 = "d";
 r4 = get_d;
 r5 = 0;
 __runtime.DefineGetterPropertyUnchecked(r2, r3, r4, r5);
-_for = r2;
-r2 = Symbol_split;
+D = r2;
+r2 = assert;
 r1 = r2.sameValue;
-r3 = _for;
-r3 = r3.from;
-r4 = ".for";
+r3 = D;
+r3 = r3.d;
+r4 = "D";
 r5 = "The value of `D.d` is `'D'`";
 r0 = r1.call(r2-r5);
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function _anon_6(a0) {
-  return ".brand";
+  return "A";
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
@@ -158,7 +191,7 @@ function get_b(a0) {
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function _anon_25(a0) {
-  return ".catch";
+  return "B";
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
@@ -179,7 +212,7 @@ function _anon_40(a0) {
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function _anon_48(a0) {
-  return ".default";
+  return "C";
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
@@ -192,6 +225,6 @@ function _anon_54(a0) {
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS
 function get_d(a0) {
-  return ".for";
+  return "D";
 }
 

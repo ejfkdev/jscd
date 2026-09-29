@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -44,9 +67,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -54,10 +79,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -71,28 +104,28 @@ var tests;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29;
 let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, phi12, phi13, phi14, phi15;
-  __ctx_ctx3 = /* ?unknown(6) */ undefined;
+  __ctx.ctx3 = [[1976, 2, 18, 29], [1976, 11, 18, 30], [1976, 12, 18, 31], [1977, 2, 18, 28], [1997, 1, 23, 31], [1996, 2, 23, 29], [2000, 2, 23, 29], [1997, 2, 23, 28], [1997, 3, 23, 31], [1997, 4, 23, 30], [1997, 5, 23, 31], [1997, 6, 23, 30], [1997, 7, 23, 31], [1997, 8, 23, 31], [1997, 9, 23, 30], [1997, 10, 23, 31], [1997, 11, 23, 30], [1997, 12, 23, 31]];
   r1 = undefined;
   r13 = __ctx.ctx3;
   r12 = r13[Symbol.iterator]();
-  r11 = r12[""];
+  r11 = r12.next;
   r13 = false;
   r16 = undefined /* hole */;
   r17 = __context;
   try {
     while (true) {
       r13 = true;
-      r18 = r12[""]();
+      r18 = r12.next();
       phi0 = r18;
       if (r18 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r18);
       }
-      if (r18["/* root: error_stack_symbol */ undefined"]) break;
+      if (r18.done) break;
       r18 = r18.value;
       r13 = false;
       r0 = r18;
       r20 = r0[Symbol.iterator]();
-      r19 = r20[""];
+      r19 = r20.next;
       r21 = false;
       r24 = undefined /* hole */;
       r25 = __context;
@@ -100,13 +133,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi1 = r21;
         if (!r21) {
           r21 = true;
-          r26 = r20[""]();
+          r26 = r20.next();
           phi2 = r26;
           if (r26 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r26);
           }
-          phi3 = r26["/* root: error_stack_symbol */ undefined"];
-          if (!r26["/* root: error_stack_symbol */ undefined"]) {
+          phi3 = r26.done;
+          if (!r26.done) {
             r26 = r26.value;
             r21 = false;
             phi3 = r26;
@@ -121,13 +154,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi4 = r21;
         if (!r21) {
           r21 = true;
-          r26 = r20[""]();
+          r26 = r20.next();
           phi5 = r26;
           if (r26 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r26);
           }
-          phi6 = r26["/* root: error_stack_symbol */ undefined"];
-          if (!r26["/* root: error_stack_symbol */ undefined"]) {
+          phi6 = r26.done;
+          if (!r26.done) {
             r26 = r26.value;
             r21 = false;
             phi6 = r26;
@@ -142,13 +175,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi7 = r21;
         if (!r21) {
           r21 = true;
-          r26 = r20[""]();
+          r26 = r20.next();
           phi8 = r26;
           if (r26 === undefined) {
             phi8 = __runtime.ThrowIteratorResultNotAnObject(r26);
           }
-          phi9 = r26["/* root: error_stack_symbol */ undefined"];
-          if (!r26["/* root: error_stack_symbol */ undefined"]) {
+          phi9 = r26.done;
+          if (!r26.done) {
             r26 = r26.value;
             r21 = false;
             phi9 = r26;
@@ -163,13 +196,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi10 = r21;
         if (!r21) {
           r21 = true;
-          r26 = r20[""]();
+          r26 = r20.next();
           phi11 = r26;
           if (r26 === undefined) {
             phi11 = __runtime.ThrowIteratorResultNotAnObject(r26);
           }
-          phi12 = r26["/* root: error_stack_symbol */ undefined"];
-          if (!r26["/* root: error_stack_symbol */ undefined"]) {
+          phi12 = r26.done;
+          if (!r26.done) {
             r26 = r26.value;
             r21 = false;
             phi12 = r26;
@@ -182,17 +215,15 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         }
         r9 = phi10;
       } catch (e) {
-        r23 = 0;
-        r22 = r23;
-        r23 = r22;
+        r23 = r9;
         r22 = 0;
         r24 = undefined /* hole */;
         if (!r21) {
           r27 = __context;
           try {
-            if (r20[""] != null) {
-              r28 = r20[""];
-              phi13 = r20[""]();
+            if (r20.return != null) {
+              r28 = r20.return;
+              phi13 = r20.return();
               if (phi13 === undefined) {
                 r29 = phi13;
                 r27 = __runtime.ThrowIteratorResultNotAnObject(r29);
@@ -208,57 +239,59 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
             }
           }
         }
-        if (r22 === 0) {
-          r14 = 0;
-          r16 = undefined /* hole */;
-          r15 = r23;
-          phi14 = r16;
-        } else {
-          r18 = Temporal;
-          r18 = r18.PlainDateTime;
-          r22 = 15;
-          r23 = 23;
-          r24 = 30;
-          r25 = 123;
-          r26 = 456;
-          r27 = 789;
-          r19 = r6;
-          r20 = r7;
-          r21 = r8;
-          r10 = new r18(r19, r20, r21, r22, r23, r24, r25, r26, r27);
-          r19 = Symbol_split;
-          r18 = r19.sameValue;
-          r20 = r10.toZonedDateTime;
-          r22 = "";
-          r20 = r10.toZonedDateTime(r22);
-          r20 = r20["/* root: elements_transition_symbol */ undefined"];
-          r22 = r9;
-          r22 = r22 + " days in the month of ";
-          r22 = r22 + r10;
-          r21 = r9;
-          r1 = r18.call(r19-r22);
-          continue;
-          r15 = 0;
-          r14 = r15;
-          r15 = r14;
-          r14 = 0;
-          r16 = undefined /* hole */;
-        }
+      }
+      r27 = r27;
+      if (r22 !== 0) {
+        if (tests !== undefined) throw tests; // rethrow（仅当有挂起异常）
+      }
+      if (r22 === 0) {
+        r14 = 0;
+        r16 = undefined /* hole */;
+        r15 = r23;
+        phi14 = r16;
+      } else {
+        r18 = Temporal;
+        r18 = r18.PlainDateTime;
+        r22 = 15;
+        r23 = 23;
+        r24 = 30;
+        r25 = 123;
+        r26 = 456;
+        r27 = 789;
+        r19 = r6;
+        r20 = r7;
+        r21 = r8;
+        r10 = new r18(r19, r20, r21, r22, r23, r24, r25, r26, r27);
+        r19 = assert;
+        r18 = r19.sameValue;
+        r20 = r10.toZonedDateTime;
+        r22 = "UTC";
+        r20 = r10.toZonedDateTime(r22);
+        r20 = r20.daysInMonth;
+        r22 = r9;
+        r22 = r22 + " days in the month of ";
+        r22 = r22 + r10;
+        r21 = r9;
+        r1 = r18.call(r19-r22);
+        continue;
+        r15 = 0;
+        r14 = r15;
+        r15 = r14;
+        r14 = 0;
+        r16 = undefined /* hole */;
       }
       continue;
     }
   } catch (e) {
-    r15 = 0;
-    r14 = r15;
-    r15 = r14;
+    r15 = undefined;
     r14 = 0;
     r16 = undefined /* hole */;
     if (!r13) {
       r18 = __context;
       try {
-        if (r12[""] != null) {
-          r19 = r12[""];
-          phi15 = r12[""]();
+        if (r12.return != null) {
+          r19 = r12.return;
+          phi15 = r12.return();
           if (phi15 === undefined) {
             r20 = phi15;
             r18 = __runtime.ThrowIteratorResultNotAnObject(r20);
@@ -274,10 +307,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         }
       }
     }
-    if (r14 === 0) {
-      if (tests !== undefined) throw tests; // rethrow（仅当有挂起异常）
-    }
-    return r1;
   }
+  r18 = r18;
+  if (r14 !== 0) {
+    if (tests !== undefined) throw tests; // rethrow（仅当有挂起异常）
+  }
+  if (r14 === 0) {
+    if (tests !== undefined) throw tests; // rethrow（仅当有挂起异常）
+  }
+  return r1;
 }
 

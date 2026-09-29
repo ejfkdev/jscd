@@ -4,9 +4,10 @@
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
-  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
-  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键只在 boilerplate 里
+  // （形参看不到），而 10.2 起实例方法的 SFI 连推断名都没有 → 必须按 boilerplate 的
+  // 键挂，不然 `c.bump is not a function`。boilerplate 已解码成
+  // `{ n: 参数数, i: { 属性名: 下标 | {get,set} } }`（见 class_boilerplate）。
   DefineClass: function (bp, ctor, parent) {
     // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
     // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
@@ -16,20 +17,42 @@ var __runtime = new Proxy({
       Object.setPrototypeOf(Cls, parent);
     }
     // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
-    for (var i = 3; i < arguments.length; i++) {
-      var f = arguments[i];
-      if (typeof f !== 'function' || !f.name) continue;
+    var dyn = arguments;
+    var defined = {};
+    if (bp && bp.i) {
+      // 按源码里的键挂（V8 的 SubstituteValues 也是这么做的：下标 → 闭包）
+      for (var key in bp.i) {
+        if (key === 'constructor') continue;
+        var spec = bp.i[key];
+        if (spec && typeof spec === 'object') {
+          var d = {};
+          if (spec.get != null && dyn[spec.get]) d.get = dyn[spec.get];
+          if (spec.set != null && dyn[spec.set]) d.set = dyn[spec.set];
+          if (d.get || d.set) {
+            try { Object.defineProperty(Cls.prototype, key, d); defined[key] = 1; } catch (e) {}
+          }
+        } else if (spec >= 0 && dyn[spec]) {
+          Cls.prototype[key] = dyn[spec];
+          defined[key] = 1;
+        }
+      }
+    }
+    // 兜底：boilerplate 没给出映射的闭包（静态方法记在 static 模板里、值是 ClassPositions
+    // 而不是下标；9.4 及更早的实例方法也没有键表）→ 按 SFI 名挂，
+    // 静态/实例分不清就两边都挂
+    for (var i = 3; i < dyn.length; i++) {
+      var f = dyn[i];
+      if (typeof f !== 'function' || !f.name || defined[f.name]) continue;
       // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
       // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
       var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
       if (m) {
-        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
-        d[m[1]] = f;
-        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+        var d2 = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d2[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d2); } catch (e) {}
       } else {
         Cls.prototype[f.name] = f;
       }
-      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
       Cls[f.name] = f;
     }
     return Cls;
@@ -43,10 +66,31 @@ var __runtime = new Proxy({
     try { Object.defineProperty(obj, key, d); } catch (e) {}
     return obj;
   },
+  // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
+  CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
+    var out = {};
+    var excl = Array.prototype.slice.call(arguments, 1);
+    var o = Object(src);
+    Object.keys(o).forEach(function (k) {
+      if (excl.indexOf(k) < 0) out[k] = o[k];
+    });
+    return out;
+  },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -81,145 +125,133 @@ r0 = r2.catch(r3);
 function* asyncg(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16;
 let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
-  /* generator state: SwitchOnGeneratorState */
-  r1 = asyncg;
-  r2 = this;
-  r0 = __intrinsic.CreateJSGeneratorObject(r1, r2);
-  r3 = __context;
-  try {
-    /* generator state: SuspendGenerator */
-    /* generator state: ResumeGenerator */
-    r5 = r0;
-    switch (__intrinsic.GeneratorGetResumeMode(r0)) {
-      case 1:
-        __intrinsic.GeneratorGetResumeMode(r0);
-        r1 = 1;
-        r2 = r5;
-        break;
+  r10 = obj;
+  phi0 = r10["/* root: async_iterator_symbol */ undefined"];
+  if (r10["/* root: async_iterator_symbol */ undefined"] != null) {
+    r11 = r10["/* root: async_iterator_symbol */ undefined"];
+    phi1 = r10["/* root: async_iterator_symbol */ undefined"]();
+    phi2 = phi1;
+    if (phi1 === undefined) {
+      phi2 = __runtime.ThrowSymbolAsyncIteratorInvalid(r0);
+    }
+    phi0 = phi2;
+  }
+  r11 = r10["/* root: iterator_symbol */ undefined"];
+  r11 = r10["/* root: iterator_symbol */ undefined"]();
+  r7 = __intrinsic.CreateAsyncFromSyncIterator(r11);
+  r9 = r7.next;
+  r8 = undefined;
+  r6 = 0;
+  while (true) {
+    switch (r6) {
       case 0:
-        r10 = obj;
-        phi0 = r10["/* root: async_iterator_symbol */ undefined"];
-        if (r10["/* root: async_iterator_symbol */ undefined"] != null) {
-          r11 = r10["/* root: async_iterator_symbol */ undefined"];
-          phi1 = r10["/* root: async_iterator_symbol */ undefined"]();
-          phi2 = phi1;
-          if (phi1 === undefined) {
-            phi2 = __runtime.ThrowSymbolAsyncIteratorInvalid(r0);
-          }
-          phi0 = phi2;
-        }
-        r11 = r10["/* root: iterator_symbol */ undefined"];
-        r11 = r10["/* root: iterator_symbol */ undefined"]();
-        r7 = __intrinsic.CreateAsyncFromSyncIterator(r11);
-        r9 = r7.next;
-        r8 = undefined;
-        r6 = 0;
-        while (true) {
-          switch (r6) {
-            case 0:
-              if (r7.return == null) {
-                r10 = r0;
-                r11 = r8;
-                /* generator state: SuspendGenerator */
-                /* generator state: ResumeGenerator */
-                r10 = __intrinsic.AsyncGeneratorAwaitUncaught(r10, r11);
-                r11 = __intrinsic.GeneratorGetResumeMode(r0);
-                if (r11 !== 0) {
-                  if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-                }
-              }
-              r10 = r7.return;
-              r7.return(r8);
-              r1 = 1;
-              r2 = r10;
-              break;
-            case 1:
-              phi3 = r7.throw;
-              if (r7.throw != null) {
-                r12 = r7.throw;
-                phi3 = r7.throw(r8);
-              } else {
-                r7.throw(r8);
-                phi4 = r7.return;
-                if (r7.return != null) {
-                  r12 = r7.return;
-                  r13 = r7.return();
-                  r12 = r0;
-                  /* generator state: SuspendGenerator */
-                  /* generator state: ResumeGenerator */
-                  r12 = __intrinsic.AsyncGeneratorAwaitUncaught(r12, r13);
-                  r13 = __intrinsic.GeneratorGetResumeMode(r0);
-                  if (r13 !== 0) {
-                    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-                  }
-                  phi5 = r12;
-                  if (r12 === undefined) {
-                    r14 = r12;
-                    phi5 = __runtime.ThrowIteratorResultNotAnObject(r14);
-                  }
-                  phi4 = phi5;
-                }
-                phi3 = __runtime.ThrowThrowMethodMissing(r0);
-              }
-              break;
-          }
-          r13 = phi3;
-          r12 = r0;
-          /* generator state: SuspendGenerator */
-          /* generator state: ResumeGenerator */
-          r12 = __intrinsic.AsyncGeneratorAwaitUncaught(r12, r13);
-          r13 = __intrinsic.GeneratorGetResumeMode(r0);
-          if (r13 !== 0) {
+        if (r7.return == null) {
+          r10 = r0;
+          r11 = r8;
+          __intrinsic.AsyncGeneratorAwaitUncaught(r10, r11);
+          r10 = yield undefined;
+          r11 = __intrinsic.GeneratorGetResumeMode(r0);
+          if (r11 !== 0) {
             if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
           }
-          r5 = r12;
-          phi6 = r12;
-          if (r12 === undefined) {
-            phi6 = __runtime.ThrowIteratorResultNotAnObject(r5);
-          }
-          if (r5.done) break;
-          r15 = r5.value;
-          r16 = false;
-          r14 = r0;
-          /* generator state: SuspendGenerator */
-          /* generator state: ResumeGenerator */
-          r8 = __intrinsic.AsyncGeneratorYield(r14, r15, r16);
-          r6 = __intrinsic.GeneratorGetResumeMode(r0);
-          continue;
         }
-        r7 = r5.value;
-        if (r6 === 1) {
-          r1 = 1;
-          r2 = r7;
-          phi7 = r1;
+        r10 = r7.return;
+        r7.return(r8);
+        r1 = 1;
+        r2 = r10;
+        break;
+      case 1:
+        phi3 = r7.throw;
+        if (r7.throw != null) {
+          r12 = r7.throw;
+          phi3 = r7.throw(r8);
         } else {
-          r2 = undefined;
-          r1 = 1;
-          r5 = r1;
-          /* createcatchcontext */
-          r4 = r5;
-          r7 = __ctx.ctx2;
-          r6 = r0;
-          r2 = __intrinsic.AsyncGeneratorReject(r6, r7);
-          r1 = 2;
-          r2 = r1;
-          r1 = 0;
+          r7.throw(r8);
+          phi4 = r7.return;
+          if (r7.return != null) {
+            r12 = r7.return;
+            r13 = r7.return();
+            r12 = r0;
+            __intrinsic.AsyncGeneratorAwaitUncaught(r12, r13);
+            r12 = yield undefined;
+            r13 = __intrinsic.GeneratorGetResumeMode(r0);
+            if (r13 !== 0) {
+              if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+            }
+            phi5 = r12;
+            if (r12 === undefined) {
+              r14 = r12;
+              phi5 = __runtime.ThrowIteratorResultNotAnObject(r14);
+            }
+            phi4 = phi5;
+          }
+          phi3 = __runtime.ThrowThrowMethodMissing(r0);
         }
         break;
     }
-    return r2;
-  } catch (e) {
+    r13 = phi3;
+    r12 = r0;
+    __intrinsic.AsyncGeneratorAwaitUncaught(r12, r13);
+    r12 = yield undefined;
+    r13 = __intrinsic.GeneratorGetResumeMode(r0);
+    if (r13 !== 0) {
+      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+    }
+    r5 = r12;
+    phi6 = r12;
+    if (r12 === undefined) {
+      phi6 = __runtime.ThrowIteratorResultNotAnObject(r5);
+    }
+    if (r5.done) break;
+    r15 = r5.value;
+    r16 = false;
+    r14 = r0;
+    __intrinsic.AsyncGeneratorYield(r14, r15, r16);
+    r8 = yield undefined;
+    r6 = __intrinsic.GeneratorGetResumeMode(r0);
+    continue;
+  }
+  r7 = r5.value;
+  if (r6 === 1) {
+    r1 = 1;
+    r2 = r7;
+    phi7 = r1;
+  } else {
+    r2 = undefined;
+    r1 = 1;
     r5 = r1;
     /* createcatchcontext */
     r4 = r5;
-    r7 = e;
+    r7 = __ctx.ctx2;
     r6 = r0;
     r2 = __intrinsic.AsyncGeneratorReject(r6, r7);
-    return r2;
-  } finally {
-    r3 = undefined /* hole */;
-    __intrinsic.GeneratorClose(r0);
+    r1 = 2;
+    r2 = r1;
+    r1 = 0;
   }
+  r3 = undefined /* hole */;
+  __intrinsic.GeneratorClose(r0);
+  switch (r1) {
+    case 0:
+      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+      break;
+    case 1:
+      r6 = true;
+      r4 = r0;
+      r5 = r2;
+      return __intrinsic.AsyncGeneratorResolve(r4, r5, r6);
+      break;
+    case 2:
+      return r2;
+      return;
+      break;
+  }
+  if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  r6 = true;
+  r4 = r0;
+  r5 = r2;
+  return __intrinsic.AsyncGeneratorResolve(r4, r5, r6);
+  return r2;
   return;
 }
 

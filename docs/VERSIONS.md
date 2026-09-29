@@ -78,13 +78,43 @@ flags 位域位置两代一致（saved=bit10、function_variable=bit12-13、infe
 
 ## 8. roots 表
 
-- 顺序 = `READ_ONLY_ROOT_LIST + MUTABLE_ROOT_LIST`，含 INTL internalized strings（122 条，Node 默认 full-icu）。
-- `TORQUE_DEFINED_MAP_ROOT_LIST` 是构建期生成、顺序难静态复现 → **在表里截断**，之后的 root 引用走结构指纹分类，避免错分类。
+- 顺序 = `READ_ONLY_ROOT_LIST + MUTABLE_ROOT_LIST`，含 INTL internalized strings。
+- `TORQUE_DEFINED_MAP_ROOT_LIST` 是构建期 torque 生成、源码里看不到 → 用"探针 jsc 的真实根索引"按版本解出**条数**：
+  9.4/10.2/12.4/13.6 = 36，**11.3 = 34**。占位补齐后保留尾部列表（ALLOCATION_SITE / NAME_FOR_PROTECTOR / DATA_HANDLER），
+  因为 `length`/`join` 这类保护器字符串根就在尾部。
+  锚点（探针里受保护字符串被引用的根索引，与表逐一对齐）：11.3 `constructor=724 next=725 resolve=726 then=727`。
+  条数算多两格的后果：`.next` 解析成 `AllocationSite`、for-of/生成器整类失效。
+- 校准方法固化为 `scripts/build_ro_list.py`（候选串清单）+ `scripts/build_ro_map.sh`（探针 jsc → `(chunk/offset) → 名字`）。
+
+## 8.1 只读堆引用与 ro-map
+
+13.x 起函数名/属性名常以 `kReadOnlyHeapRef`（`(chunk, offset)` 地址）出现，`.jsc` 里没有名字。
+解法的探针形态很关键：**只有 `o["<字面量>"]` 这种计算属性**才会把字面量编码成只读堆引用
+（当 join 参数就不产生）→ 候选清单必须含非标识符串（标点、数字串等），并并入 fixtures 语料
+（否则 `join("/")` 会留下 `<ro0_18016>` 占位）。
+`--ro-map` 同时接给 `Disassembler`（`sfi_name`/`name_from_ref` 解 RoRef），否则 node24 的生成器函数名是空的、
+调用点又用全局名 → 找不到函数。
 
 ## 9. 未完成/待办
 
-- 13.6 有 1 个函数名取值偏差（roots 索引与真实构建的字符串段仍有个别错位；反汇编本体完全一致）。
-- 老版本家族（V8 5.8–8.4，Node 8–14）尚未做代码页校准（表结构已就位）。
+- 行为矩阵（20 fixture × node 16/18/20/22/24）已**全部通过**；真实语料 408×3 份 0 语法错误。
+- 老版本家族（V8 5.8–8.4，Node 8–14）仍未通过解析：7.8/8.4 主 payload 通了，卡 deferred 段条目形状
+  与 space2 分配序列（1008 与 1136 之间缺一个 128 字节对象 → backref 命不中）；6.2/6.8 还需位打包 tag 解码。
+- 观感：phi/临时寄存器成对噪声、迭代器关闭协议逐字发射（可读性，非正确性）。
+
+### 9.1 逐版本形态差异（本轮补齐，改 parser/decompiler 前对照）
+
+| 项目 | ≤11.x | 12.x | 13.x |
+| --- | --- | --- | --- |
+| ObjectBoilerplateDescription 头 | `[flags, key, val…]`（元素起 1） | 多 `BackingStoreSize/Flags` → 元素起 **2**，条目数 `Capacity/2` | 同 12.x |
+| ClassBoilerplate | 7 格 FixedArray（含 args_count） | **ClassBoilerplateMap，6 格**（实例模板在元素 3） | 同 12.4 |
+| 类属性模板 | DescriptorArray，条目 **`(key, details, value)`**；头一格是**打包计数**（非 Smi） | 同 | 类型名 `ClassBoilerplateMap` |
+| for-in 判定 | `ForInContinue` + `JumpIfFalse` | 同 | **`JumpIfForInDone idx, len`**（判定在 ForInNext 之前） |
+| for-in 步进 | `ForInStep <Reg>` | 同 | `ForInStep <RegInOut>`（新操作数类型） |
+| handler 表 shift | 3 | 3 | 4（且 handler 落在区间终点之后几条指令处） |
+| handler 表长度 | 高 32 位 | 高 32 位 | **低 32 位** |
+| SFI 名字来源 | 池字符串/根 | 同 | 常为只读堆引用（需 ro-map） |
+
 ## 10. 旧族（V8 ≤ 8.x，Node 8–14）——待实现
 
 Node 12/14 的 `version_hash` 已能精确/爆破识别，表也已提取（`tables/v7_8.json`、`v8_4.json`），
