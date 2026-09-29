@@ -455,15 +455,28 @@ impl<'a> Disassembler<'a> {
     fn render_byte_array(&self, label: &str, r: Option<Ref>, out: &mut String) {
         match r {
             Some(Ref::Object(id)) if self.cache.obj(id).ty.is(self.table, "ByteArray") => {
-                let len = self
+                // 长度在 tag 槽里，但**落在哪半**随版本变（9.x–12.x 在高 32 位，
+                // 13.x 搬到低 32 位）→ 两半都取，选像长度的那个（≤ 对象字节数）。
+                let obj_bytes = self.cache.obj(id).byte_size;
+                let word = self
                     .cache
-                    .raw_at(
-                        id,
-                        self.layout.tagged_size,
-                        self.layout.tagged_size,
-                    )
-                    .map(|d| read_u64(d) >> 32)
-                    .unwrap_or(0);
+                    .raw_at(id, self.layout.tagged_size, 8.min(self.layout.tagged_size));
+                let len = match word {
+                    Some(d) if d.len() == 8 => {
+                        let w = read_u64(d);
+                        let hi = (w >> 32) as u32 as usize;
+                        let lo = (w & 0xffff_ffff) as u32 as usize;
+                        if hi <= obj_bytes && (lo > obj_bytes || hi >= lo) {
+                            hi
+                        } else {
+                            lo
+                        }
+                    }
+                    Some(d) if d.len() == 4 => {
+                        u32::from_le_bytes(d.try_into().unwrap()) as usize
+                    }
+                    _ => 0,
+                };
                 let _ = writeln!(out, "{label} (size = {len})");
             }
             Some(Ref::Root(i)) => {

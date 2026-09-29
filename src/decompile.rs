@@ -1075,7 +1075,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .slot_at(bca, d.dis.bca_constant_pool_slot())
             .and_then(|v| v.as_ref())
             .and_then(|r| d.cache.ref_object(r));
-        let handlers = read_handler_table(d, bca);
+        let code_len = instrs.last().map(|i| i.offset).unwrap_or(0);
+        let handlers = read_handler_table(d, bca, code_len);
         if std::env::var("JSCD_DBG_POOL").is_ok() {
             match pool {
                 Some(pid) => {
@@ -2144,15 +2145,33 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             return None;
         }
         // 完成码设置（`Star v; LdaSmi 1; Star0`）把 try / catch 体切开
-        let try_setup = self.completion_setup_start(try_start, try_end)?;
+        let dbg = std::env::var("JSCD_DBG_TF").is_ok();
+        if dbg {
+            eprintln!("[tf] ho=({},{},{}) hi=({},{},{}) try=[{try_start},{try_end}) catch={catch_start} fin={finally_hint}",
+                ho.start, ho.end, ho.target, hi.start, hi.end, hi.target);
+        }
+        let Some(try_setup) = self.completion_setup_start(try_start, try_end) else {
+            if dbg { eprintln!("[tf] 失败：找不到完成码设置"); }
+            return None;
+        };
         let try_val = self.completion_return_reg(try_setup + 2)?;
-        let catch_setup = self.completion_setup_start(catch_start, finally_hint)?;
-        let catch_val = self.completion_return_reg(catch_setup + 2)?;
+        let Some(catch_setup) = self.completion_setup_start(catch_start, finally_hint) else {
+            if dbg { eprintln!("[tf] 失败：catch 区找不到完成码设置"); }
+            return None;
+        };
+        let Some(catch_val) = self.completion_return_reg(catch_setup + 2) else {
+            if dbg { eprintln!("[tf] 失败：catch 返回值寄存器解不出"); }
+            return None;
+        };
         // catch 体尾部那条 Jump 指向 finally 本体
         let finally_start = self.jump_target_before(catch_setup)?;
-        // finally 之后是完成码分发
-        let disp = self.find_completion_dispatch(finally_start, end)?;
-        let disp_end = self.completion_dispatch_end(disp, end)?;
+        // finally 之后是完成码分发（9.x–12.x 用 SwitchOnSmiNoFeedback，13.x 降级成比较链）
+        // → 找不到就容忍：分发留在线性路径里也无害（重抛带守卫、返回的是同一个值），
+        // 但**绝不能**因此放弃整个 try/catch/finally 重建（node24 就是卡在这里）。
+        let disp = self
+            .find_completion_dispatch(finally_start, end)
+            .unwrap_or(end);
+        let disp_end = self.completion_dispatch_end(disp, end).unwrap_or(end);
         // ── 发射 ──（先登记 handler，避免发射内部时旧规则再包一层）
         self.used_handler_starts.push(hi.start as usize);
         self.used_handler_starts.push(ho.start as usize);
@@ -2367,6 +2386,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
             // ①-0 try/catch/finally（V8 的完成码形态）
             if let Some(next) = self.try_emit_try_finally(i, end) {
+                if std::env::var("JSCD_DBG_RULES").is_ok() {
+                    eprintln!("[rules] i={i} off={} ①-0 try/finally -> {next}", self.instrs[i].offset);
+                }
                 i = next.max(i + 1);
                 continue;
             }
@@ -2405,6 +2427,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 // 先登记这个 handler 已被消费：这样从 i 开始发射后，下一次迭代虽然还落在
                 // 同一个下标上，①也不会再匹配同一个 handler（否则 try 自我重入、嵌套爆炸）。
                 self.used_handler_starts.push(h.start as usize);
+                if std::env::var("JSCD_DBG_RULES").is_ok() {
+                    eprintln!(
+                        "[rules] i={i} off={} ① try/catch start={} end={} target={}",
+                        self.instrs[i].offset, h.start, h.end, h.target
+                    );
+                }
                 self.line("try {");
                 self.indent += 1;
                 // 从 i（而不是 i+1）开始：handler 起点可能正好落在**循环头**上
@@ -4255,7 +4283,7 @@ fn regexp_flags(ops: &[String]) -> String {
 }
 
 /// 读取 BytecodeArray 的 handler 表（异常处理区间）。
-fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId) -> Vec<Handler> {
+fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId, code_len: usize) -> Vec<Handler> {
     let ts = d.ts;
     let Some(h) = d
         .cache
@@ -4269,12 +4297,24 @@ fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId) -> Vec<Handler> {
     // 长度是第二个槽里的**高 32 位**（指针压缩下 Smi 只占 4 字节）。
     // 之前把表头当成了条目起点、又按 Smi 解长度 —— 于是整个表解析成空，
     // try/catch 从来没能重建出来。
-    let len = d
-        .cache
-        .raw_at(h, ts, ts)
-        .and_then(|x| x.get(4..8))
-        .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
-        .unwrap_or(0);
+    // 长度位于 tag 槽，但**落在哪半随版本变**：9.x–12.x 在高 32 位，13.x 搬到低 32 位。
+    // 两半都取，选像长度的那个（≤ 对象字节数）—— 13.6 上按高 32 位读会得到 0，
+    // 于是 node24 的 try/catch 完全重建不出来。
+    let obj_bytes = d.cache.obj(h).byte_size;
+    let len = match d.cache.raw_at(h, ts, 8.min(ts)) {
+        Some(x) if x.len() == 8 => {
+            let w = u64::from_le_bytes(x.try_into().unwrap());
+            let hi = (w >> 32) as u32 as usize;
+            let lo = (w & 0xffff_ffff) as u32 as usize;
+            if hi <= obj_bytes && (lo > obj_bytes || hi >= lo) {
+                hi
+            } else {
+                lo
+            }
+        }
+        Some(x) => u32::from_le_bytes(x.try_into().unwrap()) as usize,
+        None => 0,
+    };
     if len < 16 {
         return Vec::new();
     }
@@ -4310,11 +4350,27 @@ fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId) -> Vec<Handler> {
         };
         let data = f(i + 3).unwrap_or(0);
         let _ = len;
+        // handler 字段是"偏移 << shift"，shift 随版本变：9.x–12.x 为 3，13.x 为 4
+        // （13.6 实测：1200>>4=75 正好等于该条目 end，>>3 则越界）→
+        // 用"必须落在字节码长度内"自校验，两种移位取合法的那个。
+        let h3 = (handler as u32) >> 3;
+        let h4 = (handler as u32) >> 4;
+        // 优先选"正好等于区间终点"的移位：V8 对 try 条目就是把 handler 放在区间之后
+        // （9.x–12.x: 584>>3 == 73 == end；13.x: 1200>>4 == 75 == end）。
+        // 只看"是否越界"不够 —— 13.x 上 >>3 也会得到 86 这种仍在字节码范围内的错值。
+        let target = if h3 as usize == end as usize {
+            h3
+        } else if h4 as usize == end as usize {
+            h4
+        } else if code_len > 0 && h3 as usize > code_len && h4 as usize <= code_len {
+            h4
+        } else {
+            h3
+        };
         out.push(Handler {
             start: start as u32,
             end: end as u32,
-            // 低 3 位是标志（如是否是 try-finally），偏移本身要右移
-            target: (handler as u32) >> 3,
+            target,
             depth: (data as u32) / 2,
         });
         i += 4;
