@@ -726,13 +726,23 @@ impl<'a> Decompiler<'a> {
 // 迭代器校验会抛错），其余未知名退化成空实现。
 var __runtime = new Proxy({
   DeclareGlobals: function () {},
-  // DefineClass(boilerplate, ctor, parent, ...)：形参里拿不到方法键，
-  // 先保证能 new、原型链正确、构造函数体执行；方法后续再补。
+  // DefineClass(boilerplate, ctor, parent, ...methods)：方法键在 boilerplate 里（形参看不到），
+  // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
+  // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
   DefineClass: function (bp, ctor, parent) {
     var Cls = function () { return ctor.apply(this, arguments); };
     if (parent) {
       Cls.prototype = Object.create(parent.prototype || Object.prototype);
       Object.setPrototypeOf(Cls, parent);
+    }
+    for (var i = 4; i < arguments.length; i++) {
+      var f = arguments[i];
+      if (typeof f === 'function' && f.name && f.name !== '') {
+        // 分不清静态/实例（种类在 boilerplate 里）→ 两边都挂：宁可能调用，
+        // 也不要"方法明明在实参里却取不到"
+        Cls.prototype[f.name] = f;
+        Cls[f.name] = f;
+      }
     }
     return Cls;
   },
@@ -2016,11 +2026,15 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         .render();
                         self.line(&format!("if ({then_cond}) {{"));
                         self.indent += 1;
+                        let body_start = self.out.len();
                         self.emit_range(i + 1, t_idx.min(end))?;
                         self.materialize_acc(&phi, &acc_in);
+                        // then 分支自己给 phi 赋过值吗？（都赋值就不必再插一行死初始化）
+                        let then_assigned = self.out[body_start..].contains(&format!("{phi} = "));
                         self.indent -= 1;
                         let mut next = t_idx;
                         let mut has_else = false;
+                        let mut else_assigned = false;
                         let mut acc_then = acc_in.clone();
                         // 紧邻 target 之前的无条件 Jump → else 分支
                         if t_idx > 0 {
@@ -2031,8 +2045,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                                         acc_then = self.acc.clone();
                                         self.line("} else {");
                                         self.indent += 1;
+                                        let else_start = self.out.len();
                                         self.emit_range(t_idx, e_idx.min(end))?;
                                         self.materialize_acc(&phi, &acc_then);
+                                        else_assigned = self.out[else_start..].contains(&format!("{phi} = "));
                                         self.indent -= 1;
                                         has_else = true;
                                         next = e_idx;
@@ -2053,6 +2069,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         // 没有 else 时只能跟入口比。
                         let changed = if has_else { then_v != cur } else { cur != entry };
                         // new_phi 已把名字登记进 phi_vars（并就地声明），这里只负责回填起始值
+                        // 注意：即使两条分支都出现过 `phi = …`，也可能是条件赋值（嵌套 if 里），
+                        // 直接省掉初始化会丢值 → 一律保留（试过省掉，行为矩阵掉了 3 个 fixture）。
+                        let _ = (then_assigned, else_assigned);
                         if changed {
                             let init = match acc_in_reg {
                                 Some(r) => format!("r{r}"),
@@ -2066,7 +2085,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                                 .insert_str(if_start, &format!("{indent}{phi} = {init};\n"));
                             self.acc = Some(Expr::Ident(phi));
                         }
-                        let _ = has_else;
+
                         i = next.max(i + 1);
                         continue;
                     }
