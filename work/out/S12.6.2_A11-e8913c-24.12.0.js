@@ -73,6 +73,7 @@ while (true) {
   __runtime.DeclareGlobals(r1, r2);
   if (!{  }) break;
   __in__do = 1;
+  phi0 = __in__do;
   if (__in__do) {
     break;
   } else {

@@ -245,7 +245,9 @@ def extract_bytecodes(text):
 
 # ------------------------------------------------------------------- roots.h
 
-def extract_roots(text, symbols_text=None, defs_text=None):
+def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
+    if torque_count is None:
+        torque_count = TORQUE_MAP_COUNT
     """解析 roots.h 的 READ_ONLY + MUTABLE 根列表顺序，返回按索引排列的名字表。
 
     递归展开子列表宏；生成器宏按 adapter 命名。限制：TORQUE_DEFINED_MAP_ROOT_LIST
@@ -380,7 +382,7 @@ def extract_roots(text, symbols_text=None, defs_text=None):
     # 但它的**条数**能用真值锚点解出来（见 TORQUE_MAP_COUNT 注释）。占位补齐后**继续保留
     # 后面的尾部**（ALLOCATION_SITE / NAME_FOR_PROTECTOR / DATA_HANDLER 等）—— 早先整段截断，
     # 导致 "length"/"join" 这类保护器字符串根缺失、node24 的属性名解析错。
-    n = TORQUE_MAP_COUNT
+    n = torque_count
     if "__torque_map_list_unresolved__" in order:
         cutoff = order.index("__torque_map_list_unresolved__")
         head, tail = order[:cutoff], order[cutoff + 1 :]
@@ -388,9 +390,21 @@ def extract_roots(text, symbols_text=None, defs_text=None):
     return order
 
 
-# torque 生成段（TORQUE_DEFINED_MAP_ROOT_LIST）的条数：源码里没有这张列表，
-# 用真实 .jsc 的根引用解出来 —— 13.6 上 `root1007` 是 "length"（保护器字符串根），
-# 解得该段为 36（见提交信息里的推导）。
+# torque 生成段（TORQUE_DEFINED_MAP_ROOT_LIST）的条数：源码里没有这张列表
+# （构建期由 torque 生成），只能按版本用**真值锚点**解出来。锚点取法：编译一份含
+# 受保护字符串属性访问的探针（work/genprobe/roots.js），看真实 .jsc 里这些名字
+# 被引用的根索引，再与表里 `String:<名>` 的位置对照：
+#
+#   V8 9.4  constructor=299 next=385 resolve=422 then=450     表天然对齐 → 36
+#   V8 10.2 constructor=321 next=458 resolve=503 then=537     表天然对齐 → 36
+#   V8 11.3 constructor=724 next=725 resolve=726 then=727     表整体 +2    → 34
+#   V8 12.4 constructor=741 next=742 resolve=743 then=744     表天然对齐 → 36
+#   V8 13.6 constructor=1006 next=1008 resolve=1009 then=1010 表天然对齐 → 36
+#
+# 11.3 少两格：旧值 36 会把 ALLOCATION_SITE_MAPS_LIST 与 NAME_FOR_PROTECTOR 段
+# 整体后移两位，于是 for-of 的 `.next` 解析成 AllocationSite、保护器字符串全错位
+# —— node20 的 for_of_in / spread_rest / generator 就是这么挂的。
+TORQUE_MAP_COUNT_BY_VERSION = {"11_3": 34}
 TORQUE_MAP_COUNT = 36
 
 
@@ -929,7 +943,14 @@ def main():
                 "tags": extract_serialization_tags(src_t) if "enum Bytecode" in (src_t or "") else {},
                 "legacy": extract_legacy_tags(src_t),
             },
-            "roots": extract_roots(src_r, src_s, src_d) if src_r else [],
+            "roots": extract_roots(
+                src_r,
+                src_s,
+                src_d,
+                TORQUE_MAP_COUNT_BY_VERSION.get(key, TORQUE_MAP_COUNT),
+            )
+            if src_r
+            else [],
             # 根索引校准：13.x 的 RootIndex 枚举在只读根之前还有一位（源码列表里看不到），
             # 实测校正在表首补一个占位即可对齐（依据：真实 .jsc 里 ":"→377、"-"→364、
             # "target"→849，与补位后的表逐一对上）。12.x 及更早无需补。

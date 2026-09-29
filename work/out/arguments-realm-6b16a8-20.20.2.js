@@ -80,6 +80,6 @@ r2 = assert;
 r1 = r2.sameValue;
 r3 = C;
 r3 = new r3(r0);
-r3 = r3["/* root: AllocationSite */ undefined"];
+r3 = r3.constructor;
 r4 = Array;
 r0 = r2.sameValue(r3, r4);

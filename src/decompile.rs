@@ -64,6 +64,7 @@ pub enum Expr {
     Seq(Vec<Expr>),
     Await(Box<Expr>),
     Yield(Box<Expr>),
+    YieldStar(Box<Expr>),
     Spread(Box<Expr>),
     /// 内部标记：需要物化成临时变量
     Temp(String),
@@ -102,7 +103,7 @@ impl Expr {
         match self {
             Expr::Call { .. } => true,
             Expr::Assign { .. } => true,
-            Expr::Await(_) | Expr::Yield(_) => true,
+            Expr::Await(_) | Expr::Yield(_) | Expr::YieldStar(_) => true,
             Expr::Bin { l, r, .. } => l.has_effect() || r.has_effect(),
             Expr::Un { e, .. } => e.has_effect(),
             Expr::Member { obj, .. } => obj.has_effect(),
@@ -270,6 +271,10 @@ impl Expr {
                 out.push_str("yield ");
                 e.write_to(out, prec);
             }
+            Expr::YieldStar(e) => {
+                out.push_str("yield* ");
+                e.write_to(out, prec);
+            }
             Expr::Spread(e) => {
                 out.push_str("...");
                 e.write_to(out, 0);
@@ -313,6 +318,7 @@ impl Expr {
         match self {
             Expr::Seq(_) => 1,
             Expr::Yield(_) => 2,
+            Expr::YieldStar(_) => 2,
             Expr::Assign { .. } => 3,
             Expr::Await(_) | Expr::Bin { op: "||", .. } => 4,
             Expr::Bin { op, .. } => match *op {
@@ -687,6 +693,10 @@ struct FnCtx<'a, 'b> {
     name: String,
     is_async: bool,
     is_generator: bool,
+    /// 生成器重写（plan_generator）：挂起指令下标 → 被 yield 的值操作数文本（None = 用 acc）
+    gen_yields: HashMap<usize, Option<String>>,
+    /// 生成器重写：GetIterator 下标 → (被委托的迭代器操作数文本, 委托结果寄存器文本)
+    gen_delegates: HashMap<usize, (String, String)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1217,6 +1227,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             name,
             is_async: false,
             is_generator: false,
+            gen_yields: HashMap::new(),
+            gen_delegates: HashMap::new(),
         })
     }
 
@@ -1277,6 +1289,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         // 函数种类：按出现的 opcode 判定（比枚举稳）
         self.is_async = self.instrs.iter().any(|i| i.name.starts_with("Await"));
         self.is_generator = self.instrs.iter().any(|i| i.name.starts_with("SuspendGenerator"));
+        // 生成器：把状态机外壳折回成 `yield` / `yield*`（须在判定之后、发射之前）
+        self.plan_generator();
 
         let params = self.param_count();
         let names: Vec<String> = if params > 64 {
@@ -1430,6 +1444,25 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         let Some(pool) = self.pool else {
             return Expr::Ident(format!("__const{idx}"));
         };
+        if std::env::var("JSCD_DBG_POOL").is_ok() {
+            match self.d.cache.array_elem(pool, idx) {
+                Some(Elem::Ref(r)) => {
+                    let extra = match &r {
+                        Ref::Root(k) => format!(" rootidx={k}"),
+                        Ref::Object(o) => format!(
+                            " obj={o} ty={} name={:?}",
+                            self.d.cache.obj(*o).ty.name(self.d.table),
+                            self.d.dis.describe_ref(&r)
+                        ),
+                        other => format!(" {other:?}"),
+                    };
+                    eprintln!("[pool] {idx} -> {}", extra.trim_start());
+                }
+                Some(Elem::Smi(v)) => eprintln!("[pool] {idx} -> smi {v}"),
+                Some(_) => eprintln!("[pool] {idx} -> bytes"),
+                None => eprintln!("[pool] {idx} -> None"),
+            }
+        }
         match self.d.cache.array_elem(pool, idx) {
             Some(Elem::Smi(v)) => Expr::Num(v as f64),
             Some(Elem::Ref(Ref::Object(o))) => self.object_constant(o),
@@ -1747,6 +1780,280 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     fn acc_consumed(&mut self) {
         self.acc_stored = true;
         self.acc_stored_reg = None;
+    }
+
+    // ───────────────────────── 生成器重写 ─────────────────────────
+    //
+    // V8 把 function* 编成一台状态机：序言建生成器对象并"起始挂起"，每个 yield 处
+    // 把寄存器存进生成器对象再挂起，恢复后按 GeneratorGetResumeMode 分派
+    // next / return / throw 三条路；`yield*` 更是一整圈 next/return/throw 委托协议
+    // （GetIterator → 分派环 → 出口取 .value）。而 JS 的 function* 由引擎重做这一切，
+    // 所以这里把这些机器指令标成 __gskip（不发射），只留一条 `yield` / `yield*`。
+    //
+    // 判据只用形态、不猜语义：分派 switch 的跳转表里同时有 case 1 与 case 2
+    // （next/return/throw 三态）才算委托协议；被委托的挂起点没有 CreateIterResultObject
+    // 包装（V8 把内层迭代器的结果对象直接转发给外层调用者）。
+
+    /// SuspendGenerator/SwitchOnSmiNoFeedback 之类说"寄存器在哪个下标"。
+    fn plan_generator(&mut self) {
+        let n = self.instrs.len();
+        if n == 0 {
+            return;
+        }
+        // 先取一遍名字：下面要就地改 self.instrs（闭包借用会与改动冲突）
+        let names: Vec<String> = self
+            .instrs
+            .iter()
+            .map(|i| i.name.split('.').next().unwrap_or("").to_string())
+            .collect();
+        let base_at = |k: usize| -> String { names[k].clone() };
+        // 内建调用判定（GeneratorGetResumeMode / CreateIterResultObject）也先算好
+        let intrinsics: Vec<Option<String>> = (0..n)
+            .map(|k| {
+                if names[k] != "InvokeIntrinsic" {
+                    return None;
+                }
+                self.instrs[k]
+                    .operands
+                    .first()
+                    .map(|o| self.render_operand(o))
+            })
+            .collect();
+        let is_intrinsic = |k: usize, want: &str| -> bool {
+            intrinsics[k].as_deref().is_some_and(|t| t.contains(want))
+        };
+        if base_at(0) != "SwitchOnGeneratorState" {
+            return;
+        }
+        let Some(first_sus) = (0..n).find(|&k| base_at(k) == "SuspendGenerator") else {
+            return;
+        };
+        if std::env::var("JSCD_DBG_GEN").is_ok() {
+            eprintln!(
+                "[gen] n={n} first_sus={first_sus} names={:?}",
+                &names[..n.min(24)]
+            );
+        }
+        let mut skip = vec![false; n];
+        for k in 0..first_sus {
+            skip[k] = true;
+        }
+
+        // ── ① yield* 的委托协议 ──
+        for g in 0..n {
+            if skip[g] || base_at(g) != "GetIterator" {
+                continue;
+            }
+            let Some(sw) = (g..n.min(g + 48)).find(|&k| {
+                base_at(k) == "SwitchOnSmiNoFeedback" && {
+                    let cs = self.switch_cases(k);
+                    cs.iter().any(|(v, _)| *v == 1) && cs.iter().any(|(v, _)| *v == 2)
+                }
+            }) else {
+                if std::env::var("JSCD_DBG_GEN").is_ok() {
+                    let cands: Vec<(usize, Vec<(i64, usize)>)> = (g..n.min(g + 48))
+                        .filter(|&k| base_at(k) == "SwitchOnSmiNoFeedback")
+                        .map(|k| (k, self.switch_cases(k)))
+                        .collect();
+                    eprintln!("[gen] delegate g={g}: 无三态分派，候选={cands:?}");
+                }
+                continue;
+            };
+            // 委托环的回边
+            let Some(jl) = (sw..n.min(sw + 200)).find(|&k| base_at(k) == "JumpLoop") else {
+                continue;
+            };
+            // 出口协议：`.value` → 委托结果寄存器
+            let vload = (jl..n.min(jl + 16)).find(|&k| {
+                matches!(base_at(k).as_str(), "LdaNamedProperty" | "GetNamedProperty")
+                    && self.prop_name_is(k, 1, "value")
+            });
+            let Some(vload) = vload else {
+                if std::env::var("JSCD_DBG_GEN").is_ok() {
+                    let names2: Vec<String> =
+                        (jl..n.min(jl + 16)).map(|k| names[k].clone()).collect();
+                    eprintln!("[gen] delegate g={g} sw={sw} jl={jl}: 出口无 .value；{names2:?}");
+                }
+                continue;
+            };
+            let Some(store) = (vload..n.min(vload + 4)).find_map(|k| self.star_reg_text(k)) else {
+                continue;
+            };
+            // 模式测试后的续体（state == 1 那条直接 return 委托值）
+            let Some(cont) = (vload..n.min(vload + 10))
+                .find(|&k| matches!(base_at(k).as_str(), "JumpIfFalse" | "JumpIfTrue"))
+                .and_then(|k| self.cond_jump_target(&self.instrs[k]))
+                .and_then(|t| self.idx_of.get(&t).copied())
+            else {
+                continue;
+            };
+            let Some(iter) = self.instrs[g].operands.first().map(|o| self.render_operand(o))
+            else {
+                continue;
+            };
+            self.instrs[g].name = "__gyieldstar".into();
+            self.gen_delegates.insert(g, (iter, store.clone()));
+            for k in g + 1..cont.min(n) {
+                skip[k] = true;
+            }
+            if std::env::var("JSCD_DBG_GEN").is_ok() {
+                eprintln!("[gen] delegate g={g} sw={sw} jl={jl} vload={vload} store={store} cont={cont}");
+            }
+        }
+
+        // ── ② 普通挂起点（含序言的起始挂起）──
+        for s in 0..n {
+            if skip[s] || base_at(s) != "SuspendGenerator" {
+                continue;
+            }
+            let prologue = s == first_sus;
+            // 值层：紧邻的 CreateIterResultObject 包装（值 = 寄存器区间首），done 常量层一并丢
+            let mut value: Option<String> = None;
+            if !prologue && s >= 1 && is_intrinsic(s - 1, "CreateIterResultObject") {
+                if let Some(op) = self.instrs[s - 1].operands.get(1) {
+                    let t = self.render_operand(op);
+                    value = Some(t.split('-').next().unwrap_or(&t).to_string());
+                }
+                skip[s - 1] = true;
+                // done 常量层（LdaFalse/LdaTrue + Star）在值层之前：中间可能夹一条
+                // 值计算（`Mov a1, r1` 这种），所以往前扫 4 条找这个 pattern
+                for back in 2..=4usize.min(s) {
+                    if s >= back + 1
+                        && self.star_reg_text(s - back).is_some()
+                        && matches!(base_at(s - back - 1).as_str(), "LdaFalse" | "LdaTrue")
+                    {
+                        skip[s - back] = true;
+                        skip[s - back - 1] = true;
+                        break;
+                    }
+                }
+            }
+            // 恢复值存储：ResumeGenerator 之后紧跟 Star → 表达式形（`r = yield v;`）
+            let mut k = s + 1;
+            if k < n && base_at(k) == "ResumeGenerator" {
+                skip[k] = true;
+                k += 1;
+            }
+            let expr_form = !prologue && self.star_reg_text(k).is_some();
+            // 恢复分派：GeneratorGetResumeMode + 分派 switch + 各分支（到 case 0 续体为止）
+            // 续体 = case 0 的目标（kNext）；case 1 = kReturn 要 return 恢复值，
+            // 默认（kThrow）走 fallthrough 的 Ldar/Throw —— 都在 case 0 之前。
+            let mut cont = k;
+            if let Some(d) = (k..n.min(k + 4)).find(|&j| is_intrinsic(j, "GeneratorGetResumeMode")) {
+                if let Some(sw) = (d..n.min(d + 4)).find(|&j| base_at(j) == "SwitchOnSmiNoFeedback") {
+                    let cases = self.switch_cases(sw);
+                    if let Some(t) = cases
+                        .iter()
+                        .find(|(v, _)| *v == 0)
+                        .map(|(_, t)| *t)
+                        .or_else(|| cases.iter().map(|(_, t)| *t).min())
+                    {
+                        if let Some(&ci) = self.idx_of.get(&t) {
+                            cont = ci;
+                        }
+                    }
+                }
+            }
+            if std::env::var("JSCD_DBG_GEN").is_ok() {
+                eprintln!(
+                    "[gen] suspend s={s} prologue={prologue} k={k} expr={expr_form} cont={cont} value={value:?}"
+                );
+            }
+            let skip_from = if expr_form { k + 1 } else { k };
+            for j in skip_from..cont.min(n) {
+                skip[j] = true;
+            }
+            self.instrs[s].name = if prologue {
+                "__gskip".into()
+            } else if expr_form {
+                "__gyield".into()
+            } else {
+                "__gyield_stmt".into()
+            };
+            self.gen_yields.insert(s, value);
+        }
+
+        for k in 0..n {
+            if skip[k] {
+                self.instrs[k].name = "__gskip".into();
+            }
+        }
+    }
+
+    /// SwitchOnSmiNoFeedback 的跳转表 → (case 值, 目标字节偏移)。
+    /// 第三个操作数是 case 基值（V8 把 `switch (acc - base)` 的表压平）：
+    /// 生成器恢复分派那张表基值是 1（kReturn），0（kNext）走 fallthrough。
+    fn switch_cases(&self, k: usize) -> Vec<(i64, usize)> {
+        let ins = &self.instrs[k];
+        let mut out = Vec::new();
+        let Some(Operand::Idx(table)) = ins.operands.first() else {
+            return out;
+        };
+        let Some(size) = ins.operands.get(1).and_then(|o| match o {
+            Operand::Idx(v) => Some(*v as usize),
+            Operand::Imm(v) => Some(*v as usize),
+            _ => None,
+        }) else {
+            return out;
+        };
+        let case_base = ins
+            .operands
+            .get(2)
+            .and_then(|o| match o {
+                Operand::Imm(v) => Some(*v),
+                Operand::Idx(v) => Some(*v as i64),
+                _ => None,
+            })
+            .unwrap_or(0);
+        for t in 0..size {
+            if let Some(v) = self
+                .pool
+                .and_then(|p| self.d.cache.array_elem(p, *table as usize + t))
+                .and_then(|e| e.as_smi())
+            {
+                let prefix = if ins.scale > 1 { 1 } else { 0 };
+                out.push((case_base + t as i64, ins.offset + prefix + v as usize));
+            }
+        }
+        out
+    }
+
+    /// 命名属性的键是否为某个字符串（键是常量池下标，`LdaNamedProperty r1, [11]`）。
+    fn prop_name_is(&mut self, k: usize, n: usize, want: &str) -> bool {
+        let Some(Operand::Idx(i)) = self.instrs[k].operands.get(n) else {
+            return false;
+        };
+        let i = *i as usize;
+        // 只读堆字符串要看 ro-map；constant 已经处理了这条路径
+        matches!(self.constant(i), Expr::Str(s) if s == want)
+    }
+
+    /// Star/StarN 的目标寄存器文本（`r2` / `a0`）。
+    fn star_reg_text(&self, k: usize) -> Option<String> {
+        if k >= self.instrs.len() {
+            return None;
+        }
+        let b = self.instrs[k].name.split('.').next().unwrap_or("");
+        let rest = b.strip_prefix("Star")?;
+        if rest.is_empty() {
+            return self.instrs[k].operands.first().map(|o| self.render_operand(o));
+        }
+        if rest.chars().all(|c| c.is_ascii_digit()) {
+            return Some(format!("r{rest}"));
+        }
+        None
+    }
+
+    /// 把表达式写进"任意名字"的目标（生成器委托的 `r = yield* x` 用）。
+    fn store_named(&mut self, target: &str, e: Expr) {
+        let rhs = Self::render_stmt(&e);
+        self.line(&format!("{target} = {rhs};"));
+        if let Some(r) = target.strip_prefix('r').and_then(|s| s.parse::<u32>().ok()) {
+            if self.regs.len() <= r as usize {
+                self.regs.resize(r as usize + 1, None);
+            }
+            self.regs[r as usize] = Some(Expr::Reg(r));
+        }
     }
 
     /// 新建一个 phi 变量（就地声明，避免"声明列表漏项"导致赋值到未声明变量）。
@@ -2400,6 +2707,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 continue;
             }
 
+            // ⓪-0 生成器重写折掉的机器指令：必须在这里跳过（不能落到 emit_expr_statement，
+            // 否则它的 flush_acc_before 会把刚设好的 `yield` 表达式当死值成句丢掉）
+            if self.instrs[i].name == "__gskip" {
+                i += 1;
+                continue;
+            }
+
             // ①-0 try/catch/finally（V8 的完成码形态）
             if let Some(next) = self.try_emit_try_finally(i, end) {
                 if std::env::var("JSCD_DBG_RULES").is_ok() {
@@ -2500,6 +2814,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 let is_plain_loop = !back_ins.name.starts_with("JumpLoop")
                     && self.uncond_jump_target(back_ins).is_some();
                 if !is_plain_loop {
+                    self.flush_acc_at_edge(ins.offset);
                     self.line("continue;");
                 }
                 self.loops.pop();
@@ -2756,6 +3071,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         .rposition(|l| l.continue_target == target)
                         .map(|idx| (idx, self.loops[idx].label.clone()))
                     {
+                        self.flush_acc_at_edge(target);
                         if idx + 1 == self.loops.len() || label.is_empty() {
                             self.line("continue;");
                         } else {
@@ -2767,6 +3083,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         .rposition(|l| l.break_target == target)
                         .map(|idx| (idx, self.loops[idx].label.clone()))
                     {
+                        self.flush_acc_at_edge(target);
                         if idx + 1 == self.loops.len() || label.is_empty() {
                             self.line("break;");
                         } else {
@@ -3075,6 +3392,37 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         if self.acc_stored {
             // 值已存进寄存器（Star）→ 死 acc 无需再次求值，否则会重复调用/赋值副作用
+            self.acc = None;
+            return;
+        }
+        if let Some(e) = self.acc.take() {
+            if e.has_effect() {
+                let s = Self::render_stmt(&e);
+                self.line(&format!("{s};"));
+            }
+        }
+    }
+
+    /// 跳转出口（回边 continue / break）处把待发射的 acc 成句。
+    ///
+    /// acc 在 V8 里是真正的机器寄存器、跨跳转保留；但"表达式文本"是我们自己的记账，
+    /// 跳转目标重新写 acc 时旧表达式就是死值 —— 死的是值，副作用不能丢：
+    /// `out.push(v)` 后面紧跟 `Mov r4, r11` + `JumpLoop`（两条都"保留 acc"），
+    /// 于是整条调用被 continue 吞掉，`target(3)` 返回空串。
+    fn flush_acc_at_edge(&mut self, target_off: usize) {
+        let Some(&k) = self.idx_of.get(&target_off) else {
+            return;
+        };
+        let next = self.instrs[k]
+            .name
+            .split('.')
+            .next()
+            .unwrap_or("")
+            .to_string();
+        if next.is_empty() || self.reads_acc(&next) || self.preserves_acc(&next) {
+            return;
+        }
+        if self.acc_stored {
             self.acc = None;
             return;
         }
@@ -3876,6 +4224,42 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             }
             "SuspendGenerator" | "ResumeGenerator" | "SwitchOnGeneratorState" => {
                 self.line(&format!("/* generator state: {base} */"));
+            }
+            // 生成器重写后的产物（见 plan_generator）：状态机外壳已折掉
+            "__gskip" => {}
+            "__gyield" | "__gyield_stmt" => {
+                let idx = self.idx_of.get(&ins.offset).copied();
+                let value = idx
+                    .and_then(|k| self.gen_yields.get(&k).cloned())
+                    .flatten()
+                    .map(|t| self.operand_expr(&t))
+                    .or_else(|| self.acc.take())
+                    .unwrap_or(Expr::Undefined);
+                let e = Expr::Yield(Box::new(value));
+                if base == "__gyield" {
+                    // 表达式形：恢复值由紧随的 Star 落进寄存器（`r = yield v;`）
+                    self.acc = Some(e);
+                    self.acc_stored = false;
+                    self.acc_stored_reg = None;
+                } else {
+                    let t = Self::render_stmt(&e);
+                    self.line(&format!("{t};"));
+                    self.acc = None;
+                    self.acc_consumed();
+                }
+            }
+            "__gyieldstar" => {
+                let d = self
+                    .idx_of
+                    .get(&ins.offset)
+                    .copied()
+                    .and_then(|k| self.gen_delegates.get(&k).cloned());
+                if let Some((iter, store)) = d {
+                    let iterable = self.operand_expr(&iter);
+                    self.store_named(&store, Expr::YieldStar(Box::new(iterable)));
+                }
+                self.acc = None;
+                self.acc_consumed();
             }
 
             // ── switch ──

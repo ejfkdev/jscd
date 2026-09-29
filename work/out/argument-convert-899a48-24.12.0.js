@@ -130,10 +130,10 @@ let phi0, phi1, phi2, phi3;
       r16 = _anon_33;
       r17 = "day ";
       r17 = r17 + typeof invalid;
+      r13.call(r14-r17);
       continue;
     }
   } catch (e) {
-    r13.call(r14-r17);
     r9 = 0;
     r8 = r9;
     r9 = r8;
@@ -203,7 +203,7 @@ let phi0, phi1, phi2, phi3;
         continue;
       }
     } catch (e) {
-      r9 = r2;
+      r9 = undefined;
       r8 = 0;
       r10 = undefined /* hole */;
       if (!r7) {

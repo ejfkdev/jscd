@@ -78,13 +78,13 @@ let phi0, phi1, phi2, phi3;
   max = new r13(r14, r15);
   r15 = ["UTC", "+02:00", "-07:00"];
   r14 = r15[Symbol.iterator]();
-  r13 = r14["/* root: AllocationSite */ undefined"];
+  r13 = r14.next;
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14["/* root: AllocationSite */ undefined"]();
+      r19 = r14.next();
       phi0 = r19;
       if (r19 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -130,10 +130,11 @@ let phi0, phi1, phi2, phi3;
       r23 = "Arithmetic until limit with time largestUnit is self-consistent (";
       r23 = r23 + r0;
       r23 = r23 + "<ro0_12624>";
+      r19.call(r20-r23);
       continue;
     }
   } catch (e) {
-    r17 = r19.call(r20-r23);
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {
@@ -173,13 +174,13 @@ let phi0, phi1, phi2, phi3;
   r2 = undefined;
   r15 = ["UTC", "+00:18", "-08:12"];
   r14 = r15[Symbol.iterator]();
-  r13 = r14["/* root: AllocationSite */ undefined"];
+  r13 = r14.next;
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14["/* root: AllocationSite */ undefined"]();
+      r19 = r14.next();
       phi2 = r19;
       if (r19 === undefined) {
         phi2 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -226,7 +227,7 @@ let phi0, phi1, phi2, phi3;
       continue;
     }
   } catch (e) {
-    r17 = r2;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {

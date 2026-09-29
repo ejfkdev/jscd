@@ -198,7 +198,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       continue;
     }
   } catch (e) {
-    r10 = r9;
+    r10 = undefined;
     r9 = 0;
     r11 = undefined /* hole */;
     if (!r8) {

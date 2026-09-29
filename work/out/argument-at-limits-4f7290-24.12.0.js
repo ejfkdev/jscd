@@ -131,10 +131,10 @@ let phi0, phi1, phi2, phi3;
       r24 = "Arithmetic until limit with time largestUnit is self-consistent (";
       r24 = r24 + r0;
       r24 = r24 + ")";
+      r20.call(r21-r24);
       continue;
     }
   } catch (e) {
-    r20.call(r21-r24);
     r17 = 0;
     r16 = r17;
     r17 = r16;
@@ -228,7 +228,7 @@ let phi0, phi1, phi2, phi3;
     } catch (e) {
     }
   }
-  r17 = r2;
+  r17 = undefined;
   r16 = 0;
   r18 = undefined /* hole */;
   if (!r15) {

@@ -77,13 +77,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   maxCases = [["P4294967295Y104249991374DT7H36M31.999999999S", "string with max years"], [{ years: 4294967295, days: 104249991374, nanoseconds: 27391999999999 }, "property bag with max years"], ["P4294967295M104249991374DT7H36M31.999999999S", "string with max weeks"], [{ months: 4294967295, days: 104249991374, nanoseconds: 27391999999999 }, "property bag with max months"], ["P4294967295W104249991374DT7H36M31.999999999S", "string with max weeks"], [{ weeks: 4294967295, days: 104249991374, nanoseconds: 27391999999999 }, "property bag with max weeks"], ["P104249991374DT7H36M31.999999999S", "string with max days"], [{ days: 104249991374, nanoseconds: 27391999999999 }, "property bag with max days"], ["PT2501999792983H36M31.999999999S", "string with max hours"], [{ hours: 2501999792983, nanoseconds: 2191999999999 }, "property bag with max hours"], ["PT150119987579016M31.999999999S", "string with max minutes"], [{ minutes: 150119987579016, nanoseconds: 31999999999 }, "property bag with max minutes"], ["PT9007199254740991.999999999S", "string with max seconds"], [{ seconds: 9007199254740991, nanoseconds: 999999999 }, "property bag with max seconds"]];
   r15 = maxCases;
   r14 = r15[Symbol.iterator]();
-  r13 = r14["/* root: AllocationSite */ undefined"];
+  r13 = r14.next;
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14["/* root: AllocationSite */ undefined"]();
+      r19 = r14.next();
       phi0 = r19;
       if (r19 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -93,14 +93,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       r15 = false;
       r0 = r19;
       r21 = r0[Symbol.iterator]();
-      r20 = r21["/* root: AllocationSite */ undefined"];
+      r20 = r21.next;
       r22 = false;
       r25 = __context;
       try {
         phi1 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21["/* root: AllocationSite */ undefined"]();
+          r26 = r21.next();
           phi2 = r26;
           if (r26 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -121,7 +121,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi4 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21["/* root: AllocationSite */ undefined"]();
+          r26 = r21.next();
           phi5 = r26;
           if (r26 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -188,8 +188,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         r28 = "operation succeeds with ";
         r28 = r28 + r11;
         r21 = r12;
-        continue;
         r19.call(r20-r28);
+        continue;
         r17 = 0;
         r16 = r17;
         r17 = r16;
@@ -198,7 +198,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       continue;
     }
   } catch (e) {
-    r17 = r16;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {
@@ -234,13 +234,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
   r2 = undefined;
   r15 = minCases;
   r14 = r15[Symbol.iterator]();
-  r13 = r14["/* root: AllocationSite */ undefined"];
+  r13 = r14.next;
   r15 = false;
   r18 = __context;
   try {
     while (true) {
       r15 = true;
-      r19 = r14["/* root: AllocationSite */ undefined"]();
+      r19 = r14.next();
       phi10 = r19;
       if (r19 === undefined) {
         phi10 = __runtime.ThrowIteratorResultNotAnObject(r19);
@@ -250,14 +250,14 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       r15 = false;
       r1 = r19;
       r21 = r1[Symbol.iterator]();
-      r20 = r21["/* root: AllocationSite */ undefined"];
+      r20 = r21.next;
       r22 = false;
       r25 = __context;
       try {
         phi11 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21["/* root: AllocationSite */ undefined"]();
+          r26 = r21.next();
           phi12 = r26;
           if (r26 === undefined) {
             phi12 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -278,7 +278,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         phi14 = r22;
         if (!r22) {
           r22 = true;
-          r26 = r21["/* root: AllocationSite */ undefined"]();
+          r26 = r21.next();
           phi15 = r26;
           if (r26 === undefined) {
             phi15 = __runtime.ThrowIteratorResultNotAnObject(r26);
@@ -355,7 +355,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       continue;
     }
   } catch (e) {
-    r17 = r16;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {

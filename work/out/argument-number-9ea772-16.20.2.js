@@ -115,7 +115,7 @@ let phi0, phi1, phi2, phi3;
       continue;
     }
   } catch (e) {
-    r7 = r1;
+    r7 = undefined;
     r6 = 0;
     r8 = undefined /* hole */;
     if (!r5) {

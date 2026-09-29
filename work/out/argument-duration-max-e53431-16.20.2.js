@@ -196,8 +196,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         r23 = 9007199254740992;
         r24 = "operation succeeds with ";
         r24 = r24 + r11;
-        continue;
         r20.call(r21-r24);
+        continue;
         r17 = 0;
         r16 = r17;
         r17 = r16;
@@ -206,7 +206,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       continue;
     }
   } catch (e) {
-    r17 = r16;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {
@@ -371,7 +371,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       continue;
     }
   } catch (e) {
-    r17 = r16;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {

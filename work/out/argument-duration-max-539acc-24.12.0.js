@@ -146,7 +146,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       continue;
     }
   } catch (e) {
-    r28 = r11;
+    r28 = undefined;
     r29 = "operation succeeds with ";
     r29 = r29 + r6;
     r22 = r7;

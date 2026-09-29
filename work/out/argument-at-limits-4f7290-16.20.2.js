@@ -136,10 +136,11 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       r24 = r24 + r0;
       r24 = r24 + ")";
       r19 = r9;
+      r20.call(r21-r24);
       continue;
     }
   } catch (e) {
-    r17 = r20.call(r21-r24);
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {
@@ -238,7 +239,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       continue;
     }
   } catch (e) {
-    r17 = r2;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {

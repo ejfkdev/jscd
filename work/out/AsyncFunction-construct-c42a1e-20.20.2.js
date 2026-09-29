@@ -70,7 +70,7 @@ r1 = ["AsyncFunction", "fn"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = foo;
-AsyncFunction = r1["/* root: AllocationSite */ undefined"];
+AsyncFunction = r1.constructor;
 r1 = AsyncFunction;
 r2 = "a";
 r3 = "await 1;";

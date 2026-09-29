@@ -102,8 +102,8 @@ function _anon_0(a0) {
   r2 = r2.prototype;
   r2 = r2.includes;
   r1 = r2.call;
-  r3 = ({ AllocationSite: undefined });
-  r5 = /* root: AllocationSite */ undefined;
+  r3 = ({ next: undefined });
+  r5 = "next";
   r6 = get_next;
   r7 = null;
   r8 = 0;
@@ -141,9 +141,9 @@ function _anon_17(a0) {
   r1 = r1.prototype;
   r1 = r1.includes;
   r0 = r1.call;
-  r2 = ({ AllocationSite: undefined, return: undefined });
+  r2 = ({ next: undefined, return: undefined });
   r2.return = return_;
-  r4 = /* root: AllocationSite */ undefined;
+  r4 = "next";
   r5 = get_next;
   r6 = null;
   r7 = 0;
@@ -192,9 +192,9 @@ function _anon_46(a0) {
   r1 = r1.prototype;
   r1 = r1.includes;
   r0 = r1.call;
-  r2 = ({ AllocationSite: undefined, return: undefined });
+  r2 = ({ next: undefined, return: undefined });
   r2.return = return_;
-  r4 = /* root: AllocationSite */ undefined;
+  r4 = "next";
   r5 = get_next;
   r6 = null;
   r7 = 0;

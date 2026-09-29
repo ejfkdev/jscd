@@ -135,10 +135,11 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       r17 = "day ";
       r17 = r17 + typeof invalid;
       r11 = r0;
+      r13.call(r14-r17);
       continue;
     }
   } catch (e) {
-    r9 = r13.call(r14-r17);
+    r9 = undefined;
     r8 = 0;
     r10 = undefined /* hole */;
     if (!r7) {
@@ -215,7 +216,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       continue;
     }
   } catch (e) {
-    r9 = r2;
+    r9 = undefined;
     r8 = 0;
     r10 = undefined /* hole */;
     if (!r7) {

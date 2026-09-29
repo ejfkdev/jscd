@@ -71,13 +71,13 @@ var closed, closable;
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5, r6;
   closed = false;
-  r1 = ({ AllocationSite: undefined, return: undefined });
+  r1 = ({ next: undefined, return: undefined });
   r4 = _ro0_43752_;
   r3 = r4.prototype;
   r2 = r1;
   __runtime.InternalSetPrototype(r2, r3);
   r1.return = return_;
-  r3 = /* root: AllocationSite */ undefined;
+  r3 = "next";
   r4 = get_next;
   r5 = null;
   r6 = 0;
