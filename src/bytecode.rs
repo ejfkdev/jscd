@@ -266,11 +266,13 @@ impl<'a> Decoder<'a> {
         if index < 0 {
             // ≤8.4：参数索引随形参个数变（`FromParameterIndex(i, pc) = last_param - pc + i + 1`），
             // 用 param_base(= last_param+1) - pc 作 <this> 的索引；9.x+ 是定值
-            let base = match self.layout.param_base {
-                Some(b) => b - self.parameter_count,
-                None => self.layout.first_param,
+            // V8：index = last_param - pc + i + 1 ⇒ i = index - last_param + pc - 1
+            //     = index - param_base + pc（param_base = last_param + 1，如 -6）
+            // 9.x+：this 的索引是定值 first_param，i = first_param - index。
+            let parameter_index = match self.layout.param_base {
+                Some(b) => index - b + self.parameter_count,
+                None => self.layout.first_param - index,
             };
-            let parameter_index = base - index;
             if parameter_index == 0 {
                 "<this>".into()
             } else {

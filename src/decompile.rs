@@ -1269,7 +1269,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     }
 
     fn render_operand(&self, op: &Operand) -> String {
-        let dec = Decoder::new(self.d.table, self.d.layout, 0);
+        // 形参个数必须传真的：≤8.4 的寄存器命名是 `index - param_base + parameter_count`，
+        // 传 0 会让形参渲染成 `a-2`/`a-3`（node14 的产物就是这么错的）。
+        let dec = Decoder::new(self.d.table, self.d.layout, self.param_count() as i32);
         dec.render_operand(op)
     }
 
@@ -1411,8 +1413,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     }
 
     fn param_count(&self) -> u32 {
+        // ScopeInfo 只在能解析该版本布局时才可信：老族（≤8.4）的 ScopeInfo 布局与
+        // 9.x+ 不同，`read_scope` 会读出负值/巨值（node14 上曾得到 -1），
+        // 而 BCA 的 `parameter_size/8` 一直是权威值（disasm 的 Parameter count 同源）。
         if let Some(s) = &self.scope {
-            if s.param_count > 0 {
+            if s.param_count > 0 && s.param_count <= 64 {
                 return s.param_count;
             }
         }

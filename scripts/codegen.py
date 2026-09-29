@@ -470,7 +470,60 @@ BUILD_DEFINES = {
     "V8_TRACE_FEEDBACK_UPDATES": False, # dev-only
     "V8_INTL_SUPPORT": True,            # Node 默认 full-icu
     "V8_ENABLE_WEBASSEMBLY": True,      # Node 默认启用
+    "V8_TRACE_IGNITION": False,         # dev-only（8.4 用这个名字包 INTERPRETER_TRACE）
 }
+
+
+def strip_disabled_blocks(text):
+    """按官方 Node 构建的开关**剔除 `#ifdef` 禁用的分支**，只留下会编译进去的那份。
+
+    V8 头文件里同一宏常有"启用/空"两份定义，例如 8.4 runtime.h：
+
+        #ifdef V8_TRACE_IGNITION
+        #define FOR_EACH_INTRINSIC_INTERPRETER_TRACE(F, I) \
+          F(InterpreterTraceBytecodeEntry, 3, 1)           \
+          F(InterpreterTraceBytecodeExit, 3, 1)
+        #else
+        #define FOR_EACH_INTRINSIC_INTERPRETER_TRACE(F, I)
+        #endif
+
+    提取器原来按 `#define NAME(...)` 取**第一个**匹配 —— 于是把 dev-only 的两条
+    Trace 条目也算进了 Runtime::FunctionId，整张表从那里起偏移 3（实测 node14：
+    官方 `DeclareGlobals` 的 id 是 312，我们表里是 315；node16 恰好不受影响，
+    所以这个错一直没暴露）。
+    """
+    out, stack = [], []   # stack 元素：[当前区域是否启用, 该 if 块的父区域是否启用]
+    for line in text.splitlines():
+        st = line.strip()
+        enabled = stack[-1][0] if stack else True
+        if st.startswith("#ifdef ") or st.startswith("#ifndef "):
+            parts = st.split()
+            flag = parts[1] if len(parts) > 1 else ""
+            # 未列出的开关按"官方构建里未定义"处理（8.4/9.4 的 x64 Node 就是关掉
+            # 指针压缩、sandbox、各种 trace 的）。注意别把 include guard
+            # `#ifndef V8_RUNTIME_RUNTIME_H_` 整份裁掉 —— `#ifndef 未定义` = 保留。
+            # 只在**显式**写进 BUILD_DEFINES 的开关上做取舍：
+            #   显式 False（V8_TRACE_* 这类 dev-only）→ `#ifdef` 分支剔除、`#else` 保留；
+            #   未知开关 → 一律保留（V8 头文件里 `#ifdef` 的第一分支就是官方启用的那份，
+            #   include guard 的 `#ifndef` 也属这一类）。早先"未知=未定义"会把
+            # Maglev/Turbofan 的 5 条 runtime 裁掉（node24 表偏 3、class_basic 挂），
+            # "未知=已定义"又会把 include guard 整份裁掉（老族表直接空）。
+            if flag not in BUILD_DEFINES:
+                on = True
+            else:
+                on = BUILD_DEFINES[flag] if st.startswith("#ifdef ") else not BUILD_DEFINES[flag]
+            stack.append([enabled and on, enabled])
+            continue
+        if st.startswith("#else") and stack:
+            top = stack[-1]
+            top[0] = top[1] and not top[0]
+            continue
+        if st.startswith("#endif") and stack:
+            stack.pop()
+            continue
+        if enabled:
+            out.append(line)
+    return "\n".join(out)
 
 
 def extract_runtime_names(text):
@@ -482,6 +535,7 @@ def extract_runtime_names(text):
     """
     if text is None:
         return []
+    text = strip_disabled_blocks(text)
 
     def macro_body(name):
         m = re.search(rf"#define {name}\(F, I\)(.*?)(?=\n#define |\Z)", text, re.S)

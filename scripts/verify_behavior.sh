@@ -8,9 +8,10 @@ FIXTURES=($(python3 -c "import json;print(' '.join(json.load(open('tests/fixture
 pass=0; partial=0; fail=0; other=0
 for v in "${VERSIONS[@]}"; do
   map="workspace/ro/ro-map-$v.json"
+  # 注意 `set -u` 下空数组展开会报 unbound —— 没生成 ro-map 的版本（老族）会踩到
   maparg=(); [ -f "$map" ] && maparg=(--ro-map "$map")
   for f in "${FIXTURES[@]}"; do
-    line=$(node scripts/behav_diff.js "$f" "$v" "${maparg[@]}" 2>/dev/null | tail -1)
+    line=$(node scripts/behav_diff.js "$f" "$v" ${maparg[@]+"${maparg[@]}"} 2>/dev/null | tail -1)
     st=$(printf '%s' "$line" | python3 -c "import sys,json;print(json.load(sys.stdin).get('status','?'))" 2>/dev/null || echo "?")
     case "$st" in
       pass) pass=$((pass+1));;
