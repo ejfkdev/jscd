@@ -166,7 +166,16 @@ pub struct FrameLayout {
     pub reg_file_start: i32,
     pub context_index: i32,
     pub closure_index: i32,
-    pub first_param: i32,
+    /// 9.x+：`<this>` 的固定索引（如 -8）
+    #[serde(default)]
+    pub first_param: Option<i32>,
+    /// ≤8.4：最后一个形参的索引（如 -7）—— 参数索引随 parameter_count 变，
+    /// `Register::FromParameterIndex(i, pc) = last_param - pc + i + 1`
+    #[serde(default)]
+    pub last_param: Option<i32>,
+    /// ≤8.4：`<this>` 的基址（= last_param + 1），`this` 索引 = param_base - pc
+    #[serde(default)]
+    pub param_base: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

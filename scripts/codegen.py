@@ -760,7 +760,7 @@ def extract_frame_layout(text):
         return None
     m = re.search(r"class UnoptimizedFrameConstants.*?DEFINE_STANDARD_FRAME_SIZES\((\d+)\)", text, re.S)
     if not m:
-        return None
+        return extract_frame_layout_legacy(text)
     extra = int(m.group(1))
     # V8_EMBEDDED_CONSTANT_POOL 在官方 Node 构建中关闭（真机校准：9.4 start=-6、12.4 start=-7）
     cp_slots = 0
@@ -773,6 +773,43 @@ def extract_frame_layout(text):
         "closure_index": start + 2,
         "first_param": start - 2,
         "extra_slots": extra,
+        "cp_slots": cp_slots,
+    }
+
+
+def extract_frame_layout_legacy(text):
+    """V8 ≤ 8.4 的旧帧布局（`InterpretedFrameConstants`/`InterpreterFrameConstants`）。
+
+    现代提取器找的是 `UnoptimizedFrameConstants` + `DEFINE_STANDARD_FRAME_SIZES(n)`，
+    8.4 里没有这个类 → 以前直接返回 None，于是寄存器编码常量全落默认值，
+    老族 disasm 打出 `Star a-8` 这种垃圾。8.4 的公式（frame-constants.h）：
+
+        StandardFrameConstants::kFixedFrameSizeFromFp = 2*S + kCPSlotSize
+        InterpreterFrameConstants::kRegisterFileFromFp
+            = -StandardFrameConstants::kFixedFrameSizeFromFp - 3*S
+        kFunctionOffset = -2*S - kCPSlotSize   → closure = (regfile - kFunctionOffset)/S
+        kContextOffset  = -S                   → context = (regfile - kContextOffset)/S
+        kLastParamFromFp = kCallerSPOffset = kFixedFrameSizeAboveFp = 2*S
+                                               → last_param = (regfile - 2*S)/S
+
+    参数索引**随 parameter_count 变**（`Register::FromParameterIndex`，
+    interpreter/bytecode-register.cc）：`this = kLastParamRegisterIndex - pc + 1`，
+    所以这里不给 first_param，改给 `param_base = last_param + 1`，运行时按 pc 现算。
+    官方 Node 构建 kCPSlotSize = 0（实测 node12/14：reg_file_start=-5、closure=-3、
+    context=-4、last_param=-7、this=-6-pc）。
+    """
+    if text is None or "kRegisterFileFromFp" not in text:
+        return None
+    cp_slots = 0  # V8_EMBEDDED_CONSTANT_POOL 在官方 Node 构建中关闭
+    standard = 2 + cp_slots
+    start = -(standard + 3)
+    return {
+        "reg_file_start": start,
+        "context_index": start + 1,
+        "closure_index": start + 2 + cp_slots,
+        "last_param": start - 2,
+        "param_base": start - 1,
+        "extra_slots": 2,
         "cp_slots": cp_slots,
     }
 

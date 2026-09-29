@@ -29,8 +29,11 @@ pub struct FamilyLayout {
     pub context_index: i32,
     /// <closure> 寄存器索引（-4）
     pub closure_index: i32,
-    /// 第一个参数寄存器索引（-8，即 <this>）
+    /// 第一个参数寄存器索引（-8，即 <this>）；9.x+ 是定值
     pub first_param: i32,
+    /// ≤8.4 的参数索引随 parameter_count 变：`this = param_base - pc`（param_base 如 -6）；
+    /// 为 Some 时忽略 `first_param`。见 `Register::FromParameterIndex`（8.4）
+    pub param_base: Option<i32>,
     /// Wide 前缀缩放因子
     pub wide_scale: u32,
     /// ExtraWide 前缀缩放因子
@@ -46,6 +49,7 @@ impl FamilyLayout {
             context_index: -5,
             closure_index: -4,
             first_param: -8,
+            param_base: None,
             wide_scale: 2,
             extra_wide_scale: 4,
         }
@@ -58,7 +62,10 @@ impl FamilyLayout {
             l.reg_file_start = f.reg_file_start;
             l.context_index = f.context_index;
             l.closure_index = f.closure_index;
-            l.first_param = f.first_param;
+            if let Some(fp) = f.first_param {
+                l.first_param = fp;
+            }
+            l.param_base = f.param_base;
         }
         l
     }
@@ -257,7 +264,13 @@ impl<'a> Decoder<'a> {
             return "<closure>".into();
         }
         if index < 0 {
-            let parameter_index = self.layout.first_param - index;
+            // ≤8.4：参数索引随形参个数变（`FromParameterIndex(i, pc) = last_param - pc + i + 1`），
+            // 用 param_base(= last_param+1) - pc 作 <this> 的索引；9.x+ 是定值
+            let base = match self.layout.param_base {
+                Some(b) => b - self.parameter_count,
+                None => self.layout.first_param,
+            };
+            let parameter_index = base - index;
             if parameter_index == 0 {
                 "<this>".into()
             } else {

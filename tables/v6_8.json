@@ -1488,7 +1488,15 @@
    "prefix": null
   }
  ],
- "frame": null,
+ "frame": {
+  "closure_index": -3,
+  "context_index": -4,
+  "cp_slots": 0,
+  "extra_slots": 2,
+  "last_param": -7,
+  "param_base": -6,
+  "reg_file_start": -5
+ },
  "hash": {
   "algorithm": "right_fold"
  },
