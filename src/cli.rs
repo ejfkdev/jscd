@@ -326,7 +326,13 @@ fn parse_cache<'a>(
             (h.payload(data), Vec::new())
         };
         // tagged_size 是构建属性（压缩/非压缩），表里给默认值；解析失败时回退另一种
-        for ts in [table.tagged_size, if table.tagged_size == 8 { 4 } else { 8 }] {
+        // 调试：JSCD_TS=4/8 强制某个 tagged size（老族压缩/非压缩构建的判定用）
+        let forced = std::env::var("JSCD_TS").ok().and_then(|v| v.parse::<u8>().ok());
+        let order: Vec<u8> = match forced {
+            Some(v) => vec![v],
+            None => vec![table.tagged_size, if table.tagged_size == 8 { 4 } else { 8 }],
+        };
+        for ts in order {
             let mut t = table.clone();
             t.tagged_size = ts;
             match crate::serializer::parse_with(payload, &t, &reservations) {
