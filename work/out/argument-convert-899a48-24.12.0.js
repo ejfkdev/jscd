@@ -67,9 +67,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -77,10 +79,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -157,9 +167,7 @@ let phi0, phi1, phi2, phi3;
       continue;
     }
   } catch (e) {
-    r9 = 0;
-    r8 = r9;
-    r9 = r8;
+    r9 = undefined;
     r8 = 0;
     r10 = undefined /* hole */;
     if (!r7) {
@@ -183,83 +191,87 @@ let phi0, phi1, phi2, phi3;
         }
       }
     }
-    if (r8 === 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    r2 = undefined;
-    r5 = [0, "invalid"];
-    r6 = 0;
-    r5[r6] = undefined;
-    r6 = r5[Symbol.iterator]();
-    r5 = r6.next;
-    r7 = false;
-    r10 = undefined /* hole */;
-    r11 = __context;
-    try {
-      while (true) {
-        r7 = true;
-        r12 = r6.next();
-        phi2 = r12;
-        if (r12 === undefined) {
-          phi2 = __runtime.ThrowIteratorResultNotAnObject(r12);
-        }
-        if (r12.done) break;
-        r12 = r12.value;
-        r7 = false;
-        r1 = r12;
-        /* createblockcontext */
-        invalid = r1;
-        r14 = assert;
-        r13 = r14.throws;
-        r15 = RangeError;
-        r16 = _anon_40;
-        r17 = "month ";
-        r17 = r17 + typeof invalid;
-        r13.call(r14-r17);
-        r14 = assert;
-        r13 = r14.throws;
-        r15 = RangeError;
-        r16 = _anon_48;
-        r17 = "day ";
-        r17 = r17 + typeof invalid;
-        r2 = r13.call(r14-r17);
-        continue;
+  }
+  r13 = r13;
+  if (r8 !== 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  }
+  if (r8 === 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  }
+  r2 = undefined;
+  r5 = [0, "invalid"];
+  r6 = 0;
+  r5[r6] = undefined;
+  r6 = r5[Symbol.iterator]();
+  r5 = r6.next;
+  r7 = false;
+  r10 = undefined /* hole */;
+  r11 = __context;
+  try {
+    while (true) {
+      r7 = true;
+      r12 = r6.next();
+      phi2 = r12;
+      if (r12 === undefined) {
+        phi2 = __runtime.ThrowIteratorResultNotAnObject(r12);
       }
-    } catch (e) {
-      r9 = undefined;
-      r8 = 0;
-      r10 = undefined /* hole */;
-      if (!r7) {
-        r13 = __context;
-        try {
-          if (r6.return != null) {
-            r14 = r6.return;
-            phi3 = r6.return();
-            if (phi3 === undefined) {
-              r15 = phi3;
-              r13 = __runtime.ThrowIteratorResultNotAnObject(r15);
-              if (r8 !== 0) {
-                if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-              }
+      if (r12.done) break;
+      r12 = r12.value;
+      r7 = false;
+      r1 = r12;
+      /* createblockcontext */
+      invalid = r1;
+      r14 = assert;
+      r13 = r14.throws;
+      r15 = RangeError;
+      r16 = _anon_40;
+      r17 = "month ";
+      r17 = r17 + typeof invalid;
+      r13.call(r14-r17);
+      r14 = assert;
+      r13 = r14.throws;
+      r15 = RangeError;
+      r16 = _anon_48;
+      r17 = "day ";
+      r17 = r17 + typeof invalid;
+      r2 = r13.call(r14-r17);
+      continue;
+    }
+  } catch (e) {
+    r9 = undefined;
+    r8 = 0;
+    r10 = undefined /* hole */;
+    if (!r7) {
+      r13 = __context;
+      try {
+        if (r6.return != null) {
+          r14 = r6.return;
+          phi3 = r6.return();
+          if (phi3 === undefined) {
+            r15 = phi3;
+            r13 = __runtime.ThrowIteratorResultNotAnObject(r15);
+            if (r8 !== 0) {
+              if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
             }
           }
-        } catch (e) {
-          r13 = r13;
-          if (r8 !== 0) {
-            if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-          }
+        }
+      } catch (e) {
+        r13 = r13;
+        if (r8 !== 0) {
+          if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
         }
       }
     }
-    r13 = r13;
-    if (r8 !== 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    if (r8 === 0) {
-      if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
-    }
-    return r2;
   }
+  r13 = r13;
+  if (r8 !== 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  }
+  if (r8 === 0) {
+    if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
+  }
+  return r2;
 }
 
 // @generated by jscd — 源码文本不在 code cache 中，以下是按字节码重建的伪 JS

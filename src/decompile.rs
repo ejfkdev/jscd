@@ -831,9 +831,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -841,10 +843,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -1119,7 +1129,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .and_then(|v| v.as_ref())
             .and_then(|r| d.cache.ref_object(r));
         let code_len = instrs.last().map(|i| i.offset).unwrap_or(0);
-        let handlers = read_handler_table(d, bca, code_len);
+        let handlers = read_handler_table(d, bca, code_len, &idx_of);
         if std::env::var("JSCD_DBG_POOL").is_ok() {
             match pool {
                 Some(pid) => {
@@ -4932,7 +4942,12 @@ fn regexp_flags(ops: &[String]) -> String {
 }
 
 /// 读取 BytecodeArray 的 handler 表（异常处理区间）。
-fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId, code_len: usize) -> Vec<Handler> {
+fn read_handler_table<'a>(
+    d: &Decompiler<'a>,
+    bca: ObjId,
+    code_len: usize,
+    idx_of: &HashMap<usize, usize>,
+) -> Vec<Handler> {
     let ts = d.ts;
     let Some(h) = d
         .cache
@@ -4988,6 +5003,9 @@ fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId, code_len: usize) -> Ve
             }
         }
     }
+    if std::env::var("JSCD_DBG_HAND").is_ok() {
+        eprintln!("[hand] bca={bca} len={len} obj_bytes={obj_bytes} words={words:?}");
+    }
     let f = |i: usize| -> Option<i32> { words.get(4 + i).copied() };
     let mut out = Vec::new();
     // 条目：[start, end, handler, data]（各 1 个 int32，连续排布）
@@ -5004,17 +5022,37 @@ fn read_handler_table<'a>(d: &Decompiler<'a>, bca: ObjId, code_len: usize) -> Ve
         // 用"必须落在字节码长度内"自校验，两种移位取合法的那个。
         let h3 = (handler as u32) >> 3;
         let h4 = (handler as u32) >> 4;
-        // 优先选"正好等于区间终点"的移位：V8 对 try 条目就是把 handler 放在区间之后
-        // （9.x–12.x: 584>>3 == 73 == end；13.x: 1200>>4 == 75 == end）。
-        // 只看"是否越界"不够 —— 13.x 上 >>3 也会得到 86 这种仍在字节码范围内的错值。
-        let target = if h3 as usize == end as usize {
-            h3
-        } else if h4 as usize == end as usize {
-            h4
-        } else if code_len > 0 && h3 as usize > code_len && h4 as usize <= code_len {
-            h4
-        } else {
-            h3
+        // 判据：解出来的偏移必须**落在一条指令的起点**上（idx_of 里有），
+        // 两个都合法时取"在区间终点之后、离终点最近"的那个。
+        // 早先只按"是否等于 end"猜移位 —— 13.6 的 handler 落在 end 之后几条指令处
+        // （191 → 197），于是猜错移位（394，正好是 2 倍）把 catch 区间整个吞掉，
+        // node24 的对象解构代码直接消失。
+        let in_code = |v: u32| idx_of.contains_key(&(v as usize));
+        let target = match (in_code(h3), in_code(h4)) {
+            (true, false) => h3,
+            (false, true) => h4,
+            (true, true) => {
+                let after = |v: u32| (v as i64) - (end as i64) >= 0;
+                let dist = |v: u32| ((v as i64) - (end as i64)).abs();
+                match (after(h3), after(h4)) {
+                    (true, false) => h3,
+                    (false, true) => h4,
+                    _ => {
+                        if dist(h4) <= dist(h3) {
+                            h4
+                        } else {
+                            h3
+                        }
+                    }
+                }
+            }
+            (false, false) => {
+                if code_len > 0 && h3 as usize > code_len && h4 as usize <= code_len {
+                    h4
+                } else {
+                    h3
+                }
+            }
         };
         out.push(Handler {
             start: start as u32,

@@ -67,9 +67,11 @@ var __runtime = new Proxy({
     return obj;
   },
   // 对象剩余属性（`const {a, ...rest} = obj`）：排除已列举的键后收集其余自有可枚举属性
+  // `const {a, ...rest} = obj`：被排除的键由 V8 放在寄存器里当参数传
+  // （OnStack 变体的 excluded_count/栈基址由解释器补，对 JS 层等价于"其余参数都是键"）
   CopyDataPropertiesWithExcludedProperties: function (src) {
+    if (src == null) throw new TypeError('Cannot convert undefined or null to object');
     var out = {};
-    if (src == null) return out;
     var excl = Array.prototype.slice.call(arguments, 1);
     var o = Object(src);
     Object.keys(o).forEach(function (k) {
@@ -77,10 +79,18 @@ var __runtime = new Proxy({
     });
     return out;
   },
+  CopyDataPropertiesWithExcludedPropertiesOnStack: function (src) {
+    return __runtime.CopyDataPropertiesWithExcludedProperties.apply(null, arguments);
+  },
   ThrowSymbolIteratorInvalid: function () { throw new TypeError('Invalid iterator'); },
   ThrowIteratorResultNotAnObject: function (v) { throw new TypeError('bad iterator result'); },
 }, { get: function (t, k) { return k in t ? t[k] : function () {}; } });
-var __intrinsic = new Proxy({}, { get: () => () => undefined });
+// V8 的 intrinsic（`InvokeIntrinsic [_X]`）是 C++ 内建：多数无实现可用，但少数
+// （CopyDataPropertiesWithExcludedPropertiesOnStack 这类）在 __runtime 里有等价实现
+// —— 先查 __runtime，查不到才退化成空实现。
+var __intrinsic = new Proxy(__runtime, {
+  get: (t, k) => (k in t ? t[k] : function () { return undefined; }),
+});
 var __context, __ctx = {};
 // for-in 的键枚举协议尚未重建 → 用到就抛清晰错误（不再 ReferenceError / 死循环）
 function __forin_unsupported() { throw new Error('jscd: for-in 枚举协议尚未重建'); }
@@ -158,9 +168,7 @@ let phi0, phi1, phi2, phi3;
       continue;
     }
   } catch (e) {
-    r17 = 0;
-    r16 = r17;
-    r17 = r16;
+    r17 = undefined;
     r16 = 0;
     r18 = undefined /* hole */;
     if (!r15) {
@@ -184,96 +192,104 @@ let phi0, phi1, phi2, phi3;
         }
       }
     }
-    if (r16 === 0) {
-      if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
-    }
-    r13 = Temporal;
-    r13 = r13.ZonedDateTime;
-    r14 = -/* BigIntMap(26) */ undefined;
-    r15 = "UTC";
-    __ctx.ctx4 = new r13(r14, r15);
-    r2 = undefined;
-    r15 = ["UTC", "+00:18", "-08:12"];
-    r14 = r15[Symbol.iterator]();
-    r13 = r14.next;
-    r15 = false;
-    r18 = undefined /* hole */;
-    r19 = __context;
-    try {
-      while (true) {
-        r15 = true;
-        r20 = r14.next();
-        phi2 = r20;
-        if (r20 === undefined) {
-          phi2 = __runtime.ThrowIteratorResultNotAnObject(r20);
-        }
-        if (r20.done) break;
-        r20 = r20.value;
-        r15 = false;
-        r1 = r20;
-        r4 = r1;
-        r21 = __ctx.ctx4;
-        r20 = r21.withTimeZone;
-        r5 = r21.withTimeZone(r1);
-        r21 = Temporal;
-        r21 = r21.PlainDateTime;
-        r22 = 1970;
-        r23 = 9;
-        r24 = 1;
-        r25 = 15;
-        r26 = 47;
-        r27 = 32;
-        r21 = new r21(r22, r23, r24, r25, r26, r27);
-        r20 = r21.toZonedDateTime;
-        r6 = r21.toZonedDateTime(r1);
-        r20 = r6.since;
-        r23 = ({ largestUnit: "years" });
-        r6.since(r5, r23);
-        r20 = r5.since;
-        r23 = ({ largestUnit: "years" });
-        r5.since(r6, r23);
-        r20 = r6.until;
-        r23 = ({ largestUnit: "seconds" });
-        r7 = r6.until(r5, r23);
-        r21 = TemporalHelpers;
-        r20 = r21.assertDurationsEqual;
-        r22 = r5.until;
-        r25 = ({ largestUnit: "seconds" });
-        r22 = r5.until(r6, r25);
-        r23 = r7.negated;
-        r23 = r7.negated();
-        r24 = "Arithmetic until limit with time largestUnit is self-consistent (";
-        r24 = r24 + r1;
-        r24 = r24 + ")";
-        r2 = r20.call(r21-r24);
-        continue;
-      }
-    } catch (e) {
-    }
   }
-  r17 = undefined;
-  r16 = 0;
+  r20 = r20;
+  if (r16 !== 0) {
+    if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
+  }
+  if (r16 === 0) {
+    if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
+  }
+  r13 = Temporal;
+  r13 = r13.ZonedDateTime;
+  r14 = -/* BigIntMap(26) */ undefined;
+  r15 = "UTC";
+  __ctx.ctx4 = new r13(r14, r15);
+  r2 = undefined;
+  r15 = ["UTC", "+00:18", "-08:12"];
+  r14 = r15[Symbol.iterator]();
+  r13 = r14.next;
+  r15 = false;
   r18 = undefined /* hole */;
-  if (!r15) {
-    r20 = __context;
-    try {
-      if (r14.return != null) {
-        r21 = r14.return;
-        phi3 = r14.return();
-        if (phi3 === undefined) {
-          r22 = phi3;
-          r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
-          if (r16 !== 0) {
-            if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
+  r19 = __context;
+  try {
+    while (true) {
+      r15 = true;
+      r20 = r14.next();
+      phi2 = r20;
+      if (r20 === undefined) {
+        phi2 = __runtime.ThrowIteratorResultNotAnObject(r20);
+      }
+      if (r20.done) break;
+      r20 = r20.value;
+      r15 = false;
+      r1 = r20;
+      r4 = r1;
+      r21 = __ctx.ctx4;
+      r20 = r21.withTimeZone;
+      r5 = r21.withTimeZone(r1);
+      r21 = Temporal;
+      r21 = r21.PlainDateTime;
+      r22 = 1970;
+      r23 = 9;
+      r24 = 1;
+      r25 = 15;
+      r26 = 47;
+      r27 = 32;
+      r21 = new r21(r22, r23, r24, r25, r26, r27);
+      r20 = r21.toZonedDateTime;
+      r6 = r21.toZonedDateTime(r1);
+      r20 = r6.since;
+      r23 = ({ largestUnit: "years" });
+      r6.since(r5, r23);
+      r20 = r5.since;
+      r23 = ({ largestUnit: "years" });
+      r5.since(r6, r23);
+      r20 = r6.until;
+      r23 = ({ largestUnit: "seconds" });
+      r7 = r6.until(r5, r23);
+      r21 = TemporalHelpers;
+      r20 = r21.assertDurationsEqual;
+      r22 = r5.until;
+      r25 = ({ largestUnit: "seconds" });
+      r22 = r5.until(r6, r25);
+      r23 = r7.negated;
+      r23 = r7.negated();
+      r24 = "Arithmetic until limit with time largestUnit is self-consistent (";
+      r24 = r24 + r1;
+      r24 = r24 + ")";
+      r2 = r20.call(r21-r24);
+      continue;
+    }
+  } catch (e) {
+    r17 = undefined;
+    r16 = 0;
+    r18 = undefined /* hole */;
+    if (!r15) {
+      r20 = __context;
+      try {
+        if (r14.return != null) {
+          r21 = r14.return;
+          phi3 = r14.return();
+          if (phi3 === undefined) {
+            r22 = phi3;
+            r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
+            if (r16 !== 0) {
+              if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
+            }
           }
         }
-      }
-    } catch (e) {
-      r20 = r20;
-      if (r16 !== 0) {
-        if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
+      } catch (e) {
+        r20 = r20;
+        if (r16 !== 0) {
+          if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
+        }
       }
     }
+  }
+  r20 = r20;
+  if (r16 !== 0) {
+    if (max !== undefined) throw max; // rethrow（仅当有挂起异常）
   }
   if (r16 === 0) {
     if (max !== undefined) throw max; // rethrow（仅当有挂起异常）

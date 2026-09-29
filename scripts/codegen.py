@@ -266,8 +266,20 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
     order = []
 
     def split_top(inner):
-        args, depth, cur = [], 0, ""
+        """按顶层逗号切分宏实参。**必须跳过字符串字面量**：`V_(_, comma_string, ",")`
+        的实参里就有逗号，早先会切成 `"` + `"` 两段，于是逗号字符串根的名字成了
+        `String:`（空字面量）—— node24 的 `join(",")` 分隔符变成空串、结果全粘一起。"""
+        args, depth, cur, in_str = [], 0, "", None
         for ch in inner:
+            if in_str:
+                cur += ch
+                if ch == in_str:
+                    in_str = None
+                continue
+            if ch in ("\"", "'"):
+                in_str = ch
+                cur += ch
+                continue
             if ch == "(":
                 depth += 1
             elif ch == ")":
