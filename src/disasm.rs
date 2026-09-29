@@ -133,6 +133,20 @@ impl<'a> Disassembler<'a> {
         let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, self.sfi_name_slot()) else {
             return String::new();
         };
+        if std::env::var("JSCD_DBG_NAME").is_ok() {
+            let info = match &r {
+                Ref::Object(sid) => format!(
+                    "obj {sid} ty={} is_string={}",
+                    self.cache.obj(*sid).ty.name(self.table),
+                    self.cache.obj(*sid).ty.is_string(self.table)
+                ),
+                other => format!("{other:?}"),
+            };
+            eprintln!(
+                "[name] sfi={id} slot={} {info}",
+                self.sfi_name_slot()
+            );
+        }
         match r {
             Ref::Object(sid) if self.cache.obj(*sid).ty.is(self.table, "ScopeInfo") => {
                 let name = self.scope_function_name(*sid);
