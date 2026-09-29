@@ -220,6 +220,28 @@ impl Expr {
                 if *postfix {
                     e.write_to(out, prec + 1);
                     out.push_str(op);
+                } else if *op == "!" {
+                    // 取反化简：!(!(x)) → x；!(a === b) → a !== b
+                    match &**e {
+                        Expr::Un { op: "!", e: inner, postfix: false } => inner.write_to(out, parent_prec),
+                        Expr::Bin { op: cmp, l, r }
+                            if matches!(*cmp, "===" | "!==" | "==" | "!=") =>
+                        {
+                            let inv = match *cmp {
+                                "===" => "!==",
+                                "!==" => "===",
+                                "==" => "!=",
+                                _ => "==",
+                            };
+                            l.write_to(out, prec);
+                            let _ = write!(out, " {inv} ");
+                            r.write_to(out, prec + 1);
+                        }
+                        other => {
+                            out.push('!');
+                            other.write_to(out, prec);
+                        }
+                    }
                 } else {
                     out.push_str(op);
                     e.write_to(out, prec);
@@ -610,6 +632,8 @@ struct FnCtx<'a, 'b> {
     ctx_scopes: Vec<Option<ObjId>>,
     label_counter: usize,
     tmp_counter: usize,
+    /// 分支间物化的累加器变量（phi）
+    phi_vars: Vec<String>,
     name: String,
     is_async: bool,
     is_generator: bool,
@@ -940,6 +964,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             ctx_scopes: Vec::new(),
             label_counter: 0,
             tmp_counter: 0,
+            phi_vars: Vec::new(),
             name,
             is_async: false,
             is_generator: false,
@@ -1005,7 +1030,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
         // 声明寄存器与 context 局部名（保持语法合法、便于阅读）
         self.declare_locals();
+        // phi 变量在发射过程中按需产生，因此先记录起始写入位置，最后回填声明
+        let declare_at = self.out.len();
         self.emit_range(0, self.instrs.len())?;
+        if !self.phi_vars.is_empty() {
+            let decl = format!("let {};\n", self.phi_vars.join(", "));
+            self.out.insert_str(declare_at, &decl);
+        }
 
         self.indent = 0;
         self.out.push_str("}\n");
@@ -1207,11 +1238,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         for i in 0..len.min(32) {
             match self.d.cache.array_elem(o, i) {
                 Some(Elem::Smi(v)) => items.push(Expr::Num(v as f64)),
-                Some(Elem::Ref(r)) => {
-                    let s = crate::disasm::name_of_ref(self.d.cache, self.d.table, r);
-                    items.push(match s {
-                        Some(n) => Expr::Str(n),
-                        None => Expr::Undefined,
+                Some(Elem::Ref(Ref::Object(oid))) => items.push(self.object_constant(oid)),
+                Some(Elem::Ref(Ref::Root(r))) => items.push(self.root_value(r)),
+                // 只读堆里的字符串（如 "a"）只能靠 ro-map 还原
+                Some(Elem::Ref(Ref::RoRef(c, off))) => {
+                    items.push(match self.d.ro_map.as_ref().and_then(|m| m.get(c, off)) {
+                        Some(n) => Expr::Str(n.to_string()),
+                        None => Expr::Str(format!("<ro{c}_{off}>")),
                     });
                 }
                 _ => items.push(Expr::Undefined),
@@ -1368,7 +1401,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
             // ③ 条件跳转
             if let Some(target) = self.cond_jump_target(&ins) {
-                let cond = self.cond_of(&base);
+                let cond_e = self.cond_of(&base);
+                let cond = cond_e.render();
                 self.flush_acc_before(&base);
                 let in_break = self.loops.iter().any(|l| l.break_target == target);
                 if in_break {
@@ -1407,27 +1441,62 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                             i += 1;
                             continue;
                         }
-                        self.line(&format!("if (!({cond})) {{"));
+                        let acc_in = self.acc.clone();
+                        let phi = format!("phi{}", self.tmp_counter);
+                        self.tmp_counter += 1;
+                        let if_start = self.out.len();
+                        let then_cond = Expr::Un {
+                            op: "!",
+                            e: Box::new(cond_e.clone()),
+                            postfix: false,
+                        }
+                        .render();
+                        self.line(&format!("if ({then_cond}) {{"));
                         self.indent += 1;
                         self.emit_range(i + 1, t_idx.min(end))?;
+                        self.materialize_acc(&phi, &acc_in);
                         self.indent -= 1;
                         let mut next = t_idx;
+                        let mut has_else = false;
                         // 紧邻 target 之前的无条件 Jump → else 分支
                         if t_idx > 0 {
                             if let Some(else_target) = self.uncond_jump_target(&self.instrs[t_idx - 1])
                             {
                                 if else_target > target {
                                     if let Some(&e_idx) = self.idx_of.get(&else_target) {
+                                        let acc_then = self.acc.clone();
                                         self.line("} else {");
                                         self.indent += 1;
                                         self.emit_range(t_idx, e_idx.min(end))?;
+                                        self.materialize_acc(&phi, &acc_then);
                                         self.indent -= 1;
+                                        has_else = true;
                                         next = e_idx;
                                     }
                                 }
                             }
                         }
                         self.line("}");
+                        // 合并点取值：任一分支改过 acc → 用 phi；否则保持原值
+                        let changed = self
+                            .acc
+                            .as_ref()
+                            .map(|e| e.render())
+                            .unwrap_or_default()
+                            != acc_in.as_ref().map(|e| e.render()).unwrap_or_default();
+                        if changed && !self.phi_vars.contains(&phi) {
+                            // 起始值放在 if **之前**（就地回填，保证合并点语义正确）
+                            self.phi_vars.push(phi.clone());
+                            let init = acc_in
+                                .as_ref()
+                                .map(|e| e.render())
+                                .unwrap_or_else(|| "undefined".into());
+                            let indent = "  ".repeat(self.indent);
+                            self.out
+                                .insert_str(if_start, &format!("{indent}{phi} = {init};\n"));
+                            self.acc = Some(Expr::Ident(phi));
+                        }
+                        let _ = has_else;
                         i = next.max(i + 1);
                         continue;
                     }
@@ -1468,6 +1537,17 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             i += 1;
         }
         Ok(())
+    }
+
+    /// 分支结束处把 acc 物化到 phi 变量（若该分支改变了 acc）。
+    /// 三元表达式/短路运算/递归都靠这一步才能在合并点拿到值。
+    fn materialize_acc(&mut self, phi: &str, before: &Option<Expr>) {
+        let after = self.acc.clone();
+        let b = before.as_ref().map(|e| e.render()).unwrap_or_default();
+        let a = after.as_ref().map(|e| e.render()).unwrap_or_default();
+        if a != b && !a.is_empty() {
+            self.line(&format!("{phi} = {a};"));
+        }
     }
 
     /// 循环检测：本指令（i）是否为某个后向跳转的目标；返回 (回边下标, 循环退出目标)。
@@ -1563,25 +1643,29 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         None
     }
 
-    /// 条件表达式（由跳转类型 + acc 推出）。
-    fn cond_of(&self, base: &str) -> String {
-        let acc = self
-            .acc
-            .as_ref()
-            .map(|e| e.render())
-            .unwrap_or_else(|| "true".into());
+    /// 条件表达式（由跳转类型 + acc 推出）。返回 Expr 以便复用取反化简。
+    fn cond_of(&self, base: &str) -> Expr {
+        let acc = self.acc.clone().unwrap_or(Expr::Bool(true));
+        let neg = |e: Expr| Expr::Un {
+            op: "!",
+            e: Box::new(e),
+            postfix: false,
+        };
+        let bin = |op: &'static str, r: Expr| Expr::Bin {
+            op,
+            l: Box::new(acc.clone()),
+            r: Box::new(r),
+        };
         match base {
             "JumpIfTrue" | "JumpIfToBooleanTrue" => acc,
-            "JumpIfFalse" | "JumpIfToBooleanFalse" => format!("!({acc})"),
-            "JumpIfNull" => format!("({acc}) === null"),
-            "JumpIfNotNull" => format!("({acc}) !== null"),
-            "JumpIfUndefined" => format!("({acc}) === undefined"),
-            "JumpIfNotUndefined" => format!("({acc}) !== undefined"),
-            "JumpIfUndefinedOrNull" => format!("({acc}) == null"),
-            "JumpIfJSReceiver" => format!("typeof ({acc}) === \"object\""),
-            "JumpIfNotHole" => format!("({acc}) !== undefined"),
-            "JumpIfReferenceError" => format!("/* reference error */({acc})"),
-            "JumpIfNotReferenceError" => format!("/* ok */({acc})"),
+            "JumpIfFalse" | "JumpIfToBooleanFalse" => neg(acc),
+            "JumpIfNull" => bin("===", Expr::Null),
+            "JumpIfNotNull" => bin("!==", Expr::Null),
+            "JumpIfUndefined" => bin("===", Expr::Undefined),
+            "JumpIfNotUndefined" => bin("!==", Expr::Undefined),
+            "JumpIfUndefinedOrNull" => bin("==", Expr::Null),
+            "JumpIfJSReceiver" => bin("!==", Expr::Undefined),
+            "JumpIfNotHole" => bin("!==", Expr::Undefined),
             _ => acc,
         }
     }
@@ -1946,6 +2030,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             // 反汇编样例：CallProperty1 r1, r2, r3, [3] → 被调 r1（= obj.method）、接收者 r2、参数 r3
             "CallProperty0" | "CallProperty1" | "CallProperty2" | "CallProperty" => {
                 let callee = self.operand_expr(&arg(0));
+                let receiver = self.operand_expr(&arg(1));
                 let n = match base.as_str() {
                     "CallProperty0" => 0,
                     "CallProperty1" => 1,
@@ -1955,9 +2040,27 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 let args: Vec<Expr> = (0..n)
                     .map(|k| self.operand_expr(&arg(2 + k)))
                     .collect();
+                // 语义：`<callee-stored-in-reg>(<receiver>, args)` —— 接收者必须传进去，
+                // 否则 `arr.join("-")` 会退化成 `fn("-")`（this=undefined → TypeError）。
+                let callee = match callee {
+                    Expr::Member { obj, key } => {
+                        // 形如 `obj.method` 已自带接收者
+                        let _ = receiver;
+                        Expr::Member { obj, key }
+                    }
+                    other => Expr::Member {
+                        obj: Box::new(other),
+                        key: Key::Ident("call".to_string()),
+                    },
+                };
+                let mut all = args;
+                if matches!(callee, Expr::Member { ref key, .. } if matches!(key, Key::Ident(k) if k == "call"))
+                {
+                    all.insert(0, receiver);
+                }
                 self.acc = Some(Expr::Call {
                     callee: Box::new(callee),
-                    args,
+                    args: all,
                     is_new: false,
                     spread_arg: None,
                 });
