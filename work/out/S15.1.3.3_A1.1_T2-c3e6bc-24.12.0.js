@@ -113,7 +113,7 @@ while (true) {
   count = ++count;
   r1 = __context;
   try {
-    r2 = _ro0_67304_;
+    r2 = encodeURI;
     r4 = String;
     r3 = r4.fromCharCode;
     r5 = index;

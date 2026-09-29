@@ -17,6 +17,9 @@ import sys
 
 # 属性名：.name / ["name"] / .name 里的名字
 PROP = re.compile(r"\.\s*([A-Za-z_$][A-Za-z0-9_$]*)")
+# 裸标识符：全局名/函数名等也会以只读堆引用出现（`var o = JSON;` 里的 JSON
+# 在 .jsc 里就是 `ro0/61040`，只收属性名 + 字面量会漏掉它们）
+WORD = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
 # 字符串字面量（单/双引号，粗略支持转义）
 LIT = re.compile(r"""(?<!\\)(['"])((?:\\.|(?!\1).){0,24})\1""")
 ESCAPE = {"\\n": "\n", "\\t": "\t", "\\r": "\r", "\\\\": "\\", "\\0": "\0",
@@ -94,6 +97,8 @@ def main() -> None:
                 add(seen, out, m.group(1))
             for m in LIT.finditer(text):
                 add(seen, out, unescape(m.group(2)))
+            for m in WORD.finditer(text):
+                add(seen, out, m.group(0))
 
     with open(args.out, "w", encoding="utf-8") as f:
         for s in out:
