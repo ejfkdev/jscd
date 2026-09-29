@@ -629,6 +629,10 @@ struct FnCtx<'a, 'b> {
     acc_stored_reg: Option<u32>,
     /// 上一条已输出的语句文本（折叠完全重复的无副作用语句）
     last_line: String,
+    /// 函数体文本（`finish_body` 用：脚本顶层代码需要原样铺开）
+    body: String,
+    /// true = 只出函数体（脚本/模块顶层）
+    inline_body: bool,
     /// 最近一次 context 槽读取的槽号（供紧随其后的 TDZ 检查反推变量名）
     last_ctx_slot: Option<usize>,
     /// 槽号 → 变量名（由 TDZ 检查常量池反推，弥补外层 ScopeInfo 缺失）
@@ -730,19 +734,29 @@ var __runtime = new Proxy({
   // 但方法函数本身都在实参里、且带着自己的名字 → 按名字挂到原型上。
   // 这样 `this._read` 这类内部方法调用能真的走通（getter/setter 只能当普通方法近似）。
   DefineClass: function (bp, ctor, parent) {
-    var Cls = function () { return ctor.apply(this, arguments); };
+    // V8 语义：本体就是传进来的那个构造函数（DefineClass 原地装配并返回它），
+    // 调用点随后绑定的也是这个闭包 —— 所以这里必须原地改造，不能另造一个新函数。
+    var Cls = ctor;
     if (parent) {
       Cls.prototype = Object.create(parent.prototype || Object.prototype);
       Object.setPrototypeOf(Cls, parent);
     }
-    for (var i = 4; i < arguments.length; i++) {
+    // 实参顺序：0=boilerplate 1=ctor 2=parent 3..=方法闭包
+    for (var i = 3; i < arguments.length; i++) {
       var f = arguments[i];
-      if (typeof f === 'function' && f.name && f.name !== '') {
-        // 分不清静态/实例（种类在 boilerplate 里）→ 两边都挂：宁可能调用，
-        // 也不要"方法明明在实参里却取不到"
+      if (typeof f !== 'function' || !f.name) continue;
+      // getter/setter：V8 给这类 SFI 起名 `get value` / `set value`，摊平后成了
+      // `get_value` / `set_value` → 按后缀定义成访问器，`obj.value` 才取得到
+      var m = /^(get|set)_([A-Za-z_$][A-Za-z0-9_$]*)$/.exec(f.name);
+      if (m) {
+        var d = Object.getOwnPropertyDescriptor(Cls.prototype, m[2]) || {};
+        d[m[1]] = f;
+        try { Object.defineProperty(Cls.prototype, m[2], d); } catch (e) {}
+      } else {
         Cls.prototype[f.name] = f;
-        Cls[f.name] = f;
       }
+      // 静态/实例分不清（种类在 boilerplate 里）→ 两边都挂
+      Cls[f.name] = f;
     }
     return Cls;
   },
@@ -869,8 +883,13 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
             );
         }
         let mut ctx = FnCtx::new(self, sfi, bca, scope, scope_id, self.dis.sfi_name(sfi))?;
+        let inline = ctx.inline_body;
         ctx.run()?;
-        Ok(ctx.finish())
+        Ok(if inline {
+            format!("// ── 模块/脚本顶层代码 ─────────────────────────────\n{}", ctx.finish_body())
+        } else {
+            ctx.finish()
+        })
     }
 
     /// 从 NameToIndexHashTable 里按槽号找变量名（大作用域用）。
@@ -1066,6 +1085,18 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             }
         }
 
+        // 脚本/模块顶层：V8 只在脚本顶层发 `DeclareGlobals`。
+        // 这类函数的语句必须铺在文件里执行，否则模块级代码（类定义、require、初始化）永不运行。
+        let inline_body = instrs.iter().any(|i| {
+            let b = i.name.split('.').next().unwrap_or(&i.name);
+            if b != "CallRuntime" && b != "CallJSRuntime" {
+                return false;
+            }
+            // `CallRuntime [DeclareGlobals], …`：id 在操作数里，按名字表判定
+            matches!(i.operands.first(), Some(Operand::RuntimeId(v))
+                if d.table.runtime_names.get(*v as usize).map(|n| n == "DeclareGlobals").unwrap_or(false))
+        });
+
         Ok(FnCtx {
             d,
             sfi,
@@ -1080,6 +1111,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             acc_stored: false,
             acc_stored_reg: None,
             last_line: String::new(),
+            body: String::new(),
+            inline_body,
             last_ctx_slot: None,
             slot_aliases,
             out: String::new(),
@@ -1142,6 +1175,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// 主流程：函数签名 + 语句体。
     fn run(&mut self) -> Result<(), String> {
+        // 脚本/模块顶层：不包 function 外壳，直接出语句（原样铺在文件里才会执行）
+        if self.inline_body {
+            self.declare_locals();
+            self.emit_range(0, self.instrs.len())?;
+            self.body = std::mem::take(&mut self.out);
+            return Ok(());
+        }
         // 函数种类：按出现的 opcode 判定（比枚举稳）
         self.is_async = self.instrs.iter().any(|i| i.name.starts_with("Await"));
         self.is_generator = self.instrs.iter().any(|i| i.name.starts_with("SuspendGenerator"));
@@ -1191,11 +1231,17 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             self.out.push_str("}\n");
         }
         self.out.push('\n');
+        self.body = self.out.clone();
         Ok(())
     }
 
     fn finish(self) -> String {
         self.out
+    }
+
+    /// 只取函数体（脚本/模块顶层代码要原样铺在文件里，而不是包成函数）。
+    fn finish_body(&self) -> String {
+        self.body.clone()
     }
 
     fn fn_name(&self) -> String {
@@ -1309,7 +1355,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             "FalseValue" | "false_value" => Expr::Bool(false),
             "EmptyString" | "empty_string" => Expr::Str(String::new()),
             _ if raw.starts_with("String:") => Expr::Str(n.to_string()),
-            _ if is_ident(n) => Expr::Ident(n.to_string()),
+            // 只有真正的 JS 全局才能当裸标识符：V8 内部根（EmptySlowElementDictionary、
+            // EmptyFixedArray…）直接输出会 ReferenceError（模块体现在会真的执行，暴露了出来）
+            _ if is_ident(n) && is_js_global(n) => Expr::Ident(n.to_string()),
+            _ if is_ident(n) => Expr::Ident(format!("/* root: {n} */ undefined")),
             _ => Expr::Str(n.to_string()),
         }
     }
@@ -3060,6 +3109,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
             // ── 控制流终结 ──
             "Return" => {
+                // 模块/脚本顶层被我们铺成普通语句：顶层的 `return` 在脚本里非法，
+                // 而它只是 V8 脚本体的收尾 → 不输出。
+                if self.inline_body {
+                    self.acc = None;
+                    return;
+                }
                 let e = self.acc.clone().unwrap_or(Expr::Undefined);
                 if matches!(e, Expr::Undefined) {
                     self.line("return;");
@@ -3280,7 +3335,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             return Expr::Ident("__context".to_string());
         }
         if s == "<closure>" {
-            return Expr::Ident(sanitize_var(&self.fn_name()));
+            // 脚本体被铺平后没有 `_anon` 这个名字 → 匿名的落到已声明的 __anonymous
+            let n = self.fn_name();
+            return Expr::Ident(if n.trim().is_empty() {
+                "__anonymous".to_string()
+            } else {
+                sanitize_var(&n)
+            });
         }
         if let Some(rest) = s.strip_prefix('a') {
             if let Ok(n) = rest.parse::<i32>() {
@@ -3605,6 +3666,29 @@ pub fn link_flat_functions(text: String) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// 该名字是不是可以直接写成裸标识符的 JS 全局（其余 V8 根只作注释）。
+fn is_js_global(n: &str) -> bool {
+    matches!(
+        n,
+        "Object" | "Function" | "Array" | "Number" | "parseFloat" | "parseInt" | "Infinity"
+            | "NaN" | "undefined" | "Boolean" | "String" | "Symbol" | "Date" | "Promise"
+            | "RegExp" | "Error" | "AggregateError" | "EvalError" | "RangeError"
+            | "ReferenceError" | "SyntaxError" | "TypeError" | "URIError" | "globalThis"
+            | "JSON" | "Math" | "Intl" | "ArrayBuffer" | "SharedArrayBuffer" | "Atomics"
+            | "Uint8Array" | "Int8Array" | "Uint16Array" | "Int16Array" | "Uint32Array"
+            | "Int32Array" | "Float32Array" | "Float64Array" | "Uint8ClampedArray"
+            | "BigInt" | "BigInt64Array" | "BigUint64Array" | "Map" | "Set" | "WeakMap"
+            | "WeakSet" | "WeakRef" | "FinalizationRegistry" | "DataView" | "Proxy"
+            | "Reflect" | "decodeURI" | "decodeURIComponent" | "encodeURI"
+            | "encodeURIComponent" | "escape" | "unescape" | "isFinite" | "isNaN"
+            | "eval" | "structuredClone" | "queueMicrotask" | "process" | "Buffer"
+            | "URL" | "URLSearchParams" | "TextEncoder" | "TextDecoder" | "AbortController"
+            | "AbortSignal" | "Event" | "EventTarget" | "MessageChannel" | "MessagePort"
+            | "console" | "setTimeout" | "setInterval" | "clearTimeout" | "clearInterval"
+            | "setImmediate" | "clearImmediate" | "require" | "module" | "exports"
+    )
 }
 
 /// 文本里是否引用了寄存器 `rN`（词边界匹配，`r1` 不会命中 `r10`）。
