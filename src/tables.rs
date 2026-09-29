@@ -43,6 +43,11 @@ pub struct VersionTable {
     /// roots.h 根数组顺序（index → 名字）
     #[serde(default)]
     pub roots: Vec<String>,
+    /// 根索引校准：某些版本（如 13.6）的 roots 列表里有一整块生成型条目没能提取，
+    /// 导致序号整体偏移。查表时若"回退这么多"正好落在一个 String: 条目上就采用它。
+    /// 13.6 的取值由实测校准得到：序列化引用 index 849 → 本表 593 的 String:target。
+    #[serde(default)]
+    pub roots_shift: u32,
     /// Runtime::FunctionId 顺序名表（index → name）
     #[serde(default)]
     pub runtime_names: Vec<String>,
@@ -217,6 +222,24 @@ fn manifest() -> &'static Option<Manifest> {
 fn table_map() -> &'static HashMap<&'static str, &'static str> {
     static T: OnceLock<HashMap<&'static str, &'static str>> = OnceLock::new();
     T.get_or_init(|| EMBEDDED_TABLE_FILES.iter().copied().collect())
+}
+
+
+impl VersionTable {
+    /// 根索引 → 名字，带**自校验校准**：某些版本的 roots 列表缺了一整块生成型条目
+    /// （13.x 起），序号整体偏移。若"回退 roots_shift"后正好落在 String: 条目上就采用它，
+    /// 否则按原索引查（低位的非字符串根不受影响）。
+    pub fn root_name(&self, i: usize) -> Option<&str> {
+        let shift = self.roots_shift as usize;
+        if shift > 0 && i >= shift {
+            if let Some(n) = self.roots.get(i - shift) {
+                if n.starts_with("String:") {
+                    return Some(n);
+                }
+            }
+        }
+        self.roots.get(i).map(|s| s.as_str())
+    }
 }
 
 /// 全部内嵌表（老族哈希与 9.4+ 不同，识别不出来时逐个试解析）。

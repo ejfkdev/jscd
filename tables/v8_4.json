@@ -2293,6 +2293,7 @@
   "ConstructStubInvokeDeoptPCOffset",
   "InterpreterEntryReturnPCOffset"
  ],
+ "roots_shift": 0,
  "runtime_names": [
   "DebugBreakOnBytecode",
   "LoadLookupSlotForCall",

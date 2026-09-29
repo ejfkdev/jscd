@@ -90,7 +90,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
       if (r13 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r13);
       }
-      if (r13["/* root: error_stack_symbol */ undefined"]) break;
+      if (r13.done) break;
       r13 = r13.value;
       r8 = false;
       r0 = r13;
@@ -108,8 +108,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
           if (r21 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r21);
           }
-          phi3 = r21["/* root: error_stack_symbol */ undefined"];
-          if (!r21["/* root: error_stack_symbol */ undefined"]) {
+          phi3 = r21.done;
+          if (!r21.done) {
             r21 = r21.value;
             r16 = false;
             phi3 = r21;
@@ -129,8 +129,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
           if (r21 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r21);
           }
-          phi6 = r21["/* root: error_stack_symbol */ undefined"];
-          if (!r21["/* root: error_stack_symbol */ undefined"]) {
+          phi6 = r21.done;
+          if (!r21.done) {
             r21 = r21.value;
             r16 = false;
             phi6 = r21;
@@ -151,9 +151,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         if (!r16) {
           r22 = __context;
           try {
-            if (r15[""] != null) {
-              r23 = r15[""];
-              phi7 = r15[""]();
+            if (r15.return != null) {
+              r23 = r15.return;
+              phi7 = r15.return();
               if (phi7 === undefined) {
                 r24 = phi7;
                 r22 = __runtime.ThrowIteratorResultNotAnObject(r24);
@@ -197,9 +197,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     if (!r8) {
       r13 = __context;
       try {
-        if (r7[""] != null) {
-          r14 = r7[""];
-          phi9 = r7[""]();
+        if (r7.return != null) {
+          r14 = r7.return;
+          phi9 = r7.return();
           if (phi9 === undefined) {
             r15 = phi9;
             r13 = __runtime.ThrowIteratorResultNotAnObject(r15);

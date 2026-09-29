@@ -73,9 +73,9 @@ function _anon_0(a0) {
 let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, phi12, phi13, phi14, phi15, phi16, phi17, phi18, phi19, phi20;
   r14 = Temporal;
   r14 = r14.PlainDateTime;
-  r13 = r14["/* root: CallableTaskMap */ undefined"];
-  r15 = ({ ["8"]: "", ["275760"]: "" });
-  maxCases = r14["/* root: CallableTaskMap */ undefined"](r15);
+  r13 = r14.from;
+  r15 = ({ year: 275760, month: 9 });
+  maxCases = r14.from(r15);
   __ctx_ctx4 = /* ?unknown(9) */ undefined;
   r15 = __ctx.ctx4;
   r14 = r15[Symbol.iterator]();
@@ -91,7 +91,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       if (r20 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r20);
       }
-      if (r20["/* root: error_stack_symbol */ undefined"]) break;
+      if (r20.done) break;
       r20 = r20.value;
       r15 = false;
       r0 = r20;
@@ -109,8 +109,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           if (r28 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r28);
           }
-          phi3 = r28["/* root: error_stack_symbol */ undefined"];
-          if (!r28["/* root: error_stack_symbol */ undefined"]) {
+          phi3 = r28.done;
+          if (!r28.done) {
             r28 = r28.value;
             r23 = false;
             phi3 = r28;
@@ -130,8 +130,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           if (r28 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r28);
           }
-          phi6 = r28["/* root: error_stack_symbol */ undefined"];
-          if (!r28["/* root: error_stack_symbol */ undefined"]) {
+          phi6 = r28.done;
+          if (!r28.done) {
             r28 = r28.value;
             r23 = false;
             phi6 = r28;
@@ -152,9 +152,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         if (!r23) {
           r29 = __context;
           try {
-            if (r22[""] != null) {
-              r30 = r22[""];
-              phi7 = r22[""]();
+            if (r22.return != null) {
+              r30 = r22.return;
+              phi7 = r22.return();
               if (phi7 === undefined) {
                 r31 = phi7;
                 r29 = __runtime.ThrowIteratorResultNotAnObject(r31);
@@ -214,9 +214,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
     if (!r15) {
       r20 = __context;
       try {
-        if (r14[""] != null) {
-          r21 = r14[""];
-          phi9 = r14[""]();
+        if (r14.return != null) {
+          r21 = r14.return;
+          phi9 = r14.return();
           if (phi9 === undefined) {
             r22 = phi9;
             r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
@@ -233,9 +233,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
     }
     r14 = Temporal;
     r14 = r14.PlainDateTime;
-    r13 = r14["/* root: CallableTaskMap */ undefined"];
-    r15 = ({ ["8"]: "", ["-271821"]: "", ["4"]: "years" });
-    minCases = r14["/* root: CallableTaskMap */ undefined"](r15);
+    r13 = r14.from;
+    r15 = ({ year: -271821, month: 4, day: 19 });
+    minCases = r14.from(r15);
     __ctx_ctx6 = /* ?unknown(80) */ undefined;
     r2 = undefined;
     r15 = __ctx.ctx6;
@@ -252,7 +252,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
         if (r20 === undefined) {
           phi10 = __runtime.ThrowIteratorResultNotAnObject(r20);
         }
-        if (r20["/* root: error_stack_symbol */ undefined"]) break;
+        if (r20.done) break;
         r20 = r20.value;
         r15 = false;
         r1 = r20;
@@ -270,8 +270,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
             if (r28 === undefined) {
               phi12 = __runtime.ThrowIteratorResultNotAnObject(r28);
             }
-            phi13 = r28["/* root: error_stack_symbol */ undefined"];
-            if (!r28["/* root: error_stack_symbol */ undefined"]) {
+            phi13 = r28.done;
+            if (!r28.done) {
               r28 = r28.value;
               r23 = false;
               phi13 = r28;
@@ -291,8 +291,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
             if (r28 === undefined) {
               phi15 = __runtime.ThrowIteratorResultNotAnObject(r28);
             }
-            phi16 = r28["/* root: error_stack_symbol */ undefined"];
-            if (!r28["/* root: error_stack_symbol */ undefined"]) {
+            phi16 = r28.done;
+            if (!r28.done) {
               r28 = r28.value;
               r23 = false;
               phi16 = r28;
@@ -313,9 +313,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
           if (!r23) {
             r29 = __context;
             try {
-              if (r22[""] != null) {
-                r30 = r22[""];
-                phi17 = r22[""]();
+              if (r22.return != null) {
+                r30 = r22.return;
+                phi17 = r22.return();
                 if (phi17 === undefined) {
                   r31 = phi17;
                   r29 = __runtime.ThrowIteratorResultNotAnObject(r31);
@@ -375,9 +375,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       if (!r15) {
         r20 = __context;
         try {
-          if (r14[""] != null) {
-            r21 = r14[""];
-            phi19 = r14[""]();
+          if (r14.return != null) {
+            r21 = r14.return;
+            phi19 = r14.return();
             if (phi19 === undefined) {
               r22 = phi19;
               r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
@@ -395,9 +395,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9, phi10, phi11, ph
       }
     }
   }
-  if (r14[""] != null) {
-    r21 = r14[""];
-    phi20 = r14[""]();
+  if (r14.return != null) {
+    r21 = r14.return;
+    phi20 = r14.return();
     if (phi20 === undefined) {
       r22 = phi20;
       r20 = __runtime.ThrowIteratorResultNotAnObject(r22);

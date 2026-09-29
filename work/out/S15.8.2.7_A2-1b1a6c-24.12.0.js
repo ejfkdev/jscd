@@ -66,15 +66,15 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["hoursInDay"];
+r1 = ["cardinal"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-hoursInDay = 0;
-r2 = Symbol_split;
+cardinal = 0;
+r2 = assert;
 r1 = r2.sameValue;
 r4 = Math;
 r3 = r4["<ro0_61416>"];
-r5 = hoursInDay;
+r5 = cardinal;
 r3 = r4["<ro0_61416>"](r5);
 r4 = 1;
 r5 = "Math.cos(+0) must return 1";

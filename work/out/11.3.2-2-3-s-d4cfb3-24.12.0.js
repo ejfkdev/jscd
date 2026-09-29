@@ -79,7 +79,7 @@ function testcase(a0) {
   r0[r2] = 7;
   r2 = 1;
   r0[r2] = --r0[r2];
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.sameValue;
   r3 = r0[1];
   r4 = 6;

@@ -66,15 +66,15 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["getPrototypeOf", "function () { [native code] }", "foo"];
+r1 = ["configurable", "function () { [native code] }", "foo"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-getPrototypeOf = {  };
+configurable = {  };
 function_______native_code___ = function_______native_code___;
-r1 = getPrototypeOf;
+r1 = configurable;
 /* createwithcontext */
 /* TODO StaLookupSlot [6], #0 */
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.sameValue;
 r3 = (function_______native_code___);
 r3 = r3();

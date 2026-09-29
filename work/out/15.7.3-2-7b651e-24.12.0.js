@@ -66,17 +66,17 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["global"];
+r1 = ["value"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r2 = _anon;
-r1 = r2["/* root: BreakPointInfoMap */ undefined"];
-r3 = _anon;
-global = r2["/* root: BreakPointInfoMap */ undefined"](r3);
-r2 = Symbol_split;
+r2 = Object;
+r1 = r2.getPrototypeOf;
+r3 = Number;
+value = r2.getPrototypeOf(r3);
+r2 = assert;
 r1 = r2.sameValue;
-r3 = global;
-r4 = ___root__CallbackTaskMap____undefined;
+r3 = value;
+r4 = Function;
 r4 = r4.prototype;
-r5 = "global";
+r5 = "value";
 r0 = r1.call(r2-r5);

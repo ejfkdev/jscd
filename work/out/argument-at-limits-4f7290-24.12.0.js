@@ -71,7 +71,7 @@ let phi0, phi1, phi2, phi3;
   r13 = Temporal;
   r13 = r13.ZonedDateTime;
   r14 = /* BigIntMap(8) */ undefined;
-  r15 = "";
+  r15 = "UTC";
   __ctx_ctx3 = new r13(r14, r15);
   r15 = /* ?unknown(9) */ undefined;
   r14 = r15[Symbol.iterator]();
@@ -87,7 +87,7 @@ let phi0, phi1, phi2, phi3;
       if (r20 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r20);
       }
-      if (r20["/* root: error_stack_symbol */ undefined"]) break;
+      if (r20.done) break;
       r20 = r20.value;
       r15 = false;
       r0 = r20;
@@ -140,9 +140,9 @@ let phi0, phi1, phi2, phi3;
     if (!r15) {
       r20 = __context;
       try {
-        if (r14[""] != null) {
-          r21 = r14[""];
-          phi1 = r14[""]();
+        if (r14.return != null) {
+          r21 = r14.return;
+          phi1 = r14.return();
           if (phi1 === undefined) {
             r22 = phi1;
             r20 = __runtime.ThrowIteratorResultNotAnObject(r22);
@@ -164,7 +164,7 @@ let phi0, phi1, phi2, phi3;
     r13 = Temporal;
     r13 = r13.ZonedDateTime;
     r14 = -/* BigIntMap(26) */ undefined;
-    r15 = "";
+    r15 = "UTC";
     __ctx_ctx4 = new r13(r14, r15);
     r2 = undefined;
     r15 = /* ?unknown(27) */ undefined;
@@ -181,7 +181,7 @@ let phi0, phi1, phi2, phi3;
         if (r20 === undefined) {
           phi2 = __runtime.ThrowIteratorResultNotAnObject(r20);
         }
-        if (r20["/* root: error_stack_symbol */ undefined"]) break;
+        if (r20.done) break;
         r20 = r20.value;
         r15 = false;
         r1 = r20;
@@ -231,9 +231,9 @@ let phi0, phi1, phi2, phi3;
       if (!r15) {
         r20 = __context;
         try {
-          if (r14[""] != null) {
-            r21 = r14[""];
-            phi3 = r14[""]();
+          if (r14.return != null) {
+            r21 = r14.return;
+            phi3 = r14.return();
             if (phi3 === undefined) {
               r22 = phi3;
               r20 = __runtime.ThrowIteratorResultNotAnObject(r22);

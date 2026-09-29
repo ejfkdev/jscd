@@ -70,7 +70,7 @@ r1 = ["nextArgumentsLength", "syncIterator"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 r1 = /* root: EmptyObjectBoilerplateDescription */ undefined;
-r3 = _anon;
+r3 = Symbol;
 r2 = r3.iterator;
 r1[r2] = _anon_8;
 r2 = "";
@@ -137,7 +137,7 @@ let phi0, phi1, phi2, phi3;
         if (r13 === undefined) {
           phi3 = __runtime.ThrowIteratorResultNotAnObject(r12);
         }
-        if (r12["/* root: error_stack_symbol */ undefined"]) break;
+        if (r12.done) break;
         r12 = r12.value;
         r7 = false;
         r1 = r12;
@@ -153,9 +153,9 @@ let phi0, phi1, phi2, phi3;
       if (!r7) {
         r12 = __context;
         try {
-          if (r6[""] != null) {
-            r13 = r6[""];
-            r15 = r6[""]();
+          if (r6.return != null) {
+            r13 = r6.return;
+            r15 = r6.return();
             r14 = r0;
             /* generator state: SuspendGenerator */
             /* generator state: ResumeGenerator */
@@ -182,7 +182,7 @@ let phi0, phi1, phi2, phi3;
       if (r8 === 0) {
         if (__ctx.ctx0 !== undefined) throw __ctx.ctx0; // rethrow（仅当有挂起异常）
       }
-      r6 = Symbol_split;
+      r6 = assert;
       r5 = r6.sameValue;
       r7 = nextArgumentsLength;
       r8 = 0;

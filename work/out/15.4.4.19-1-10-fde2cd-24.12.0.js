@@ -74,14 +74,14 @@ r1[""] = 1;
 r1 = Math;
 r2 = 0;
 r1[r2] = 1;
-r2 = Symbol_iterator;
+r2 = Array;
 r2 = r2.prototype;
 r2 = r2.map;
 r1 = r2.call;
 r3 = Math;
 r4 = callbackfn;
 testResult = r2.call(r3, r4);
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.sameValue;
 r3 = testResult;
 r3 = r3[0];
@@ -92,9 +92,9 @@ r0 = r1.call(r2-r5);
 function callbackfn(a0, a1, a2) {
   let r0, r1, r2;
   r0 = "[object Math]";
-  r2 = _anon;
+  r2 = Object;
   r2 = r2.prototype;
-  r2 = r2[""];
+  r2 = r2.toString;
   r1 = r2.call;
   return r0 === r2.call(a2);
 }

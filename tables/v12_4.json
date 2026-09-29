@@ -2526,6 +2526,7 @@
   "Tuple2Map",
   "WasmExceptionTagMap"
  ],
+ "roots_shift": 0,
  "runtime_names": [
   "DebugBreakOnBytecode",
   "LoadLookupSlotForCall",

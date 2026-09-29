@@ -69,14 +69,14 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
 let t0;
   r1 = verifyNotConfigurable;
-  r2 = _anon;
+  r2 = Number;
   r3 = "<ro0_55656>";
   t0 = r1(r2, r3);
   r1 = __context;
   try {
-    r3 = Symbol_split;
+    r3 = assert;
     r2 = r3.sameValue;
-    r4 = _anon;
+    r4 = Number;
     delete r4["<ro0_55656>"];
     r4 = undefined;
     r5 = false;

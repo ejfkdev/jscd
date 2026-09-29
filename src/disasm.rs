@@ -130,6 +130,7 @@ impl<'a> Disassembler<'a> {
     /// name_or_scope_info 为 String 直接用；为 ScopeInfo 时读 FunctionName
     /// （function_variable_info.name），空则回落 inferred_function_name。
     pub fn sfi_name(&self, id: ObjId) -> String {
+        let slot = self.sfi_name_slot();
         let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, self.sfi_name_slot()) else {
             return String::new();
         };
@@ -158,7 +159,7 @@ impl<'a> Disassembler<'a> {
                 }
             }
             Ref::Root(i) => {
-                let n = self.table.roots.get(i).cloned().unwrap_or_default();
+                let n = self.table.root_name(i).unwrap_or_default().to_string();
                 n.strip_prefix("String:").map(str::to_string).unwrap_or_default()
             }
             _ => String::new(),
@@ -466,7 +467,7 @@ impl<'a> Disassembler<'a> {
                 let _ = writeln!(out, "{label} (size = {len})");
             }
             Some(Ref::Root(i)) => {
-                let n = self.table.roots.get(i).cloned().unwrap_or_default();
+                let n = self.table.root_name(i).unwrap_or_default().to_string();
                 if n.contains("empty_byte_array") || n.contains("EmptyByteArray") {
                     let _ = writeln!(out, "{label} (size = 0)");
                 } else {
@@ -780,8 +781,8 @@ pub fn name_of_ref(cache: &CodeCache<'_>, table: &VersionTable, r: Ref) -> Optio
                 None
             }
         }
-        Ref::Root(i) => table.roots.get(i).map(|n| {
-            match n.as_str() {
+        Ref::Root(i) => table.root_name(i).map(|n| {
+            match n {
                 // 这些 root 作为"名字"出现时应为空（CamelName 形态来自 roots.h 列表）
                 "empty_string" | "EmptyString" | "undefined_value" | "UndefinedValue"
                 | "uninitialized_value" | "UninitializedValue" | "the_hole_value"

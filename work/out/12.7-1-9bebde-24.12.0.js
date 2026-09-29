@@ -77,7 +77,7 @@ while (true) {
   Generator = ++Generator;
   continue;
 }
-r2 = Symbol_split;
+r2 = assert;
 r1 = r2.sameValue;
 r3 = sum;
 r4 = 0;

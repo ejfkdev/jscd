@@ -89,7 +89,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
       if (r20 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r20);
       }
-      if (r20["/* root: error_stack_symbol */ undefined"]) break;
+      if (r20.done) break;
       r20 = r20.value;
       r15 = false;
       r0 = r20;
@@ -107,8 +107,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
           if (r28 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r28);
           }
-          phi3 = r28["/* root: error_stack_symbol */ undefined"];
-          if (!r28["/* root: error_stack_symbol */ undefined"]) {
+          phi3 = r28.done;
+          if (!r28.done) {
             r28 = r28.value;
             r23 = false;
             phi3 = r28;
@@ -128,8 +128,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
           if (r28 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r28);
           }
-          phi6 = r28["/* root: error_stack_symbol */ undefined"];
-          if (!r28["/* root: error_stack_symbol */ undefined"]) {
+          phi6 = r28.done;
+          if (!r28.done) {
             r28 = r28.value;
             r23 = false;
             phi6 = r28;
@@ -150,9 +150,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
         if (!r23) {
           r29 = __context;
           try {
-            if (r22[""] != null) {
-              r30 = r22[""];
-              phi7 = r22[""]();
+            if (r22.return != null) {
+              r30 = r22.return;
+              phi7 = r22.return();
               if (phi7 === undefined) {
                 r31 = phi7;
                 r29 = __runtime.ThrowIteratorResultNotAnObject(r31);
@@ -171,13 +171,13 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
           phi8 = r18;
         } else {
           r21 = maxCases;
-          r20 = r21.stackTraceLimit;
-          r12 = r21.stackTraceLimit(r10);
-          r21 = Symbol_split;
+          r20 = r21.add;
+          r12 = r21.add(r10);
+          r21 = assert;
           r20 = r21.sameValue;
-          r22 = r12[""];
-          r24 = "";
-          r22 = r12[""](r24);
+          r22 = r12.total;
+          r24 = "seconds";
+          r22 = r12.total(r24);
           r23 = 9007199254740992;
           r24 = "operation succeeds with ";
           r24 = r24 + r11;
@@ -208,9 +208,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7, phi8, phi9;
     if (!r15) {
       r20 = __context;
       try {
-        if (r14[""] != null) {
-          r21 = r14[""];
-          phi9 = r14[""]();
+        if (r14.return != null) {
+          r21 = r14.return;
+          phi9 = r14.return();
           if (phi9 === undefined) {
             r22 = phi9;
             r20 = __runtime.ThrowIteratorResultNotAnObject(r22);

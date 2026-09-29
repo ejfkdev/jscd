@@ -66,28 +66,28 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5, r6, r7;
-r1 = ["hoursInDay", "push"];
+r1 = ["cardinal", "push"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-hoursInDay = [];
-r1 = hoursInDay;
+cardinal = [];
+r1 = cardinal;
 r1 = r1[""];
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#1: x = []; x.length === 0. Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[""];
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r2 = 0;
 r1[r2] = 0;
-r2 = hoursInDay;
+r2 = cardinal;
 r1 = r2.push;
 r3 = true;
-r4 = _anon;
+r4 = Number;
 r4 = r4["<ro0_55728>"];
-r5 = "";
+r5 = "NaN";
 r6 = "dateFromFields";
 r7 = 0;
 push = r1.call(r2-r7);
@@ -98,68 +98,68 @@ if (r1 !== 6) {
   r2 = r2 + push;
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[0];
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#3: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[0] === 0. Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[0];
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[1];
 if (r1 !== true) {
   r1 = Test262Error;
   r2 = "#4: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[1] === true. Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[1];
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[2];
-r2 = _anon;
+r2 = Number;
 if (r1 !== r2["<ro0_55728>"]) {
   r1 = Test262Error;
   r2 = "#5: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[2] === Number.POSITIVE_INFINITY. Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[2];
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[3];
-if (r1 !== "") {
+if (r1 !== "NaN") {
   r1 = Test262Error;
   r2 = "#6: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[3] === \"NaN\". Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[3];
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[4];
 if (r1 !== "dateFromFields") {
   r1 = Test262Error;
   r2 = "#7: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[4] === \"1\". Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[4];
   throw new r1(r2);
 }
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[5];
 if (r1 !== 0) {
   r1 = Test262Error;
   r2 = "#8: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x[5] === -1. Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[5];
   throw new r1(r2);
 }
 r0 = undefined;
-r1 = hoursInDay;
+r1 = cardinal;
 r1 = r1[""];
 if (r1 !== 6) {
   r1 = Test262Error;
   r2 = "#9: x = []; x[0] = 0; x.push(true, Number.POSITIVE_INFINITY, \"NaN\", \"1\", -1); x.length === 6. Actual: ";
-  r3 = hoursInDay;
+  r3 = cardinal;
   r2 = r2 + r3[""];
   throw new r1(r2);
 }

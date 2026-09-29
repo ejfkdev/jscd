@@ -62,8 +62,8 @@ impl Ty {
         match self {
             Ty::Pending => Cow::Borrowed("?pending"),
             Ty::Unknown => Cow::Borrowed("?unknown"),
-            Ty::Root(i) => match table.roots.get(*i as usize) {
-                Some(n) => Cow::Borrowed(n.as_str()),
+            Ty::Root(i) => match table.root_name(*i as usize) {
+                Some(n) => Cow::Borrowed(n),
                 None => Cow::Owned(format!("root#{i}")),
             },
             Ty::MapObj(it) => Cow::Owned(format!("Map(instance_type={it})")),
@@ -774,7 +774,7 @@ fn classify(objects: &mut [Object], table: &VersionTable, _ts: usize) {
     for obj in objects.iter() {
         let mut ty = match obj.slots.first().and_then(|s| s.value.as_ref()) {
             Some(Ref::Root(i)) => {
-                let name = table.roots.get(i).map(|s| s.as_str()).unwrap_or("");
+                let name = table.root_name(i).unwrap_or("");
                 if name.ends_with("Map") {
                     Ty::Root(i as u16)
                 } else if name.starts_with("String:") {
@@ -788,7 +788,7 @@ fn classify(objects: &mut [Object], table: &VersionTable, _ts: usize) {
             _ => Ty::Unknown,
         };
         if let Ty::Root(i) = ty {
-            let name = table.roots.get(i as usize).map(|s| s.as_str()).unwrap_or("");
+            let name = table.root_name(i as usize).unwrap_or("");
             if name.contains("String") {
                 ty = Ty::Str(if name.contains("OneByte") {
                     StrKind::OneByte

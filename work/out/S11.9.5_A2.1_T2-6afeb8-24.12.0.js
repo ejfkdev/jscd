@@ -69,10 +69,10 @@ function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = __context;
   try {
-    r2 = hoursInDay;
+    r2 = cardinal;
     r2 = Test262Error;
     r3 = "#1.1: x !== 1 throw ReferenceError. Actual: ";
-    r4 = hoursInDay;
+    r4 = cardinal;
     r3 = r3 + r4 !== 1;
     throw new r2(r3);
   } catch (e) {

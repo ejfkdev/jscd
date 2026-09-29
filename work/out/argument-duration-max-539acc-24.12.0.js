@@ -89,7 +89,7 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
       if (r20 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r20);
       }
-      if (r20["/* root: error_stack_symbol */ undefined"]) break;
+      if (r20.done) break;
       r20 = r20.value;
       r15 = false;
       r0 = r20;
@@ -107,8 +107,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
           if (r28 === undefined) {
             phi2 = __runtime.ThrowIteratorResultNotAnObject(r28);
           }
-          phi3 = r28["/* root: error_stack_symbol */ undefined"];
-          if (!r28["/* root: error_stack_symbol */ undefined"]) {
+          phi3 = r28.done;
+          if (!r28.done) {
             r28 = r28.value;
             r23 = false;
             phi3 = r28;
@@ -128,8 +128,8 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
           if (r28 === undefined) {
             phi5 = __runtime.ThrowIteratorResultNotAnObject(r28);
           }
-          phi6 = r28["/* root: error_stack_symbol */ undefined"];
-          if (!r28["/* root: error_stack_symbol */ undefined"]) {
+          phi6 = r28.done;
+          if (!r28.done) {
             r28 = r28.value;
             r23 = false;
             phi6 = r28;
@@ -160,9 +160,9 @@ let phi0, phi1, phi2, phi3, phi4, phi5, phi6, phi7;
     if (!r15) {
       r20 = __context;
       try {
-        if (r14[""] != null) {
-          r21 = r14[""];
-          phi7 = r14[""]();
+        if (r14.return != null) {
+          r21 = r14.return;
+          phi7 = r14.return();
           if (phi7 === undefined) {
             r22 = phi7;
             r20 = __runtime.ThrowIteratorResultNotAnObject(r22);

@@ -66,19 +66,19 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4;
-r1 = ["hoursInDay", "arr"];
+r1 = ["cardinal", "arr"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-hoursInDay = /* ?unknown(7) */ undefined;
-r2 = hoursInDay;
+cardinal = /* ?unknown(7) */ undefined;
+r2 = cardinal;
 r1 = r2.slice;
 r3 = 0;
 r4 = 3;
 arr = r2.slice(r3, r4);
 r1 = arr;
-r2 = _anon;
+r2 = Object;
 r2 = r2.prototype;
-r1.getClass = r2[""];
+r1.getClass = r2.toString;
 r2 = arr;
 r1 = r2.getClass;
 r1 = r2.getClass();

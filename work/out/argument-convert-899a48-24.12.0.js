@@ -95,7 +95,7 @@ let phi0, phi1, phi2, phi3;
   r5.call(r6-r10);
   r5 = /* ?unknown(17) */ undefined;
   r6 = 0;
-  r7 = _anon;
+  r7 = Symbol;
   r5[r6] = r7();
   r7();
   r6 = r5[Symbol.iterator]();
@@ -111,22 +111,22 @@ let phi0, phi1, phi2, phi3;
       if (r12 === undefined) {
         phi0 = __runtime.ThrowIteratorResultNotAnObject(r12);
       }
-      if (r12["/* root: error_stack_symbol */ undefined"]) break;
+      if (r12.done) break;
       r12 = r12.value;
       r7 = false;
       r0 = r12;
       /* createblockcontext */
       invalid = r0;
-      r14 = Symbol_split;
+      r14 = assert;
       r13 = r14.throws;
-      r15 = _anon;
+      r15 = TypeError;
       r16 = _anon_23;
       r17 = "month ";
       r17 = r17 + typeof invalid;
       r13.call(r14-r17);
-      r14 = Symbol_split;
+      r14 = assert;
       r13 = r14.throws;
-      r15 = _anon;
+      r15 = TypeError;
       r16 = _anon_33;
       r17 = "day ";
       r17 = r17 + typeof invalid;
@@ -142,9 +142,9 @@ let phi0, phi1, phi2, phi3;
     if (!r7) {
       r13 = __context;
       try {
-        if (r6[""] != null) {
-          r14 = r6[""];
-          phi1 = r6[""]();
+        if (r6.return != null) {
+          r14 = r6.return;
+          phi1 = r6.return();
           if (phi1 === undefined) {
             r15 = phi1;
             r13 = __runtime.ThrowIteratorResultNotAnObject(r15);
@@ -180,22 +180,22 @@ let phi0, phi1, phi2, phi3;
         if (r12 === undefined) {
           phi2 = __runtime.ThrowIteratorResultNotAnObject(r12);
         }
-        if (r12["/* root: error_stack_symbol */ undefined"]) break;
+        if (r12.done) break;
         r12 = r12.value;
         r7 = false;
         r1 = r12;
         /* createblockcontext */
         invalid = r1;
-        r14 = Symbol_split;
+        r14 = assert;
         r13 = r14.throws;
-        r15 = _anon;
+        r15 = RangeError;
         r16 = _anon_40;
         r17 = "month ";
         r17 = r17 + typeof invalid;
         r13.call(r14-r17);
-        r14 = Symbol_split;
+        r14 = assert;
         r13 = r14.throws;
-        r15 = _anon;
+        r15 = RangeError;
         r16 = _anon_48;
         r17 = "day ";
         r17 = r17 + typeof invalid;
@@ -211,9 +211,9 @@ let phi0, phi1, phi2, phi3;
       if (!r7) {
         r13 = __context;
         try {
-          if (r6[""] != null) {
-            r14 = r6[""];
-            phi3 = r6[""]();
+          if (r6.return != null) {
+            r14 = r6.return;
+            phi3 = r6.return();
             if (phi3 === undefined) {
               r15 = phi3;
               r13 = __runtime.ThrowIteratorResultNotAnObject(r15);

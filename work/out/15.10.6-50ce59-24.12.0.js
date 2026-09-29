@@ -66,19 +66,19 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2, r3, r4, r5;
-r1 = ["growable"];
+r1 = ["approximatelySign"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-r2 = _anon;
+r2 = Object;
 r2 = r2.prototype;
-r2 = r2[""];
+r2 = r2.toString;
 r1 = r2.call;
-r3 = _anon;
+r3 = RegExp;
 r3 = r3.prototype;
-growable = r2.call(r3);
-r2 = Symbol_split;
+approximatelySign = r2.call(r3);
+r2 = assert;
 r1 = r2.sameValue;
-r3 = growable;
-r4 = "";
-r5 = "growable";
+r3 = approximatelySign;
+r4 = "[object Object]";
+r5 = "approximatelySign";
 r0 = r1.call(r2-r5);

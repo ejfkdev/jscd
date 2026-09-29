@@ -115,9 +115,9 @@ function _anon_0(a0) {
   r13 = 0;
   r14 = "constrain when ambiguous result (overflow options supplied)";
   r1.call(r2-r14);
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.throws;
-  r3 = _anon;
+  r3 = RangeError;
   r4 = _anon_17;
   r5 = "throw when ambiguous result with reject";
   r0 = r1.call(r2-r5);

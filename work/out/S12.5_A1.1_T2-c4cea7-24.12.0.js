@@ -110,7 +110,7 @@ if (r1 != 5) {
   r2 = "#5.2: else branch don`t execute";
   throw new r1(r2);
 }
-if (_anon) {
+if (NaN) {
   r1 = Test262Error;
   r2 = "#6.1: NaN in expression is evaluated to false ";
   throw new r1(r2);

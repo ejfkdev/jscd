@@ -75,13 +75,13 @@ function _anon_0(a0) {
     r0 = undefined;
     while (true) {
       if (!(r2 < r1)) break;
-      r4 = Symbol_split;
+      r4 = assert;
       r3 = r4.sameValue;
-      r5 = r2[""];
-      r5 = r2[""](r1);
-      r7 = _anon;
+      r5 = r2.toString;
+      r5 = r2.toString(r1);
+      r7 = String;
       r6 = r7.fromCharCode;
-      r8 = _anon;
+      r8 = Number;
       r9 = r2 + /* BigIntMap(7) */ undefined;
       r8 = r8(r9);
       r6 = r7.fromCharCode(r8);

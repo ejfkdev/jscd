@@ -70,14 +70,14 @@ function _anon_0(a0) {
 let phi0, phi1;
   r1 = __context;
   try {
-    phi0 = hoursInDay;
-    if (hoursInDay) {
+    phi0 = cardinal;
+    if (cardinal) {
       phi0 = true;
     }
     r2 = Test262Error;
     r3 = "#1.1: x && true throw ReferenceError. Actual: ";
-    phi1 = hoursInDay;
-    if (hoursInDay) {
+    phi1 = cardinal;
+    if (cardinal) {
       phi1 = true;
     }
     r3 = r3 + phi1;

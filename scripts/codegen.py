@@ -906,6 +906,10 @@ def main():
                 "legacy": extract_legacy_tags(src_t),
             },
             "roots": extract_roots(src_r, src_s, src_d) if src_r else [],
+            # 根索引校准：13.x 起只读根列表里插进了一整块"生成型"条目（torque 产生，
+            # 源码里看不到），我们的提取拿不到 → 之后所有序号偏移。实测 13.6 偏移 256
+            # （序列化引用 849 = 本表 593 的 String:target）。查询端自校验使用。
+            "roots_shift": 256 if maj >= 13 else 0,
             "frame": extract_frame_layout(src_frame),
             "scope_info": extract_scope_info(src_scope, src_globals),
             "parameter_count": extract_parameter_count_semantics(src_ba_inl),

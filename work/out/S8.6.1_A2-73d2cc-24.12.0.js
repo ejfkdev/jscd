@@ -71,7 +71,7 @@ r1 = ["count"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
 count = 0;
-if (_anon == null) {
+if (Number == null) {
   r0 = undefined;
   r1 = count;
   if (r1 > 0) {
@@ -81,7 +81,7 @@ if (_anon == null) {
     throw new r1(r2);
   }
 }
-r1 = _anon;
+r1 = Number;
 __forin_unsupported();
 __forin_unsupported();
 r5 = 0;
@@ -90,7 +90,7 @@ while (true) {
   phi0 = __forin_unsupported();
   phi1 = phi0;
   if (phi0 !== undefined) {
-    global = phi0;
+    value = phi0;
     count = ++count;
     phi1 = ++count;
   }

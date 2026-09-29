@@ -75,7 +75,7 @@ r0 = r1();
 function testcase(a0) {
   let r0, r1, r2, r3, r4;
   r0 = 1;
-  r2 = Symbol_split;
+  r2 = assert;
   r1 = r2.sameValue;
   r4 = 1;
   r2.sameValue(r0, r4);

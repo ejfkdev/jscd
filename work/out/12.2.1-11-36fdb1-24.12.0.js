@@ -65,7 +65,7 @@ function __anonymous() {}
 var __uncompiled = new Proxy({}, { get: () => function () {} });
 
 // 共享绑定（闭包捕获的变量被摊平为文件级 var，便于直接运行）
-var promise_forwarding_handler_symbol, SuppressedError;
+var this_, _new_target, arguments_;
 
 // ── 模块/脚本顶层代码 ─────────────────────────────
 let r0, r1, r2;
@@ -78,9 +78,9 @@ r0 = r1();
 function EmptyWeakArrayList(a0) {
   let r0, r1, r2, r3, r4, r5, r6, r7, r8, r9;
   /* enter function scope */
-  promise_forwarding_handler_symbol = this;
+  _new_target = this;
   __ctx_ctx5 = arguments;
-  SuppressedError = r0;
+  arguments_ = r0;
   /* TODO LdaLookupGlobalSlot [1], [0], [1] */
   r2 = __unknown_LdaLookupGlobalSlot;
   r3 = "var arguments;";

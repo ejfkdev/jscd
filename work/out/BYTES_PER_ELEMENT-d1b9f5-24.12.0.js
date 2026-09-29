@@ -68,7 +68,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4;
   r1 = verifyProperty;
-  r2 = throw_;
+  r2 = BigInt64Array;
   r2 = r2.prototype;
   r3 = "BYTES_PER_ELEMENT";
   r4 = ({ value: 8, writable: false, enumerable: false });

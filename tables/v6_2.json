@@ -1540,6 +1540,7 @@
   "direct": false
  },
  "roots": [],
+ "roots_shift": 0,
  "runtime_names": [],
  "scope_info": null,
  "serialization": {

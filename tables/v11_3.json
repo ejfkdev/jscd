@@ -2467,6 +2467,7 @@
   "WasmExceptionTagMap",
   "WasmIndirectFunctionTableMap"
  ],
+ "roots_shift": 0,
  "runtime_names": [
   "DebugBreakOnBytecode",
   "LoadLookupSlotForCall",

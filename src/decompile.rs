@@ -1404,7 +1404,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// roots 表项 → 表达式（统一去前缀与字面量化）。
     fn root_value(&self, i: usize) -> Expr {
-        let raw = self.d.table.roots.get(i).map(|s| s.as_str()).unwrap_or("");
+        let raw = self.d.table.root_name(i).unwrap_or("");
         let n = raw
             .strip_prefix("String:")
             .or_else(|| raw.strip_prefix("Symbol:"))

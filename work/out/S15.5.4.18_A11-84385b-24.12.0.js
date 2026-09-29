@@ -68,7 +68,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 function _anon_0(a0) {
   let r0, r1, r2, r3, r4, r5;
 let phi0;
-  r2 = _anon;
+  r2 = String;
   r2 = r2.prototype;
   r2 = r2.toUpperCase;
   r1 = r2["<ro0_54152>"];
@@ -77,7 +77,7 @@ let phi0;
   if (!phi0) {
     r1 = Test262Error;
     r2 = "#1: String.prototype.toUpperCase.hasOwnProperty(\"length\") return true. Actual: ";
-    r4 = _anon;
+    r4 = String;
     r4 = r4.prototype;
     r4 = r4.toUpperCase;
     r3 = r4["<ro0_54152>"];
@@ -86,14 +86,14 @@ let phi0;
     throw new r1(r2);
   }
   r0 = undefined;
-  r1 = _anon;
+  r1 = String;
   r1 = r1.prototype;
   r1 = r1.toUpperCase;
   r1 = r1[""];
   if (r1 !== 0) {
     r1 = Test262Error;
     r2 = "#2: String.prototype.toUpperCase.length === 0. Actual: ";
-    r3 = _anon;
+    r3 = String;
     r3 = r3.prototype;
     r3 = r3.toUpperCase;
     r2 = r2 + r3[""];

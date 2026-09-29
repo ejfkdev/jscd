@@ -69,11 +69,11 @@ let r0, r1, r2, r3;
 r1 = ["base", "exponents", "Generator"];
 r2 = __anonymous;
 __runtime.DeclareGlobals(r1, r2);
-base = ___root__RegExpDataWrapperMap____undefined;
+base = Infinity;
 exponents = [];
 r1 = exponents;
 r2 = 3;
-r1[r2] = ___root__RegExpDataWrapperMap____undefined;
+r1[r2] = Infinity;
 r1 = exponents;
 r2 = 2;
 r1[r2] = 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000;
@@ -93,7 +93,7 @@ while (true) {
   r1 = base;
   r2 = exponents;
   r1 = r1 ** r2[Generator];
-  if (r1 !== ___root__RegExpDataWrapperMap____undefined) {
+  if (r1 !== Infinity) {
     r1 = Test262Error;
     r2 = "<computed>";
     r2 = r2 + base;
