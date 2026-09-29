@@ -1,0 +1,27 @@
+[package]
+name = "jscd"
+description = "Reverse bytenode-compiled .jsc (V8 code cache) back to JavaScript"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.71"
+license = "MIT"
+keywords = ["bytenode", "v8", "jsc", "reverse-engineering", "bytecode"]
+categories = ["command-line-utilities"]
+
+[lib]
+name = "jscd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "jscd"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+brotli = "8"
+
+[profile.release]
+lto = true
+codegen-units = 1

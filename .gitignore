@@ -1,0 +1,13 @@
+# 构建产物
+/target
+
+# 本地测试工作区：语料生成、对拍输出、临时样本，一律不入库
+/workspace/
+
+# macOS
+.DS_Store
+
+# 编辑器
+/.zcode/
+.idea/
+.vscode/
