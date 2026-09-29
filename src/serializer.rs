@@ -84,11 +84,14 @@ impl Ty {
             .strip_prefix("String:")
             .or_else(|| n.strip_prefix("Symbol:"))
             .unwrap_or(&n);
+        // 13.x 起同类对象有 trusted 空间变体（TrustedByteArray / TrustedFixedArray…），
+        // 名字是 "TrustedXxxMap" —— 这两种写法都算匹配。
+        let untrusted = base.strip_prefix("Trusted").unwrap_or(base);
+        let stem = |s: &str| s.strip_suffix("Map").unwrap_or(s).to_string();
         base == want
-            || base
-                .strip_suffix("Map")
-                .map(|s| s == want)
-                .unwrap_or(false)
+            || stem(base) == want
+            || untrusted == want
+            || stem(untrusted) == want
     }
 
     pub fn is_string(&self, table: &VersionTable) -> bool {
