@@ -1646,10 +1646,19 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 self.acc = Some(Expr::Ident(self.context_name(slot)));
             }
             "StaCurrentContextSlot" | "StaCurrentScriptContextSlot" | "StaContextSlot" | "StaScriptContextSlot" => {
-                let slot = idx_num(&arg(0)).unwrap_or(0);
-                let name = self.context_name(slot);
+                // 取正确的槽号：StaContextSlot 形如 <context>, [slot], [depth] → 取倒数第二个
+                let slot = if base.starts_with("StaContextSlot") || base.starts_with("StaScriptContextSlot") {
+                    let i = ops.len().saturating_sub(2);
+                    idx_num(&arg(i)).unwrap_or(0)
+                } else {
+                    idx_num(&arg(0)).unwrap_or(0)
+                };
                 let value = self.acc.clone().unwrap_or(Expr::Undefined);
-                let name = sanitize_var(&name);
+                // `LdaTheHole; StaContextSlot` 是 V8 的上下文槽初始化（内部簿记）→ 不输出噪声
+                if matches!(value, Expr::Hole) {
+                    return;
+                }
+                let name = sanitize_var(&self.context_name(slot));
                 self.line(&format!("{name} = {};", value.render()));
             }
             "PushContext" => {
@@ -1667,14 +1676,15 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 });
             }
             "LdaKeyedProperty" | "GetEnumeratedKeyedProperty" | "GetKeyedProperty" => {
-                let obj = self.reg_expr(&arg(0));
+                // V8 语义：对象在寄存器操作数、键在累加器 → obj[key]
+                let obj = self.operand_expr(&arg(0));
                 let key = self.acc.clone().unwrap_or(Expr::Hole);
                 self.acc = Some(Expr::Member {
                     obj: Box::new(obj),
-                    key: Key::Str(format!("/*keyed*/ {}", key.render())),
+                    key: Key::Computed(Box::new(key)),
                 });
             }
-            "StaNamedProperty" | "SetNamedProperty" | "StaNamedOwnProperty" | "DefineNamedOwnProperty" | "DefineNamedOwnProperty" => {
+            "StaNamedProperty" | "SetNamedProperty" | "StaNamedOwnProperty" | "DefineNamedOwnProperty" => {
                 let obj = self.reg_expr(&arg(0));
                 let key = idx_num(&arg(1)).map(|i| self.prop_key(i)).unwrap_or(Key::Str("?".into()));
                 let value = self.acc.clone().unwrap_or(Expr::Undefined);

@@ -380,12 +380,23 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
             continue;
         }
         let name = d.sfi_name(id);
-        let Some(prop) = name.strip_prefix("p_") else {
+        // 名字编码：p_<ident> 或 p_hex_<hex(utf8)>
+        let prop: String = if let Some(hex) = name.strip_prefix("p_hex_") {
+            let bytes: Option<Vec<u8>> = (0..hex.len() / 2)
+                .map(|i| u8::from_str_radix(hex.get(i * 2..i * 2 + 2)?, 16).ok())
+                .collect();
+            match bytes {
+                Some(b) => String::from_utf8_lossy(&b).into_owned(),
+                None => continue,
+            }
+        } else if let Some(p) = name.strip_prefix("p_") {
+            if p.is_empty() {
+                continue;
+            }
+            p.to_string()
+        } else {
             continue;
         };
-        if prop.is_empty() || !prop.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-            continue;
-        }
         let Some(bca) = d.sfi_function_data_slots().iter().find_map(|slot| {
             match cache.slot_at(id, *slot) {
                 Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(b)))
@@ -412,7 +423,7 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
             if let Some(crate::serializer::Elem::Ref(crate::serializer::Ref::RoRef(c, o))) =
                 cache.array_elem(pool, i)
             {
-                entries.insert(format!("{c}/{o}"), serde_json::Value::String(prop.to_string()));
+                entries.insert(format!("{c}/{o}"), serde_json::Value::String(prop.clone()));
             }
         }
     }
