@@ -3842,6 +3842,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     sanitize_var(&raw)
                 };
                 self.line(&format!("{name} = {};", value.render()));
+                // 存回去之后 acc 就是该槽的值本身：不能留 `++n` 这类表达式文本 ——
+                // 后续 Return 会照着再渲染一遍，副作用做两次（`return ++n` 又自增一次，
+                // closure fixture 因此算成 6 而不是 3）
+                self.acc = Some(Expr::Ident(name));
                 self.acc_consumed();
             }
             "PushContext" => {
