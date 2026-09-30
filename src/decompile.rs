@@ -512,6 +512,13 @@ pub fn read_scope<'a>(
         off += n * ts;
     }
 
+    if std::env::var("JSCD_DBG_SCOPE").is_ok() {
+        eprintln!(
+            "[scope] id={scope_id} len={} base={base} flags={flags:#x} scope_type={} param={param_count} clc={n} varpart_off={names_off} inlined={inlined}",
+            cache.array_len(scope_id),
+            flags & 0xF
+        );
+    }
     let mut scope = Scope {
         locals_table,
         param_count,
