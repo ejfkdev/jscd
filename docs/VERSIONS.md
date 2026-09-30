@@ -165,6 +165,15 @@ kNumberOfFixedRawData = 0x20, kNumberOfFixedRepeat = 0x10, kNumberOfHotObjects =
 | acc 隐式使用表 | ≤9.x 写 `AccumulatorUse::kRead/kWrite/kReadWrite`（短名），10.x+ 写 `ImplicitRegisterUse::kReadAccumulator…` | codegen 只认长名 → 老族 acc 表全空 → `flush_acc_before` 把 keyed 访问的键当死值丢掉（`a[0]` → `a[undefined]`） |
 | TDZ 检查 | `LdaContextSlot …; ThrowReferenceErrorIfHole` 紧跟 context 读取 | context 变量已摊平成文件级 `var`（初值 undefined）→ 这条检查必然误报，需跳过 |
 
+### 10.6 node8/10（6.2/6.8）进度
+
+| 项目 | 状态 |
+| --- | --- |
+| 版本识别 | ✅ `version_hash` 精确命中（6.2.414.78 / 6.8.275.32） |
+| 标签表 | ✅ `enum Where` 抓取（kNewObject=0x00、kBackref=0x08、kRootArray=**0x05**、kAttachedReference=0x0d、kHotObject=**0x38**、kRootArrayConstants=0x80、skip 变体 0x10/0x58/0xa0） |
+| 头/payload 起点 | ✅ 40 字节头 + 预留表 + 桩键，起点 `align8(40 + 4*(num_res+num_stub_keys))` |
+| 对象解码 | ❌ 6.x 只有 **5 个空间**（`STATIC_ASSERT(5 == kNumberOfSpaces)`）、`HowToCode/WhereToPoint` 位打包（`kBackrefWithSkip`/`kHotObjectWithSkip`/`kRootArrayConstantsWithSkip`），要在 legacy 分支里按版本分派；bytecode 表/帧常量也还是 C++ 形态（非 .tq） |
+
 ### 10.4 运行旧版 Node（本机实操）
 
 ```bash
