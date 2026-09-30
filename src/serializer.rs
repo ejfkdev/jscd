@@ -222,6 +222,8 @@ struct Walker<'a> {
     objects: Vec<Object>,
     hot: HotRing,
     pending: std::collections::HashMap<u32, Vec<(ObjId, usize)>>,
+    /// 版本表（调试打印 root 名字用）
+    table: &'a VersionTable,
 }
 
 type R<T> = Result<T, String>;
@@ -275,6 +277,19 @@ impl<'a> Walker<'a> {
         self.pos += n;
         Ok(r)
     }
+    /// 对象「类型」的粗略描述（= 它 map 槽所指 root 的名字）：给 `JSCD_DBG_REF`
+    /// 的对拍用 —— V8 轨迹里每个回引/hot 都带目标类型，比只对索引强得多
+    /// （hot 环错位就是这么被抓出来的）。
+    fn obj_map_name(&self, id: ObjId) -> String {
+        match self.objects.get(id).and_then(|o| o.slots.first()) {
+            Some(Slot { value: SlotValue::Ref(Ref::Root(k)), .. }) => {
+                self.table.root_name(*k).unwrap_or("?").to_string()
+            }
+            Some(Slot { value: SlotValue::Ref(Ref::Object(m)), .. }) => format!("map#{m}"),
+            _ => "?".into(),
+        }
+    }
+
     #[inline]
     fn push_slot(&mut self, id: ObjId, index: usize, value: SlotValue) {
         if let Ok(want) = std::env::var("JSCD_DBG_OBJSLOTS") {
@@ -326,7 +341,7 @@ impl<'a> Walker<'a> {
         let t_root = self.opt_tag("kRootArray");
         let t_rootc = self.opt_tag("kRootArrayConstants").unwrap_or(0x40);
         let desc = match r.as_ref().unwrap() {
-            SlotValue::Ref(Ref::Object(id)) => format!("obj={id}"),
+            SlotValue::Ref(Ref::Object(id)) => format!("obj={id} ty={}", self.obj_map_name(*id)),
             SlotValue::Ref(Ref::Root(ix)) => format!("root={ix}"),
             SlotValue::Ref(Ref::RoRef(c, o)) => format!("ro=({c},{o})"),
             SlotValue::Ref(Ref::Attached(i)) => format!("attached={i}"),
@@ -869,6 +884,7 @@ pub fn parse_with<'a>(
         objects: Vec::new(),
         hot: HotRing::default(),
         pending: std::collections::HashMap::new(),
+        table,
     };
     let b = w.byte()?;
     let t_new = w.tag("kNewObject")?;
