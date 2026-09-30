@@ -903,7 +903,7 @@ def extract_scope_info(text, globals_text):
     m_pos = text.find("position_info")
     m_names = text.find("context_local_names")
     early_position = m_pos != -1 and m_names != -1 and m_pos < m_names
-    return {
+    out = {
         "flags_smi": flags_smi,
         "position_info_early": early_position,
         "max_inlined_names": max_inlined if has_table else (1 << 30),
@@ -912,6 +912,53 @@ def extract_scope_info(text, globals_text):
         "receiver_bits": [7, 8],
         "has_inferred_bit": 14,
     }
+    # ≤8.x（torque 之前）用链式位域声明，位置与 9.x+ 不同（7.8 没有
+    # has_saved_class_variable_index → function_variable 落在 11..12 而非 12..13，
+    # 照 9.x 的定值读会把函数名/形参名读成相邻槽的垃圾）。
+    bits = scope_flags_bits_from_chain(text)
+    if bits:
+        out.update(bits)
+    return out
+
+
+def scope_flags_bits_from_chain(text):
+    """从 `using XField = PrevField::Next<Type, bits>;` 链推导 ScopeFlags 各字段起点。"""
+    # 链头是 `using ScopeTypeField = BitField<ScopeType, 0, 4>;`（带显式起点），
+    # 其余是 `using XField = PrevField::Next<Type, width>;`（多行声明要折叠空白）。
+    flat = re.sub(r"\s+", " ", text)
+    nxt = re.compile(r"using (\w+?)Field = (\w+?)Field::Next<([\w:]+), (\d+)>;")
+    head = re.compile(r"using (\w+?)Field = BitField<([\w:]+), (\d+), (\d+)>;")
+    succ = {prev: (name, int(width)) for name, prev, _ty, width in nxt.findall(flat)}
+    heads = head.findall(flat)
+    if not heads:
+        return None
+    order, cur, bit = [], heads[0][0], int(heads[0][2])
+    seen = set()
+    while cur and cur not in seen:
+        seen.add(cur)
+        if cur in succ:
+            name, width = succ[cur]
+            order.append((cur, bit, width))
+            bit += width
+            cur = name
+        else:
+            break
+    starts = {name: (start, width) for name, start, width in order}
+    if "ReceiverVariable" not in starts or "FunctionVariable" not in starts:
+        return None
+    rs, rw = starts["ReceiverVariable"]
+    fs, fw = starts["FunctionVariable"]
+    out = {
+        "receiver_bits": [rs, rs + rw - 1],
+        "function_variable_bits": [fs, fs + fw - 1],
+    }
+    if "HasInferredFunctionName" in starts:
+        out["has_inferred_bit"] = starts["HasInferredFunctionName"][0]
+    if "HasSavedClassVariableIndex" in starts:
+        out["saved_class_bit"] = starts["HasSavedClassVariableIndex"][0]
+    else:
+        out["saved_class_bit"] = 30   # 该版本没有这个位（8.x 之前）→ 永不置位
+    return out
 
 
 def extract_hash_fold(tag):

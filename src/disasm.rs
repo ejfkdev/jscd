@@ -274,7 +274,19 @@ impl<'a> Disassembler<'a> {
             let vpart = if legacy { 5 } else { 4 };
             let mut cursor =
                 vpart + 2 * n as usize + has_saved as usize + has_receiver as usize;
-            let function_name = if function_var != 0 {
+            // V8 `ScopeInfo::HasFunctionName()`：function_variable 必须是
+            // CONTEXT(2)/STACK(1) 才算有名字；NONE(0) 与 **UNUSED(3)** 都表示没有。
+            // 只在**位域位置有版本证据**（表里 scope_info 是从该版本头文件提取的）时用这条
+            // 严格规则：7.x 的 ScopeFlags 是链式声明（`using XField = Prev::Next<T,n>;`），
+            // 我们的表里没有它的位域、默认值对 7.8 是错的，用严格规则会把函数名读没
+            // （node12 的 fixture 全变 target-missing）。
+            let strict_unused = self.table.scope_info.is_some();
+            let has_name_bits = if strict_unused {
+                matches!(function_var, 1 | 2)
+            } else {
+                function_var != 0
+            };
+            let function_name = if has_name_bits {
                 let slot = cursor;
                 cursor += 2;
                 Some(slot)
