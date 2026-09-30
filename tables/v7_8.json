@@ -1606,6 +1606,7 @@
   "ToLength",
   "ToObject"
  ],
+ "min_context_slots": 4,
  "operand_types": {
   "Flag8": {
    "scalable": false,
@@ -2732,7 +2733,21 @@
   "WasmNewMultiReturnFixedArray",
   "WasmNewMultiReturnJSArray"
  ],
- "scope_info": null,
+ "scope_info": {
+  "flags_smi": true,
+  "function_variable_bits": [
+   11,
+   12
+  ],
+  "has_inferred_bit": 13,
+  "max_inlined_names": 1073741824,
+  "position_info_early": false,
+  "receiver_bits": [
+   7,
+   8
+  ],
+  "saved_class_bit": 31
+ },
  "serialization": {
   "legacy": {
    "kDoubleAlignmentSentinel": 0,

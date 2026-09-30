@@ -249,7 +249,11 @@ impl<'a> Disassembler<'a> {
             || self.table.v8.starts_with('7')
             || self.table.v8.starts_with('6');
         let base = if legacy { 2 } else { 1 };
-        let flags = self.num_field(id, base, legacy || cfg.flags_smi).unwrap_or(0) as u64;
+        // 数值域的存储形态随版本变：7.8 及更早是 **Smi**（`set(kFlags, Smi::FromInt(v))`），
+        // 8.x 是裸 int32，9.x–12.x 又是 Smi，13.x 裸 int32 —— 有版本表就听表的
+        // （flags_smi），没有表（6.x 之前）再退回"老族=裸 int32"的老经验。
+        let flags_smi = if self.table.scope_info.is_some() { cfg.flags_smi } else { legacy };
+        let flags = self.num_field(id, base, flags_smi).unwrap_or(0) as u64;
 
         let has_saved = (flags >> cfg.saved_class_bit) & 1 == 1;
         let function_var = ((flags >> cfg.function_variable_bits[0])
@@ -268,7 +272,7 @@ impl<'a> Disassembler<'a> {
         }
         if !cfg.position_info_early {
             // 槽位 = (变量区起点) + 2n + saved + receiver；起点 ≤8.4 为 5、9.x–12.x 为 4
-            let Some(n) = self.num_field(id, base + 2, legacy || cfg.flags_smi) else {
+            let Some(n) = self.num_field(id, base + 2, flags_smi) else {
                 return (None, None);
             };
             let vpart = if legacy { 5 } else { 4 };

@@ -1539,6 +1539,7 @@
   "ToNumber",
   "ToObject"
  ],
+ "min_context_slots": 4,
  "operand_types": {
   "Flag8": {
    "scalable": false,
@@ -1611,7 +1612,21 @@
  "roots": [],
  "roots_shift": 0,
  "runtime_names": [],
- "scope_info": null,
+ "scope_info": {
+  "flags_smi": true,
+  "function_variable_bits": [
+   10,
+   11
+  ],
+  "has_inferred_bit": 12,
+  "max_inlined_names": 1073741824,
+  "position_info_early": false,
+  "receiver_bits": [
+   7,
+   8
+  ],
+  "saved_class_bit": 31
+ },
  "serialization": {
   "legacy": {
    "kAlignmentPrefix": 25,

@@ -69,8 +69,18 @@ pub struct VersionTable {
     /// parameter_count 语义（false = parameter_size 为字节数，true = 直接是计数）
     #[serde(default)]
     pub parameter_count: Option<ParameterCountCfg>,
+    /// `Context::MIN_CONTEXT_SLOTS`：context 里第一个**局部变量**的元素下标。
+    /// V8 ≤7.x 是 4（`[scope_info, previous, function, extension]` 之后才是变量），
+    /// 8.x 起改为 2（fixed-array-like 头）。不换算就会把 `StaCurrentContextSlot [4]`
+    /// 的 `n` 写成 `__ctx.ctx4`，而闭包里读它用的是名字 → 变量对不上（node12 closure）。
+    #[serde(default = "default_min_context_slots")]
+    pub min_context_slots: usize,
     #[serde(default)]
     pub serialization: SerializationCfg,
+}
+
+fn default_min_context_slots() -> usize {
+    2
 }
 
 impl VersionTable {

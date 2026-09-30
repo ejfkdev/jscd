@@ -682,6 +682,9 @@ struct FnCtx<'a, 'b> {
     /// 寄存器（下标 = V8 寄存器索引 >= 0）
     regs: Vec<Option<Expr>>,
     acc: Option<Expr>,
+    /// 上一条 / 当前指令的 base 名（TDZ 检查要回看前一条是不是 context 读取）
+    prev_base: String,
+    cur_base: String,
     /// acc 的当前值是否已落进寄存器（Star 后为真）→ 死 acc 无需重复求值
     acc_stored: bool,
     /// 落进的是哪个寄存器（物化 phi 时直接引用它，避免表达式在寄存器被改写后重算失真）
@@ -1062,7 +1065,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         for _ in 0..8 {
             let id = cur?;
             let scope = self.scope_by_id(id)?;
-            let idx = slot.saturating_sub(2);
+            let idx = slot.saturating_sub(self.table.min_context_slots);
             if let Some(n) = scope.context_locals.get(idx) {
                 if !n.is_empty() {
                     return Some(n.clone());
@@ -1270,6 +1273,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             scope,
             scope_id,
             regs: Vec::new(),
+            prev_base: String::new(),
+            cur_base: String::new(),
             acc: None,
             acc_stored: false,
             acc_stored_reg: None,
@@ -2004,7 +2009,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         // 块/catch 作用域优先（其 context 的槽 0 为该作用域的 ScopeInfo）
         if let Some(Some(sid)) = self.ctx_scopes.last().copied() {
             if let Some(s) = self.d.scope_by_id(sid) {
-                if let Some(n) = s.context_locals.get(slot.saturating_sub(2)) {
+                if let Some(n) = s.context_locals.get(slot.saturating_sub(self.d.table.min_context_slots)) {
                     if !n.is_empty() {
                         return sanitize_var(n);
                     }
@@ -3045,6 +3050,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let ins = self.instrs[i].clone();
             let base = ins.name.split('.').next().unwrap_or(&ins.name).to_string();
 
+            self.prev_base = std::mem::replace(&mut self.cur_base, base.clone());
             if std::env::var("JSCD_DBG_ACC").is_ok() {
                 eprintln!(
                     "[acc] i={i} @{} {} {:?} acc_before={:?}",
@@ -4556,6 +4562,22 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 ));
             }
             "ThrowReferenceErrorIfHole" => {
+                // V8 的形态：`LdaContextSlot/LdaCurrentContextSlot …; ThrowReferenceErrorIfHole`
+                // —— 紧跟 context 读取的这条是 TDZ 检查。我们把这些 context 变量
+                // 摊平成文件级 `var`（值由后续赋值给出），`var` 初始就是 undefined，
+                // 于是这条检查会**必然误报**（node12 的 closure 就死在
+                // `if (n === undefined) throw ...`）。跳过它：acc 只被读，不丢值。
+                let prev_is_ctx = matches!(
+                    self.prev_base.as_str(),
+                    "LdaContextSlot"
+                        | "LdaImmutableContextSlot"
+                        | "LdaScriptContextSlot"
+                        | "LdaCurrentContextSlot"
+                        | "LdaImmutableCurrentContextSlot"
+                );
+                if prev_is_ctx {
+                    return;
+                }
                 let name = idx_num(&arg(0))
                     .map(|i| match self.constant(i) {
                         Expr::Str(s) => s,
