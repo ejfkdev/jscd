@@ -277,10 +277,72 @@ impl<'a> Walker<'a> {
         self.objects[id].slots.push(Slot { index, value });
     }
 
+    /// 引用序列的逐条事件流（`JSCD_DBG_REF=1`）：与 V8 `--trace-serializer` 的
+    /// "Encoding …" 行一一对应，用来做序列级对拍。V8 的轨迹只为新对象/回引/热对象/root
+    /// 打印，其它（raw/repeat/对齐前缀）不打印 —— 这里多打印的部分比对脚本按类型过滤。
     fn parse_ref(&mut self, depth: usize) -> R<SlotValue> {
         if depth > 64 {
             return Err("ref recursion too deep".into());
         }
+        if std::env::var("JSCD_DBG_REF").is_err() {
+            return self.parse_ref_inner(depth);
+        }
+        let ref_pos = self.pos;
+        let b0 = self.data.get(ref_pos).copied().unwrap_or(0);
+        let t_new = self.opt_tag("kNewObject").unwrap_or(0);
+        let new_spaces = if self.legacy.is_some() { 6 } else { 0x08 };
+        let is_new = (t_new..t_new + new_spaces).contains(&b0);
+        if is_new {
+            // 行要在该对象的 map 引用之前打印 → 先手工解码 tag+size（不消费字节）。
+            let a0 = self.data.get(ref_pos + 1).copied().unwrap_or(0) as u32;
+            let a1 = self.data.get(ref_pos + 2).copied().unwrap_or(0) as u32;
+            let a2 = self.data.get(ref_pos + 3).copied().unwrap_or(0) as u32;
+            let a3 = self.data.get(ref_pos + 4).copied().unwrap_or(0) as u32;
+            let raw = a0 | (a1 << 8) | (a2 << 16) | (a3 << 24);
+            let bytes = (raw & 3) + 1;
+            let mask = 0xffff_ffffu32 >> (32 - (bytes << 3));
+            let words = (raw & mask) >> 2;
+            eprintln!("[ref] new pos={ref_pos} space={} words={words}", b0 - t_new);
+        }
+        let r = self.parse_ref_inner(depth);
+        match &r {
+            Err(e) => {
+                eprintln!("[ref] pos={ref_pos} ERR {e}");
+                return r;
+            }
+            Ok(_) if is_new => return r,
+            Ok(_) => {}
+        }
+        let t_backref = self.opt_tag("kBackref").unwrap_or(8);
+        let t_hot = self.opt_tag("kHotObject").unwrap_or(0x90);
+        let t_root = self.opt_tag("kRootArray");
+        let t_rootc = self.opt_tag("kRootArrayConstants").unwrap_or(0x40);
+        let desc = match r.as_ref().unwrap() {
+            SlotValue::Ref(Ref::Object(id)) => format!("obj={id}"),
+            SlotValue::Ref(Ref::Root(ix)) => format!("root={ix}"),
+            SlotValue::Ref(Ref::RoRef(c, o)) => format!("ro=({c},{o})"),
+            SlotValue::Ref(Ref::Attached(i)) => format!("attached={i}"),
+            SlotValue::Raw(_) => "raw".into(),
+            SlotValue::Repeat(n, _) => format!("repeat={n}"),
+            SlotValue::WeakRef(_) => "weak".into(),
+            SlotValue::ClearedWeak => "cleared".into(),
+            SlotValue::PendingRef(_) => "pending".into(),
+        };
+        if (t_backref..t_backref + 6).contains(&b0) {
+            eprintln!("[ref] backref pos={ref_pos} space={} {desc}", b0 - t_backref);
+        } else if (t_hot..t_hot + 8).contains(&b0) {
+            eprintln!("[ref] hot pos={ref_pos} i={} {desc}", b0 - t_hot);
+        } else if Some(b0) == t_root {
+            eprintln!("[ref] root pos={ref_pos} {desc}");
+        } else if (t_rootc..t_rootc + 32).contains(&b0) {
+            eprintln!("[ref] rootconst pos={ref_pos} i={} {desc}", b0 - t_rootc);
+        } else {
+            eprintln!("[ref] other pos={ref_pos} b={b0:#04x} {desc}");
+        }
+        r
+    }
+
+    fn parse_ref_inner(&mut self, depth: usize) -> R<SlotValue> {
         let b_raw = self.byte()?;
         // 老族（≤8.4）：只有 kNewObject / kBackref 这一对家族把空间编号压在低 3 位
         // （0x00..0x05 / 0x08..0x0d，见 serializer-common.h 的 UNUSED_BYTE_CODES），
@@ -300,6 +362,32 @@ impl<'a> Walker<'a> {
             }
             if (t_backref..t_backref + 6).contains(&b_raw) {
                 let space = (b_raw - t_backref) as u8;
+                // MAP(4)/LO(5)：V8 `PutBackReference` 只写一个序数
+                // （`case SnapshotSpace::kMap: PutInt(map_index)`、
+                //   `case kLargeObject: PutInt(large_object_index)`），
+                // 其余空间才写 (chunk_index, chunk_offset) 两个。
+                // 早先一律读两段 → 从这里开始整条流错位（大 payload 上表现为
+                // 若干 KB 之后撞上非法标签 0x98）。
+                if space == 4 || space == 5 {
+                    let index = self.putint()? as usize;
+                    match self.legacy.as_ref().and_then(|l| l.resolve_ordinal(space, index)) {
+                        Some(id) => {
+                            self.hot.add(HotEntry::Object(id));
+                            return Ok(SlotValue::Ref(Ref::Object(id)));
+                        }
+                        None => {
+                            return Err(format!(
+                                "legacy {} backref index {index} out of range (have {})",
+                                if space == 4 { "map" } else { "large-object" },
+                                if space == 4 {
+                                    self.legacy.as_ref().map_or(0, |l| l.maps.len())
+                                } else {
+                                    self.legacy.as_ref().map_or(0, |l| l.large.len())
+                                }
+                            ));
+                        }
+                    }
+                }
                 let chunk = self.putint()?;
                 let offset = self.putint()?;
                 match self.legacy.as_ref().and_then(|l| l.resolve(space, chunk, offset)) {
@@ -567,6 +655,12 @@ struct LegacyAlloc {
     used: Vec<u32>,
     /// (space, chunk_index, offset) → 对象
     by_addr: std::collections::HashMap<(u8, u32, u32), ObjId>,
+    /// MAP 空间按**序数**编号（V8 `SerializerAllocator::AllocateMap` → `num_maps_++`，
+    /// 反序列化端 `allocated_maps_[map_index]`）。map 不在 chunk 模拟里。
+    maps: Vec<ObjId>,
+    /// LO 空间同样按序数编号（`AllocateLargeObject` → `seen_large_objects_index_++`，
+    /// 反序列化端 `deserialized_large_objects_[index]`）—— 大对象每个独占一份分配。
+    large: Vec<ObjId>,
     /// kAlignmentPrefix 提示的下一次对齐：V8 `AllocationAlignment` 枚举值
     /// （1 = kDoubleAligned、2 = kDoubleUnaligned），0 = 无
     align: u32,
@@ -617,6 +711,13 @@ impl LegacyAlloc {
     /// 之后每个对象的地址都偏（space2 在 1008 与 1136 之间就少了那个 128 字节的对象，
     /// backref 因此命不中）。
     fn allocate(&mut self, space: u8, size: u32, id: ObjId) -> Option<(u32, u32)> {
+        // MAP(4)/LO(5) 走序数编号，与 chunk 模拟无关，先记账（V8 里它们由
+        // AllocateMap / AllocateLargeObject 单独计数）。
+        if space == 4 {
+            self.maps.push(id);
+        } else if space == 5 {
+            self.large.push(id);
+        }
         let s = space as usize;
         if s >= self.cur.len() {
             return None;
@@ -649,6 +750,17 @@ impl LegacyAlloc {
         if s < self.cur.len() {
             self.cur[s] += 1;
             self.used[s] = 0;
+        }
+    }
+
+    /// MAP(4)/LO(5) 空间的 backref：V8 只写**一个序数**（`PutBackReference` 的
+    /// `kMap`/`kLargeObject` 分支各写 map_index / large_object_index），不是
+    /// (chunk, offset) 对。按分配序数取。
+    fn resolve_ordinal(&self, space: u8, index: usize) -> Option<ObjId> {
+        match space {
+            4 => self.maps.get(index).copied(),
+            5 => self.large.get(index).copied(),
+            _ => None,
         }
     }
 
