@@ -311,16 +311,30 @@ fn parse_cache<'a>(
         // magic/version/source/flag/num_reservations/payload_length/checksum → 对齐到 8）
         let legacy_family = table.serialization.legacy.contains_key("kSpaceMask");
         let (payload, reservations) = if legacy_family {
-            let num_res = u32::from_le_bytes(
-                data.get(16..20).and_then(|b| b.try_into().ok()).unwrap_or([0; 4]),
-            ) as usize;
+            // 预留表位置按版本取头字段偏移：7.8/8.4 是 num_res@16、表从 32 起；
+            // 6.2/6.8 是 num_res@20、num_stub_keys@24、表从 40 起，且表后还有
+            // `num_stub_keys` 个 4 字节桩键（早先按 7.8 的固定 16/32 读 6.x，
+            // num_res 读成 gpu features 之类的垃圾 → payload 起点远离真身）。
+            let hl = &table.header;
+            let rd = |off: Option<usize>| -> usize {
+                off.and_then(|o| data.get(o..o + 4))
+                    .and_then(|b| b.try_into().ok())
+                    .map(u32::from_le_bytes)
+                    .unwrap_or(0) as usize
+            };
+            let num_res = match hl.num_reservations {
+                Some(o) => rd(Some(o)),
+                None => rd(Some(16)),
+            };
+            let num_keys = rd(hl.num_stub_keys);
             let mut res = Vec::with_capacity(num_res);
             for i in 0..num_res {
-                let at = 32 + i * 4;
+                let at = hl.header_size + i * 4;
                 let v = data.get(at..at + 4).and_then(|b| b.try_into().ok()).unwrap_or([0; 4]);
                 res.push(u32::from_le_bytes(v));
             }
-            let start = (32 + num_res * 4 + 7) & !7;
+            let unaligned = hl.header_size + 4 * (num_res + num_keys);
+            let start = (unaligned + 7) & !7;
             (data.get(start..).unwrap_or(&[]), res)
         } else {
             (h.payload(data), Vec::new())

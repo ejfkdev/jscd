@@ -27,8 +27,14 @@ pub struct HeaderLayout {
     pub read_only_checksum: Option<usize>,
     pub payload_length: usize,
     pub checksum: usize,
-    /// 头部总字节数（payload 起始偏移）
+    /// 头部总字节数（payload 起始偏移，未计预留表/桩键）
     pub header_size: usize,
+    /// `kNumReservationsOffset`：预留表条数所在的头字段偏移（6.x/7.x/8.x = 20/16/16…）
+    #[serde(default)]
+    pub num_reservations: Option<usize>,
+    /// `kNumCodeStubKeysOffset`：桩键条数（6.x 专有；表/键都占 4 字节）
+    #[serde(default)]
+    pub num_stub_keys: Option<usize>,
 }
 
 impl Default for HeaderLayout {
@@ -42,6 +48,8 @@ impl Default for HeaderLayout {
             payload_length: 16,
             checksum: 20,
             header_size: 24,
+            num_reservations: None,
+            num_stub_keys: None,
         }
     }
 }

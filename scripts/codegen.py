@@ -123,6 +123,12 @@ def extract_legacy_tags(text):
     consts = dict(
         (k, int(v, 0)) for k, v in re.findall(r"static const int (k\w+)\s*=\s*(0x[0-9a-fA-F]+|\d+)\s*;", sect)
     )
+    # 6.x 把主标签放在 `enum Where { kNewObject = 0x00, … }`（还有 enum HowToCode/
+    # WhereToPoint 的位掩码常量）。不抓这一块时表里只有那些 static const int 的
+    # 次要常量 → 解析直接报 "table missing serialization tag kNewObject"。
+    for m in re.finditer(r"enum (Where|HowToCode|WhereToPoint)\s*\{(.*?)\}", sect, re.S):
+        for k, v in re.findall(r"(k\w+)\s*=\s*(0x[0-9a-fA-F]+|\d+)", m.group(2)):
+            consts.setdefault(k, int(v, 0))
     return consts or None
 
 
