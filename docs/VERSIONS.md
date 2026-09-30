@@ -115,10 +115,11 @@ flags 位域位置两代一致（saved=bit10、function_variable=bit12-13、infe
 | handler 表长度 | 高 32 位 | 高 32 位 | **低 32 位** |
 | SFI 名字来源 | 池字符串/根 | 同 | 常为只读堆引用（需 ro-map） |
 
-## 10. 旧族（V8 ≤ 8.x，Node 8–14）——待实现
+## 10. 旧族（V8 ≤ 8.x，Node 8–14）
 
 Node 12/14 的 `version_hash` 已能精确/爆破识别，表也已提取（`tables/v7_8.json`、`v8_4.json`），
-但**解码路径需要独立实现**（现代路径不适用）。已查明的差异：
+解码走独立路径（`LegacyAlloc` + `legacy` tag 表）。行为矩阵：node12 19/20 + 1（源码用了
+7.8 不支持的 `?.`）、node14 20/20；真实语料 440 份 0 语法错误、0 解析失败。已查明的差异：
 
 ### 10.1 tag 编码：与空间位打包
 
@@ -149,6 +150,20 @@ kNumberOfFixedRawData = 0x20, kNumberOfFixedRepeat = 0x10, kNumberOfHotObjects =
 - BytecodeArray 头偏移（6.x/7.x 的 `bytecode-array.h` 是 C++ 定义，非 .tq）
 - 解释器帧常量（6.x/7.x 的 `frame-constants.h` 结构不同）
 - SMI/指针宽度：Node 12 及更早在 x64 上无指针压缩（ts=8）；Node 8/10 同样
+
+### 10.5 语义差异（本轮逐条对拍 V8 源码，都是"读错就整段错位/丢名字"的坑）
+
+| 项目 | 7.8 / 8.4 实情 | 我们踩过的坑 |
+| --- | --- | --- |
+| backref 的 MAP/LO 空间 | `PutBackReference` 对 `kMap`/`kLargeObject` 只写**一个序数**（map_index / large_object_index），其余空间才写 (chunk_index, chunk_offset) | 一律读两段 varint → 第一个 MAP/LO 回引之后整条流错位（大 payload 上表现为若干 KB 后撞非法 tag 0x98 / 0xbc） |
+| hot 环写入点 | 只有 `PutRoot`（根数组分支）与 `PutBackReference` 会 `hot_objects_.Add`；**新对象不入环** | 解析 kNewObject 时多记一笔 → 之后每个 hot 索引错位（ScopeInfo 被读成别的 SFI，函数名全丢） |
+| 对象 size 单位 | `PutInt(size >> kObjectAlignmentBits)`，8.4 的 `kObjectAlignmentBits == kTaggedSizeLog2`（≠8） | 按 8 字节算 → 每个对象地址翻倍、backref 全不命中 |
+| `ScopeInfo::HasFunctionName()` | 8.4→13.x 全是 `NONE != FunctionVariableBits`：UNUSED(3) 只是"函数变量没用到"，槽位保留、值为 `kNoSharedNameSentinel`（Smi → 序列化成 raw） | 按"必须 STACK/CONTEXT"过滤 → 真名一起丢（closure 的 `target`） |
+| 数值域存储 | 7.8 及更早 **Smi**，8.x 裸 int32，9.x–12.x Smi，13.x 裸 int32 | 一律按老族=裸 int32 → 7.8 的 flags/param/clc 全读错 |
+| `Context::MIN_CONTEXT_SLOTS` | ≤7.x = **4**（`[scope_info, previous, function, extension]`），8.x 起 = 2 | 写死 2 → 7.8 的 `StaCurrentContextSlot [4]`（局部 0）被写成 `__ctx.ctx4`，与闭包里的 `n` 对不上 |
+| `GetIterator` | ≤7.x 的 `GetIteratorWithFeedback` 只 `LoadIC(receiver, @@iterator)`（**不调用**），调用是紧随其后的 `CallProperty0 <方法>, <receiver>`；8.x 起 builtin 连调用一起做 | 一律按"取方法并调用" → 7.8 把迭代器再当方法调一次（`rN.call is not a function`）。判据：GetIterator 的操作数 2 个=只取方法、3 个=会调用 |
+| acc 隐式使用表 | ≤9.x 写 `AccumulatorUse::kRead/kWrite/kReadWrite`（短名），10.x+ 写 `ImplicitRegisterUse::kReadAccumulator…` | codegen 只认长名 → 老族 acc 表全空 → `flush_acc_before` 把 keyed 访问的键当死值丢掉（`a[0]` → `a[undefined]`） |
+| TDZ 检查 | `LdaContextSlot …; ThrowReferenceErrorIfHole` 紧跟 context 读取 | context 变量已摊平成文件级 `var`（初值 undefined）→ 这条检查必然误报，需跳过 |
 
 ### 10.4 运行旧版 Node（本机实操）
 
