@@ -302,25 +302,24 @@ impl<'a> Walker<'a> {
                 let space = (b_raw - t_backref) as u8;
                 let chunk = self.putint()?;
                 let offset = self.putint()?;
-                let id = match self.legacy.as_ref().and_then(|l| l.resolve(space, chunk, offset)) {
-                    Some(id) => id,
-                    None => {
-                        if std::env::var("JSCD_DBG_LEGACY").is_ok() {
-                            let l = self.legacy.as_ref().unwrap();
-                            let mut lines: Vec<String> = l
-                                .trace
-                                .iter()
-                                .filter(|(s, _, off, _, _)| *s == space && *off <= offset + 64)
-                                .map(|(s, c, o, sz, id)| format!("s{s}c{c}@{o}+{sz}#{id}"))
-                                .collect();
-                            lines.dedup();
-                            eprintln!("[miss] ({space},{chunk},{offset}) 尾部分配: {:?}", lines.iter().rev().take(8).rev().collect::<Vec<_>>());
-                        }
-                        return Err(format!("legacy backref ({space},{chunk},{offset}) 未命中"));
+                match self.legacy.as_ref().and_then(|l| l.resolve(space, chunk, offset)) {
+                    Some(id) => {
+                        self.hot.add(HotEntry::Object(id));
+                        return Ok(SlotValue::Ref(Ref::Object(id)));
                     }
-                };
-                self.hot.add(HotEntry::Object(id));
-                return Ok(SlotValue::Ref(Ref::Object(id)));
+                    None => {
+                        // 老族里也有**只读堆引用**：RO 堆不在 payload 内（它来自 V8 快照），
+                        // 于是 V8 写的是 (space, chunk, offset) 形式的地址，这里的 offset 就是
+                        // RO 堆内的偏移 —— 与 `kReadOnlyHeapRef` 同一套 (chunk, offset) 编号。
+                        // 实测 node14 `branch`：V8 轨迹里是 `back reference to: String "small"/"big"`，
+                        // 而地址 0x…3c7861 / 0x…3c7639 相对 0x…3c0000 正是 30816 / 30264 ✓。
+                        // 这类引用交给 ro-map 解析（查不到时反编译器会留占位）。
+                        if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+                            eprintln!("[ro-ref] ({space},{chunk},{offset}) → 按只读堆引用处理");
+                        }
+                        return Ok(SlotValue::Ref(Ref::RoRef(chunk, offset)));
+                    }
+                }
             }
             // 老族专有：chunk 切换 / 对齐 / 延迟内容
             if Some(b_raw) == self.opt_tag("kNextChunk") {
