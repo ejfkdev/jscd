@@ -204,6 +204,27 @@ impl<'a> Disassembler<'a> {
     /// 13.x：    flags(u32) + padding | parameter_count | context_local_count |
     ///           position_info(2) | [module_count] | names[n] (n<75) | [hashtable] | infos[n] |
     ///           [saved] | [function_variable_info] | [inferred] | ...
+    /// ScopeInfo 数值域（Flags/ParameterCount/ContextLocalCount，各占一个 slot）。
+    ///
+    /// 存储形态随版本变：9.x–12.x 是 Smi（值在高 32 位），13.x 是裸 int32（低 32 位）。
+    /// ≤8.4 的 accessor 是 `FOR_EACH_SCOPE_INFO_NUMERIC_FIELD` 宏生成的
+    /// （scope-info.cc 里 `Smi::ToInt(get(...))`），codegen 没认出来、表里标了
+    /// `flags_smi: false` —— 实测读低 4 字节恒为 0，于是 flags/形参名全丢。
+    /// 这里自适应：低 4 字节为 0 而 Smi 半边非 0 → 说明其实是 Smi 存储。
+    fn num_field(&self, id: ObjId, slot: usize, flags_smi: bool) -> Option<u32> {
+        let raw = self
+            .cache
+            .raw_at(id, slot * self.layout.tagged_size, 4)
+            .map(|d| u32::from_le_bytes(d.try_into().unwrap()));
+        let smi = self.smi_slot(id, slot).map(|v| v as u32);
+        match (flags_smi, raw, smi) {
+            (true, _, Some(s)) => Some(s),
+            (false, Some(0), Some(s)) if s != 0 => Some(s),
+            (false, Some(r), _) => Some(r),
+            (_, _, s) => s.or(raw),
+        }
+    }
+
     fn scope_name_slots(&self, id: ObjId) -> (Option<usize>, Option<usize>) {
         let ts = self.layout.tagged_size;
         let cfg = self.table.scope_info.clone().unwrap_or(crate::tables::ScopeInfoLayout {
@@ -215,18 +236,20 @@ impl<'a> Disassembler<'a> {
             receiver_bits: [7, 8],
             has_inferred_bit: 14,
         });
-        let Some(flags_raw) = self.smi_slot(id, 1) else {
-            return (None, None);
-        };
-        // flags：Smi 编码（值在高 32 位）或裸 uint32（低 32 位）
-        let flags = if cfg.flags_smi {
-            flags_raw as u32
-        } else {
-            self.cache
-                .raw_at(id, ts, 4)
-                .map(|d| u32::from_le_bytes(d.try_into().unwrap()))
-                .unwrap_or(0)
-        } as u64;
+        // ScopeInfo 的数值域各占一个 slot：9.x–12.x 是 Smi（值在高 32 位），
+        // ≤8.4 与 13.x 是**裸 int32**（`FOR_EACH_SCOPE_INFO_NUMERIC_FIELD` 的
+        // `inline int name() const`）。原来一律按 Smi 读 —— 老族于是全都读不出来，
+        // `scope_name_slots` 直接返回 None，函数名/形参名全丢（node14 产物叫 `_anon_4`）。
+        // 数值域起点随版本变：
+        //   ≤8.4：ScopeInfo 是 FixedArray，头两格是 map+length → Flags 在**槽 2**、
+        //         ParameterCount 槽 3、ContextLocalCount 槽 4，变量区从**槽 5** 起
+        //         （实测 node14：槽 5 正是函数名 `String:target` 的根引用）。
+        //   9.x+ ：Flags 在槽 1（本代码长期验证过的路径）。
+        let legacy = self.table.v8.starts_with('8')
+            || self.table.v8.starts_with('7')
+            || self.table.v8.starts_with('6');
+        let base = if legacy { 2 } else { 1 };
+        let flags = self.num_field(id, base, legacy || cfg.flags_smi).unwrap_or(0) as u64;
 
         let has_saved = (flags >> cfg.saved_class_bit) & 1 == 1;
         let function_var = ((flags >> cfg.function_variable_bits[0])
@@ -237,12 +260,20 @@ impl<'a> Disassembler<'a> {
             & ((1 << (cfg.receiver_bits[1] - cfg.receiver_bits[0] + 1)) - 1)) as u32;
         let has_receiver = matches!(receiver_var, 1 | 2);
 
+        if std::env::var("JSCD_DBG_SFI").is_ok() {
+            eprintln!(
+                "[sfi]   id={id} flags={flags:#x} function_var={function_var} has_inferred={has_inferred} has_saved={has_saved} has_receiver={has_receiver} len={}",
+                self.cache.array_len(id)
+            );
+        }
         if !cfg.position_info_early {
-            // 9.x–12.x：槽位 = 4 + 2n + saved + receiver
-            let Some(n) = self.smi_slot(id, 3) else {
+            // 槽位 = (变量区起点) + 2n + saved + receiver；起点 ≤8.4 为 5、9.x–12.x 为 4
+            let Some(n) = self.num_field(id, base + 2, legacy || cfg.flags_smi) else {
                 return (None, None);
             };
-            let mut cursor = 4 + 2 * n as usize + has_saved as usize + has_receiver as usize;
+            let vpart = if legacy { 5 } else { 4 };
+            let mut cursor =
+                vpart + 2 * n as usize + has_saved as usize + has_receiver as usize;
             let function_name = if function_var != 0 {
                 let slot = cursor;
                 cursor += 2;

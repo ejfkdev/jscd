@@ -776,6 +776,19 @@ pub fn parse_with<'a>(
                 let before = w.pos;
                 let outcome: R<()> = (|| {
                     let Some(b) = w.peek() else { return Ok(()) };
+                    // 对齐前缀是循环内的一等条目（V8 `DeserializeDeferredObjects` 的
+                    // `case kAlignmentPrefix`）：要就地消费，不能交给 parse_ref ——
+                    // 那样会递归着把后面的 tag 当成"新建对象"，backref/size 全错位。
+                    if let Some(align) = w.opt_tag("kAlignmentPrefix") {
+                        if (align..align + 3).contains(&b) {
+                            let a = (b - align + 1) as u32;
+                            if let Some(l) = w.legacy.as_mut() {
+                                l.align = a;
+                            }
+                            w.byte()?;
+                            return Ok(());
+                        }
+                    }
                     let t_new = w.tag("kNewObject")?;
                     if legacy_tolerant && (t_new..t_new + 6).contains(&b) {
                         // 老族 deferred 条目：kNewObject+space + backref(2 ints) + size + 剩余槽
