@@ -4507,18 +4507,33 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 });
             }
             "GetIterator" | "GetAsyncIterator" => {
-                // V8: `GetIterator <object>, <slot>` —— 对象是寄存器操作数，结果写 acc
-                let e = self.reg_expr(&arg(0));
-                self.acc = Some(Expr::Call {
-                    // 注意用**计算键**：`obj[Symbol.iterator]()`；
-                    // `obj.Symbol.iterator` 是"名为 Symbol.iterator 的点属性"→ 取到 undefined
-                    callee: Box::new(Expr::Member {
-                        obj: Box::new(e),
-                        key: Key::Computed(Box::new(Expr::Ident("Symbol.iterator".into()))),
-                    }),
-                    args: Vec::new(),
-                    is_new: false,
-                    spread_arg: None,
+                // 注意用**计算键**：`obj[Symbol.iterator]()`；
+                // `obj.Symbol.iterator` 是"名为 Symbol.iterator 的点属性"→ 取到 undefined
+                let key = Key::Computed(Box::new(Expr::Ident(if base == "GetIterator" {
+                    "Symbol.iterator".to_string()
+                } else {
+                    "Symbol.asyncIterator".to_string()
+                })));
+                let member = Expr::Member {
+                    obj: Box::new(self.reg_expr(&arg(0))),
+                    key,
+                };
+                // 语义随版本变：≤7.x 的 `GetIteratorWithFeedback` 只做
+                // `GetProperty(receiver, @@iterator)`（torque: LoadIC）——**不调用**，
+                // 调用是紧随其后的 `CallProperty0 <方法>, <receiver>`；
+                // 8.x 起的 builtin 内部连调用一起做，直接给迭代器。
+                // 判据就写在同一张表里：操作数 3 个（load+call 两个 feedback 槽）= 会调用。
+                self.acc = Some(if self.d.table.bytecodes.iter().any(|b| {
+                    b.name == base && b.operands.len() >= 3
+                }) {
+                    Expr::Call {
+                        callee: Box::new(member),
+                        args: Vec::new(),
+                        is_new: false,
+                        spread_arg: None,
+                    }
+                } else {
+                    member
                 });
             }
             "CopyDataProperties" => {
