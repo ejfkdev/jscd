@@ -410,7 +410,12 @@ impl<'a> Walker<'a> {
             Ok(SlotValue::Raw(self.raw(n * self.tagged_size)?))
         } else if Some(b) == self.opt_tag("kVariableRawData") {
             let n = self.putint()? as usize;
-            Ok(SlotValue::Raw(self.raw(n * self.tagged_size)?))
+            // 单位随版本变：8.4 的 `int size_in_bytes = source_.GetInt()`（**字节**），
+            // 9.4+ 的 `int size_in_tagged = ...`（**tagged 单位**）。按 tagged 单位读
+            // 老族会一次多吞 8 倍字节，主段直接走偏 —— node14 的 branch 等 9 个 fixture
+            // 报 `legacy backref (0,0,30816) 未命中` 就是这个。
+            let bytes = if self.legacy.is_some() { n } else { n * self.tagged_size };
+            Ok(SlotValue::Raw(self.raw(bytes.max(1))?))
         } else if t_fixed_repeat.map_or(false, |t| (t..t + 16).contains(&b)) {
             let base = t_fixed_repeat.unwrap();
             let n = (b - base + 2) as usize;
