@@ -165,14 +165,18 @@ kNumberOfFixedRawData = 0x20, kNumberOfFixedRepeat = 0x10, kNumberOfHotObjects =
 | acc 隐式使用表 | ≤9.x 写 `AccumulatorUse::kRead/kWrite/kReadWrite`（短名），10.x+ 写 `ImplicitRegisterUse::kReadAccumulator…` | codegen 只认长名 → 老族 acc 表全空 → `flush_acc_before` 把 keyed 访问的键当死值丢掉（`a[0]` → `a[undefined]`） |
 | TDZ 检查 | `LdaContextSlot …; ThrowReferenceErrorIfHole` 紧跟 context 读取 | context 变量已摊平成文件级 `var`（初值 undefined）→ 这条检查必然误报，需跳过 |
 
-### 10.6 node8/10（6.2/6.8）进度
+### 10.6 node8/10（6.2/6.8）现状：解码已通，行为对拍 13/20
 
 | 项目 | 状态 |
 | --- | --- |
 | 版本识别 | ✅ `version_hash` 精确命中（6.2.414.78 / 6.8.275.32） |
-| 标签表 | ✅ `enum Where` 抓取（kNewObject=0x00、kBackref=0x08、kRootArray=**0x05**、kAttachedReference=0x0d、kHotObject=**0x38**、kRootArrayConstants=0x80、skip 变体 0x10/0x58/0xa0） |
+| 标签表 | ✅ `enum Where` 抓取（kNewObject=0x00、kBackref=0x08、kRootArray=**0x05**、kAttachedReference=0x0d、kHotObject=**0x38**、kRootArrayConstants=0x80、skip 变体 0x10/0x58/0xa0）；另补 `kNumberOfSpaces`/`kSpaceTagSize`/`kPageSizeBits`/`kMapSpace`/`kLoSpace` |
 | 头/payload 起点 | ✅ 40 字节头 + 预留表 + 桩键，起点 `align8(40 + 4*(num_res+num_stub_keys))` |
-| 对象解码 | ❌ 6.x 只有 **5 个空间**（`STATIC_ASSERT(5 == kNumberOfSpaces)`）、`HowToCode/WhereToPoint` 位打包（`kBackrefWithSkip`/`kHotObjectWithSkip`/`kRootArrayConstantsWithSkip`），要在 legacy 分支里按版本分派；bytecode 表/帧常量也还是 C++ 形态（非 .tq） |
+| 对象解码 | ✅ 5/6 个空间、`*WithSkip` 变体、backref 位域（空间号在标签里、低 ValueIndex 位是 `chunk_index<<16\|offset>>3`）、LO 可执行字节、repeat="复制前一槽" |
+| 表 | ✅ SFI（kCode/kName/…/kFunctionData 在槽 7）、BytecodeArray、roots（460/525 条）、runtime_names、scope_info（多 StackLocalCount + 变量区含形参名/栈局部名前缀）、字符串布局（length 是 Smi，字符区 24） |
+| 反编译 | ✅ `/tmp/t8.jsc`、`/tmp/t10.24.1.jsc` 都能完整反编译且逐行正确（`function target(a){return a+1}`） |
+| 行为对拍 | ⚠️ 13 pass / 21 fail / 4 解析失败（node8）/ 2 compile-fail：`bash scripts/verify_behavior.sh 8.17.0 10.24.1`。剩余失败与 node12/14 当初同一类（帧常量/寄存器命名、结构化规则、acc 活跃性在老版本的降级形态）。 |
+| 已知怪点 | 6.2 `OutputRawData` 的**变长 raw** 分支漏了 `to_skip = 0`，于是"raw(L) 紧跟 skip(L)"成对出现；我们按"夹到对象末尾"处理（忠实前进会顶爆对象槽账）。4 个解析失败都停在这一模式的对象上。 |
 
 ### 10.4 运行旧版 Node（本机实操）
 
