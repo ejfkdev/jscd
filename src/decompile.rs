@@ -454,9 +454,20 @@ pub fn read_scope<'a>(
     ro_map: Option<&RoMap>,
 ) -> Option<Scope> {
     let cfg = table.scope_info.clone()?;
-    // flags：Smi 编码（值在高 32 位）或裸 uint32（13.x）
-    let flags = if cfg.flags_smi {
-        cache.raw_at_ts(scope_id, ts, ts, ts).and_then(crate::serializer::decode_smi_bytes)? as u64
+    // 数值域起点随版本变：
+    //   ≤8.4：ScopeInfo 是 FixedArray，头两格 map+length → Flags 在**槽 2**、
+    //         ParameterCount 槽 3、ContextLocalCount 槽 4，变量区从槽 5 起；
+    //         且数值域由 `FOR_EACH_SCOPE_INFO_NUMERIC_FIELD` 宏生成（`Smi::ToInt`），
+    //         表里 `flags_smi` 标成了 false，实测低 4 字节恒 0 → 按 Smi 读。
+    //   9.x+ ：Flags 在槽 1（本代码长期验证过的路径）。
+    let legacy = table.v8.starts_with('8')
+        || table.v8.starts_with('7')
+        || table.v8.starts_with('6');
+    let base = if legacy { 2 } else { 1 };
+    let flags = if legacy || cfg.flags_smi {
+        cache
+            .raw_at_ts(scope_id, base * ts, ts, ts)
+            .and_then(crate::serializer::decode_smi_bytes)? as u64
     } else {
         u32::from_le_bytes(cache.raw_at_ts(scope_id, ts, 4, ts)?.try_into().ok()?) as u64
     };
@@ -464,6 +475,8 @@ pub fn read_scope<'a>(
     // 13.x：    flags(u32)+padding@ts..ts+8 | param_count@ts+8 | context_local_count@ts+16
     let (param_off, clc_off) = if cfg.position_info_early {
         (ts + 8, ts + 16)
+    } else if legacy {
+        (3 * ts, 4 * ts)
     } else {
         (2 * ts, 3 * ts)
     };
@@ -1413,12 +1426,18 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     }
 
     fn param_count(&self) -> u32 {
-        // ScopeInfo 只在能解析该版本布局时才可信：老族（≤8.4）的 ScopeInfo 布局与
-        // 9.x+ 不同，`read_scope` 会读出负值/巨值（node14 上曾得到 -1），
-        // 而 BCA 的 `parameter_size/8` 一直是权威值（disasm 的 Parameter count 同源）。
-        if let Some(s) = &self.scope {
-            if s.param_count > 0 && s.param_count <= 64 {
-                return s.param_count;
+        // 口径不同：BCA 的 `parameter_size/8` 是**寄存器文件**口径（含 this），
+        // 而 ≤8.4 的 `ScopeInfo::ParameterCount()` 只数形参（不含 this）——
+        // 老族若采信 ScopeInfo，签名会少一个参数、寄存器名会算成 `a-2`（node14 产物
+        // 直接语法错误）。9.x+ 两口径一致，继续用 ScopeInfo（长期验证过的路径）。
+        let legacy = self.d.table.v8.starts_with('8')
+            || self.d.table.v8.starts_with('7')
+            || self.d.table.v8.starts_with('6');
+        if !legacy {
+            if let Some(s) = &self.scope {
+                if s.param_count > 0 && s.param_count <= 64 {
+                    return s.param_count;
+                }
             }
         }
         self.bca_param_count()
