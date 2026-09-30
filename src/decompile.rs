@@ -3045,6 +3045,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let ins = self.instrs[i].clone();
             let base = ins.name.split('.').next().unwrap_or(&ins.name).to_string();
 
+            if std::env::var("JSCD_DBG_ACC").is_ok() {
+                eprintln!(
+                    "[acc] i={i} @{} {} {:?} acc_before={:?}",
+                    ins.offset, ins.name, ins.operands, self.acc
+                );
+            }
+
             // ⓪ 已被 guard 子句就地发射的冷块 → 跳过（它的内容已在对应分支里生成过）。
             // 消费后要移除：同一区间可能被别的分支范围再次经过（可选链的 `LdaUndefined`
             // 块就踩过这个坑），留着会静默吞掉指令、让合并值取到分支里的旧值。

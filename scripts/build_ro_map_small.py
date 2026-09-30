@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """按需生成 ro-map：**每个名字单独编译一份小 jsc**，从占位符里读出 (chunk, offset)。
 
+并行：`--jobs N`（默认 1）。逐名编译互不依赖，8 路并行能把 1 万名的耗时压到分钟级。
+
 为什么不用 `build_ro_map.sh`（一个探针装下所有名字）：老族对**大 payload** 的解析还会
 走偏（实测 1.2MB 探针报 `unknown serialization tag 0x98`），而 fixture 规模的小 payload
 完全正常。逐个编译绕开了这个问题，也顺便给出"某个名字到底落在哪个只读堆地址"的直接证据。
@@ -11,6 +13,7 @@
 
 用法: python3 scripts/build_ro_map_small.py <node版本> <名字清单> <输出json>
 """
+import concurrent.futures
 import json
 import os
 import re
@@ -28,8 +31,34 @@ def fn_src(name: str) -> str:
     return f"function p(o) {{ return o[{json.dumps(name)}]; }}\n"
 
 
+def one(ver: str, name: str, node: str) -> tuple:
+    """编译单个名字 → 解出 (chunk, offset)。返回 (name, key|None, err|None)。"""
+    with tempfile.TemporaryDirectory() as td:
+        src = os.path.join(td, "p.js")
+        jsc = os.path.join(td, "p.jsc")
+        open(src, "w", encoding="utf-8").write(fn_src(name))
+        r = subprocess.run([node, os.path.join(ROOT, "scripts", "mkcorpus.js"), src, jsc],
+                           capture_output=True, text=True, cwd=ROOT, timeout=180)
+        if r.returncode != 0:
+            return (name, None, "compile")
+        d = subprocess.run([os.path.join(ROOT, "target", "release", "jscd"), "decompile", jsc],
+                           capture_output=True, text=True, cwd=ROOT, timeout=180)
+        if d.returncode != 0:
+            return (name, None, (d.stderr or "").strip()[:60])
+        m = PLACEHOLDER.search(d.stdout)
+        if m:
+            return (name, f"{int(m.group(1))}/{int(m.group(2))}", None)
+        return (name, None, None)
+
+
 def main() -> None:
-    ver, list_path, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+    argv = [a for a in sys.argv[1:]]
+    jobs = 1
+    if "--jobs" in argv:
+        i = argv.index("--jobs")
+        jobs = int(argv[i + 1])
+        argv = argv[:i] + argv[i + 2:]
+    ver, list_path, out_path = argv[0], argv[1], argv[2]
     names, seen = [], set()
     for line in open(list_path, encoding="utf-8", errors="ignore"):
         n = line.rstrip("\n")
@@ -40,7 +69,21 @@ def main() -> None:
     node = os.path.expanduser(f"~/.local/share/mise/installs/node/{ver}/bin/node")
     entries = {}
     fails = []
-    with tempfile.TemporaryDirectory() as td:
+    if jobs > 1:
+        done = 0
+        with concurrent.futures.ProcessPoolExecutor(max_workers=jobs) as ex:
+            futs = [ex.submit(one, ver, n, node) for n in names if n not in ("", "\n")]
+            for fut in concurrent.futures.as_completed(futs):
+                name, key, err = fut.result()
+                done += 1
+                if key:
+                    entries[key] = name
+                elif err:
+                    fails.append((name, err))
+                if done % 500 == 0:
+                    print(f"  …{done}/{len(names)}（已解出 {len(entries)}）", file=sys.stderr)
+    else:
+      with tempfile.TemporaryDirectory() as td:
         for i, name in enumerate(names):
             if name in ("", "\n"):
                 continue
@@ -75,6 +118,12 @@ def main() -> None:
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1, sort_keys=True)
     print(f"ro-map: {len(entries)} 条（{len(names)} 个候选，{len(fails)} 份解析失败）→ {out_path}")
+    if fails:
+        kinds = {}
+        for name, err in fails:
+            kinds.setdefault(err, []).append(name)
+        for k, v in sorted(kinds.items(), key=lambda kv: -len(kv[1]))[:5]:
+            print(f"  失败 {len(v)} 例：{k[:70]}  例名: {v[:4]}")
 
 
 if __name__ == "__main__":

@@ -14,13 +14,13 @@
    "prefix": "ExtraWide"
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaZero",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaSmi",
    "operands": [
     "Imm"
@@ -28,37 +28,37 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaUndefined",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaNull",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaTheHole",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaTrue",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaFalse",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaConstant",
    "operands": [
     "Idx"
@@ -66,7 +66,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaGlobal",
    "operands": [
     "Idx",
@@ -75,7 +75,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaGlobalInsideTypeof",
    "operands": [
     "Idx",
@@ -84,7 +84,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaGlobalSloppy",
    "operands": [
     "Idx",
@@ -93,7 +93,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaGlobalStrict",
    "operands": [
     "Idx",
@@ -102,7 +102,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "PushContext",
    "operands": [
     "RegOut"
@@ -118,7 +118,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaContextSlot",
    "operands": [
     "Reg",
@@ -128,7 +128,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaImmutableContextSlot",
    "operands": [
     "Reg",
@@ -138,7 +138,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaCurrentContextSlot",
    "operands": [
     "Idx"
@@ -146,7 +146,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaImmutableCurrentContextSlot",
    "operands": [
     "Idx"
@@ -154,7 +154,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaContextSlot",
    "operands": [
     "Reg",
@@ -164,7 +164,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaCurrentContextSlot",
    "operands": [
     "Idx"
@@ -172,7 +172,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaLookupSlot",
    "operands": [
     "Idx"
@@ -180,7 +180,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaLookupContextSlot",
    "operands": [
     "Idx",
@@ -190,7 +190,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaLookupGlobalSlot",
    "operands": [
     "Idx",
@@ -200,7 +200,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaLookupSlotInsideTypeof",
    "operands": [
     "Idx"
@@ -208,7 +208,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaLookupContextSlotInsideTypeof",
    "operands": [
     "Idx",
@@ -218,7 +218,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaLookupGlobalSlotInsideTypeof",
    "operands": [
     "Idx",
@@ -228,7 +228,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "StaLookupSlot",
    "operands": [
     "Idx",
@@ -237,7 +237,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "Ldar",
    "operands": [
     "Reg"
@@ -245,7 +245,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "Star",
    "operands": [
     "RegOut"
@@ -262,7 +262,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaNamedProperty",
    "operands": [
     "Reg",
@@ -272,7 +272,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "LdaKeyedProperty",
    "operands": [
     "Reg",
@@ -281,7 +281,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "LdaModuleVariable",
    "operands": [
     "Imm",
@@ -290,7 +290,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaModuleVariable",
    "operands": [
     "Imm",
@@ -299,7 +299,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaNamedPropertySloppy",
    "operands": [
     "Reg",
@@ -309,7 +309,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaNamedPropertyStrict",
    "operands": [
     "Reg",
@@ -319,7 +319,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaNamedOwnProperty",
    "operands": [
     "Reg",
@@ -329,7 +329,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaKeyedPropertySloppy",
    "operands": [
     "Reg",
@@ -339,7 +339,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaKeyedPropertyStrict",
    "operands": [
     "Reg",
@@ -349,7 +349,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "StaDataPropertyInLiteral",
    "operands": [
     "Reg",
@@ -360,7 +360,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "CollectTypeProfile",
    "operands": [
     "Imm"
@@ -368,7 +368,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Add",
    "operands": [
     "Reg",
@@ -377,7 +377,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Sub",
    "operands": [
     "Reg",
@@ -386,7 +386,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Mul",
    "operands": [
     "Reg",
@@ -395,7 +395,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Div",
    "operands": [
     "Reg",
@@ -404,7 +404,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Mod",
    "operands": [
     "Reg",
@@ -413,7 +413,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "BitwiseOr",
    "operands": [
     "Reg",
@@ -422,7 +422,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "BitwiseXor",
    "operands": [
     "Reg",
@@ -431,7 +431,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "BitwiseAnd",
    "operands": [
     "Reg",
@@ -440,7 +440,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ShiftLeft",
    "operands": [
     "Reg",
@@ -449,7 +449,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ShiftRight",
    "operands": [
     "Reg",
@@ -458,7 +458,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ShiftRightLogical",
    "operands": [
     "Reg",
@@ -467,7 +467,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "AddSmi",
    "operands": [
     "Imm",
@@ -476,7 +476,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "SubSmi",
    "operands": [
     "Imm",
@@ -485,7 +485,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "MulSmi",
    "operands": [
     "Imm",
@@ -494,7 +494,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "DivSmi",
    "operands": [
     "Imm",
@@ -503,7 +503,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ModSmi",
    "operands": [
     "Imm",
@@ -512,7 +512,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "BitwiseOrSmi",
    "operands": [
     "Imm",
@@ -521,7 +521,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "BitwiseXorSmi",
    "operands": [
     "Imm",
@@ -530,7 +530,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "BitwiseAndSmi",
    "operands": [
     "Imm",
@@ -539,7 +539,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ShiftLeftSmi",
    "operands": [
     "Imm",
@@ -548,7 +548,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ShiftRightSmi",
    "operands": [
     "Imm",
@@ -557,7 +557,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ShiftRightLogicalSmi",
    "operands": [
     "Imm",
@@ -566,7 +566,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Inc",
    "operands": [
     "Idx"
@@ -574,7 +574,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Dec",
    "operands": [
     "Idx"
@@ -582,25 +582,25 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ToBooleanLogicalNot",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "LogicalNot",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TypeOf",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "DeletePropertyStrict",
    "operands": [
     "Reg"
@@ -608,7 +608,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "DeletePropertySloppy",
    "operands": [
     "Reg"
@@ -616,7 +616,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "GetSuperConstructor",
    "operands": [
     "RegOut"
@@ -624,7 +624,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallAnyReceiver",
    "operands": [
     "Reg",
@@ -635,7 +635,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallProperty",
    "operands": [
     "Reg",
@@ -646,7 +646,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallProperty0",
    "operands": [
     "Reg",
@@ -656,7 +656,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallProperty1",
    "operands": [
     "Reg",
@@ -667,7 +667,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallProperty2",
    "operands": [
     "Reg",
@@ -679,7 +679,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallUndefinedReceiver",
    "operands": [
     "Reg",
@@ -690,7 +690,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallUndefinedReceiver0",
    "operands": [
     "Reg",
@@ -699,7 +699,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallUndefinedReceiver1",
    "operands": [
     "Reg",
@@ -709,7 +709,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallUndefinedReceiver2",
    "operands": [
     "Reg",
@@ -720,7 +720,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallWithSpread",
    "operands": [
     "Reg",
@@ -731,7 +731,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallRuntime",
    "operands": [
     "RuntimeId",
@@ -752,7 +752,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CallJSRuntime",
    "operands": [
     "Idx",
@@ -762,7 +762,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "InvokeIntrinsic",
    "operands": [
     "IntrinsicId",
@@ -772,7 +772,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "Construct",
    "operands": [
     "Reg",
@@ -783,7 +783,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "ConstructWithSpread",
    "operands": [
     "Reg",
@@ -794,7 +794,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestEqual",
    "operands": [
     "Reg",
@@ -803,7 +803,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestEqualStrict",
    "operands": [
     "Reg",
@@ -812,7 +812,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestLessThan",
    "operands": [
     "Reg",
@@ -821,7 +821,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestGreaterThan",
    "operands": [
     "Reg",
@@ -830,7 +830,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestLessThanOrEqual",
    "operands": [
     "Reg",
@@ -839,7 +839,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestGreaterThanOrEqual",
    "operands": [
     "Reg",
@@ -848,7 +848,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestEqualStrictNoFeedback",
    "operands": [
     "Reg"
@@ -856,7 +856,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestInstanceOf",
    "operands": [
     "Reg"
@@ -864,7 +864,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestIn",
    "operands": [
     "Reg"
@@ -872,25 +872,25 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestUndetectable",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestNull",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestUndefined",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "TestTypeOf",
    "operands": [
     "Flag8"
@@ -898,7 +898,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ToName",
    "operands": [
     "RegOut"
@@ -906,7 +906,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ToNumber",
    "operands": [
     "RegOut",
@@ -915,7 +915,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ToObject",
    "operands": [
     "RegOut"
@@ -923,7 +923,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateRegExpLiteral",
    "operands": [
     "Idx",
@@ -933,7 +933,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateArrayLiteral",
    "operands": [
     "Idx",
@@ -943,7 +943,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateEmptyArrayLiteral",
    "operands": [
     "Idx"
@@ -962,13 +962,13 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateEmptyObjectLiteral",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateClosure",
    "operands": [
     "Idx",
@@ -978,7 +978,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "CreateBlockContext",
    "operands": [
     "Idx"
@@ -986,7 +986,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "CreateCatchContext",
    "operands": [
     "Reg",
@@ -996,7 +996,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateFunctionContext",
    "operands": [
     "UImm"
@@ -1004,7 +1004,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateEvalContext",
    "operands": [
     "UImm"
@@ -1012,7 +1012,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "CreateWithContext",
    "operands": [
     "Reg",
@@ -1021,19 +1021,19 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateMappedArguments",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateUnmappedArguments",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "CreateRestParameter",
    "operands": [],
    "prefix": null
@@ -1064,7 +1064,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfNullConstant",
    "operands": [
     "Idx"
@@ -1072,7 +1072,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfNotNullConstant",
    "operands": [
     "Idx"
@@ -1080,7 +1080,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfUndefinedConstant",
    "operands": [
     "Idx"
@@ -1088,7 +1088,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfNotUndefinedConstant",
    "operands": [
     "Idx"
@@ -1096,7 +1096,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfTrueConstant",
    "operands": [
     "Idx"
@@ -1104,7 +1104,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfFalseConstant",
    "operands": [
     "Idx"
@@ -1112,7 +1112,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfJSReceiverConstant",
    "operands": [
     "Idx"
@@ -1120,7 +1120,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfToBooleanTrueConstant",
    "operands": [
     "Idx"
@@ -1128,7 +1128,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfToBooleanFalseConstant",
    "operands": [
     "Idx"
@@ -1136,7 +1136,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfToBooleanTrue",
    "operands": [
     "UImm"
@@ -1144,7 +1144,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfToBooleanFalse",
    "operands": [
     "UImm"
@@ -1152,7 +1152,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfTrue",
    "operands": [
     "UImm"
@@ -1160,7 +1160,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfFalse",
    "operands": [
     "UImm"
@@ -1168,7 +1168,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfNull",
    "operands": [
     "UImm"
@@ -1176,7 +1176,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfNotNull",
    "operands": [
     "UImm"
@@ -1184,7 +1184,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfUndefined",
    "operands": [
     "UImm"
@@ -1192,7 +1192,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfNotUndefined",
    "operands": [
     "UImm"
@@ -1200,7 +1200,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "JumpIfJSReceiver",
    "operands": [
     "UImm"
@@ -1208,7 +1208,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "SwitchOnSmiNoFeedback",
    "operands": [
     "Idx",
@@ -1227,7 +1227,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "ForInContinue",
    "operands": [
     "Reg",
@@ -1236,7 +1236,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "ForInNext",
    "operands": [
     "Reg",
@@ -1247,7 +1247,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "ForInStep",
    "operands": [
     "Reg"
@@ -1261,31 +1261,31 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "rw",
    "name": "SetPendingMessage",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "Throw",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ReThrow",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "Return",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ThrowReferenceErrorIfHole",
    "operands": [
     "Idx"
@@ -1293,19 +1293,19 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ThrowSuperNotCalledIfHole",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "ThrowSuperAlreadyCalledIfNotHole",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "w",
    "name": "RestoreGeneratorState",
    "operands": [
     "Reg"
@@ -1340,13 +1340,13 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak0",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak1",
    "operands": [
     "Reg"
@@ -1354,7 +1354,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak2",
    "operands": [
     "Reg",
@@ -1363,7 +1363,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak3",
    "operands": [
     "Reg",
@@ -1373,7 +1373,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak4",
    "operands": [
     "Reg",
@@ -1384,7 +1384,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak5",
    "operands": [
     "RuntimeId",
@@ -1394,7 +1394,7 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreak6",
    "operands": [
     "RuntimeId",
@@ -1405,13 +1405,13 @@
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreakWide",
    "operands": [],
    "prefix": null
   },
   {
-   "acc": "",
+   "acc": "r",
    "name": "DebugBreakExtraWide",
    "operands": [],
    "prefix": null

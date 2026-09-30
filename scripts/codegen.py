@@ -171,7 +171,11 @@ def _acc_use(inner):
     uses = set(re.findall(r"(?:ImplicitRegisterUse|AccumulatorUse)::(k\w+)", inner))
     if not uses:
         return ""
-    read = bool(uses & {"kReadAccumulator", "kReadWriteAccumulator",
+    # 短名（≤9.x 的 AccumulatorUse::kRead/kWrite/kReadWrite）与长名（10.x+ 的
+    # ImplicitRegisterUse::kReadAccumulator/kWriteAccumulator）都要认 —— 只认长名时
+    # 老族整张表的 acc 全空，反编译的 acc 活跃性判断失效（keyed 访问的键被当死值丢掉）。
+    read = bool(uses & {"kRead", "kReadWrite",
+                        "kReadAccumulator", "kReadWriteAccumulator",
                         "kReadAccumulatorWriteShortStar", "kWriteShortStar"})
     write = bool(uses & {"kWriteAccumulator", "kReadWriteAccumulator"})
     return ("rw" if (read and write) else "r" if read else "w" if write else "")
