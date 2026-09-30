@@ -514,9 +514,22 @@ pub fn read_scope<'a>(
 
     if std::env::var("JSCD_DBG_SCOPE").is_ok() {
         eprintln!(
-            "[scope] id={scope_id} len={} base={base} flags={flags:#x} scope_type={} param={param_count} clc={n} varpart_off={names_off} inlined={inlined}",
+            "[scope] id={scope_id} len={} base={base} flags={flags:#x} scope_type={} param={param_count} clc={n} varpart_off={names_off} inlined={inlined} names={:?}",
             cache.array_len(scope_id),
-            flags & 0xF
+            flags & 0xF,
+            (0..n.min(6))
+                .map(|i| {
+                    let slot = (names_off / ts) + i;
+                    match cache.slot_at(scope_id, slot).and_then(|v| v.as_ref()) {
+                        Some(Ref::RoRef(c, o)) => ro_map
+                            .and_then(|m| m.get(c, o))
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(|| format!("<ro{c}_{o}>")),
+                        Some(r) => crate::disasm::name_of_ref(cache, table, r).unwrap_or_default(),
+                        None => String::from("?"),
+                    }
+                })
+                .collect::<Vec<_>>()
         );
     }
     let mut scope = Scope {
