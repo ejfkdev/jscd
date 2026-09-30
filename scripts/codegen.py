@@ -666,11 +666,14 @@ def extract_runtime_names(text):
             i = k + 1
 
     out = []
-    # 枚举顺序是 `FOR_EACH_INTRINSIC(F) FOR_EACH_INTRINSIC(I)` —— **所有 F 条目在前、
-    # 所有 I 条目在后**。宏体里 F/I 是穿插写的（6.8 就有一个 I( 混在 F 段里），
-    # 按 body 顺序收集会让 inline 段整体错位（node8/10 的 DeclareGlobals 读成
-    # DeclareGlobalsForInterpreter）。
+    # 10.x+（`*_IMPL` 起点）宏体里 F/I 的书写顺序**就是**枚举顺序，照 body 顺序收集即可
+    # （这条路径长期验证过：8.4 的 481 条与官方字节码逐一对上）。
+    # 6.x–9.x 的聚合宏不同：枚举是 `FOR_EACH_INTRINSIC(F) FOR_EACH_INTRINSIC(I)`，
+    # 即"所有 F 在前、所有 I 在后"，而宏体里 F/I 是穿插写的 —— 所以那条兜底路径
+    # 要分开收集（见下面 fallback）。
     inline = []
+
+    split_fi = not bool(re.search(r"#define FOR_EACH_INTRINSIC_RETURN_PAIR_IMPL\b", text))
 
     def expand(macro_name, depth=0):
         if depth > 6:
@@ -694,7 +697,10 @@ def extract_runtime_names(text):
             if ident in ("F", "I"):
                 name = inner.split(",")[0].strip()
                 if name and name[0].isalpha():
-                    (out if ident == "F" else inline).append(name)
+                    if split_fi:
+                        (out if ident == "F" else inline).append(name)
+                    else:
+                        out.append(name)
             elif ident.startswith("IF_"):
                 # IF_WASM(FOR_EACH_INTRINSIC_WASM, F, I) 之类：按开关决定是否展开
                 flag = ident
@@ -717,7 +723,7 @@ def extract_runtime_names(text):
         # 少展开一个子列表会让后面所有 id 整体偏移 —— node8 的 DeclareGlobals 曾因此
         # 读成 DeclareEvalFunction）。
         expand("FOR_EACH_INTRINSIC")
-        # inline 段是同一份列表用 I 再展开一次：F/I 已经各归各位，这里补上 I 段
+        # inline 段是同一份列表用 I 再展开一次
         return out + (inline if inline else list(out))
     return out + inline
 

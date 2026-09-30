@@ -636,7 +636,12 @@ impl<'a> Walker<'a> {
             let bytes = if self.legacy.is_some() { n } else { n * self.tagged_size };
             Ok(SlotValue::Raw(self.raw(bytes.max(1))?))
         } else if Some(b) == self.opt_tag("kSkip") {
-            // 6.x：`kSkip` —— 跳过若干**字节**的槽（值不写）
+            // 6.x：`kSkip` —— 读掉距离后跳过若干**字节**。
+            // 注意：6.2 的 `OutputRawData` 在**变长 raw** 分支里 `to_skip` 没有清零，
+            // 于是"raw(L) 紧跟 skip(L)"成对出现（定长 raw 分支才有 `to_skip = 0`）。
+            // 对反序列化来说槽指针已经由 raw 前进过一次，这里再按 V8 的原样前进会
+            // 把对象槽账直接顶爆（node8 的 operators/for_of_in 等就死在这）。
+            // 实测（node8/10 全 fixture + 语料）按"只吃流、不进槽账"处理才自洽。
             let bytes = self.putint()? as usize;
             Ok(SlotValue::Skip(bytes / self.tagged_size.max(1)))
         } else if t_fixed_repeat.map_or(false, |t| (t..t + 16).contains(&b)) {
@@ -879,9 +884,19 @@ impl<'a> Walker<'a> {
             // 6.x 的 `*WithSkip` 前缀：跳过若干字节后值才落位（槽数 = 字节 / tagged size）
             let extra_words = std::mem::take(&mut self.extra_skip) / self.tagged_size.max(1);
             if let SlotValue::Skip(words) = v {
-                // 只推进槽指针、不写值
-                consumed += words;
-                slot_index += words;
+                // 只推进槽指针、不写值。V8 6.2 的 `OutputRawData` 在变长 raw 之后会把同一个
+                // `to_skip` 再写一遍（定长分支才清零），于是"raw(L)+skip(L)"成对出现：
+                // 槽指针理论上要前进两次，但对象的 size 只按一次算。实测（node8/10 全
+                // fixture）忠实前进会顶爆槽账、夹到对象末尾则与 V8 自己的 size 自洽。
+                let remaining = size_words.saturating_sub(consumed);
+                let take = words.min(remaining);
+                if words > remaining && std::env::var("JSCD_DBG_LEGACY").is_ok() {
+                    eprintln!(
+                        "[skip] obj={id} words={words} 超出剩余 {remaining}（夹到对象末尾）consumed={consumed} budget={size_words}"
+                    );
+                }
+                consumed += take;
+                slot_index += take;
                 continue;
             }
             if let SlotValue::StreamBytes(_) = v {
@@ -913,6 +928,9 @@ impl<'a> Walker<'a> {
             self.push_slot(id, slot_index + extra_words, v);
             consumed += n_slots + extra_words;
             slot_index += n_slots + extra_words;
+        }
+        if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+            eprintln!("[objend] id={id} pos={tag_offset} consumed={consumed} budget={size_words}");
         }
         if consumed != size_words {
             return Err(format!(
