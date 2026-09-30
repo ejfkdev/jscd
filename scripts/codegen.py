@@ -345,7 +345,11 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
             order.append("Symbol:" + args[1])
         elif "ACCESSOR_INFO" in gen:
             order.append("AccessorInfo:" + args[1] + "_accessor")
-        elif gen == "STRUCT_LIST_GENERATOR":
+        # 8.4 的条目在 `STRUCT_LIST_GENERATOR_BASE` 里（`STRUCT_LIST_GENERATOR` 只是转发，
+        # 见 objects-definitions.h）；只认全名会让 41 个 map 根退化成 `Gen:<TYPE>`,
+        # 于是 ArrayBoilerplateDescription 之类的类型识别全失效（node14 的数组字面量
+        # 变成 `/* ?unknown(N) */ undefined`）。
+        elif gen.startswith("STRUCT_LIST_GENERATOR"):
             # 条目 V(_, TYPE, Name, name) → Map 名 = Name + "Map"
             order.append((args[2] if len(args) >= 3 else args[1]) + "Map")
         elif mode == "maps" and gen in ("ALLOCATION_SITE_LIST", "DATA_HANDLER_LIST"):
