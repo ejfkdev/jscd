@@ -3242,5 +3242,6 @@
  "string_length_offset": 16,
  "string_length_smi": true,
  "tagged_size": 8,
- "v8": "6.2.414.78"
+ "v8": "6.2.414.78",
+ "var_raw_advances": false
 }

@@ -30,6 +30,12 @@ pub enum Ref {
 pub struct Raw {
     pub off: usize,
     pub len: usize,
+    /// 该 raw 自身是否推进对象的**槽指针**。
+    /// V8 6.x 的 `kVariableRawData` 只是把字节写进对象（`CopyRaw` 之后 **不** 动
+    /// `current`），随后的 `kSkip` 才是推进槽指针的那一步；9.4+ 的 `kVariableRawData`
+    /// 则自己推进（`current = raw_data_out + size_in_bytes`）。定长 raw 各版本都推进
+    /// （6.2 的序列化端在定长分支里显式 `to_skip = 0`，即"这条 tag 自带 skip"）。
+    pub advances: bool,
 }
 
 /// 对象类型（紧凑表示，避免每对象分配字符串）。
@@ -131,7 +137,7 @@ pub enum SlotValue {
     /// 6.x 的 repeat：语义是"复制**前一个槽**的值"（V8 `UnalignedCopy(&object, current - 1)`），
     /// 流里**没有**额外的引用；展开时用同对象上一个槽的值补上。
     RepeatPrev(usize),
-    /// 6.x 的跳过：`kSkip` / `*WithSkip` 跳过若干槽（V8 直接推进槽指针），不写值。
+    /// 6.x 的跳过：`kSkip` / `*WithSkip` 跳过若干**字节**（V8 直接推进字节指针），不写值。
     Skip(usize),
     /// 只从流里吃掉若干字节（如 kOffHeapBackingStore 的内联缓冲），**不**推进槽指针。
     StreamBytes(usize),
@@ -285,6 +291,7 @@ impl<'a> Walker<'a> {
         let r = Raw {
             off: self.pos,
             len: n,
+            advances: true,
         };
         self.pos += n;
         Ok(r)
@@ -626,7 +633,8 @@ impl<'a> Walker<'a> {
             Ok(SlotValue::ClearedWeak)
         } else if (t_fixed_raw..t_fixed_raw + 32).contains(&b) {
             let n = (b - t_fixed_raw + 1) as usize;
-            Ok(SlotValue::Raw(self.raw(n * self.tagged_size)?))
+            let len = n * self.tagged_size;
+            Ok(SlotValue::Raw(Raw { advances: true, ..self.raw(len)? }))
         } else if Some(b) == self.opt_tag("kVariableRawData") {
             let n = self.putint()? as usize;
             // 单位随版本变：8.4 的 `int size_in_bytes = source_.GetInt()`（**字节**），
@@ -634,7 +642,11 @@ impl<'a> Walker<'a> {
             // 老族会一次多吞 8 倍字节，主段直接走偏 —— node14 的 branch 等 9 个 fixture
             // 报 `legacy backref (0,0,30816) 未命中` 就是这个。
             let bytes = if self.legacy.is_some() { n } else { n * self.tagged_size };
-            Ok(SlotValue::Raw(self.raw(bytes.max(1))?))
+            let advances = self.table.var_raw_advances;
+            Ok(SlotValue::Raw(Raw {
+                advances,
+                ..self.raw(bytes.max(1))?
+            }))
         } else if Some(b) == self.opt_tag("kSkip") {
             // 6.x：`kSkip` —— 读掉距离后跳过若干**字节**。
             // 注意：6.2 的 `OutputRawData` 在**变长 raw** 分支里 `to_skip` 没有清零，
@@ -643,7 +655,7 @@ impl<'a> Walker<'a> {
             // 把对象槽账直接顶爆（node8 的 operators/for_of_in 等就死在这）。
             // 实测（node8/10 全 fixture + 语料）按"只吃流、不进槽账"处理才自洽。
             let bytes = self.putint()? as usize;
-            Ok(SlotValue::Skip(bytes / self.tagged_size.max(1)))
+            Ok(SlotValue::Skip(bytes))
         } else if t_fixed_repeat.map_or(false, |t| (t..t + 16).contains(&b)) {
             let base = t_fixed_repeat.unwrap();
             // 6.x 的计数从 1 起（`DecodeFixedRepeatCount = bytecode - kFixedRepeatStart`，
@@ -868,10 +880,16 @@ impl<'a> Walker<'a> {
                 }
             }
         }
-        let mut consumed = 1usize;
-        let mut slot_index = 1usize;
+        // V8 的 `ReadData` 推进的是**字节**指针：`current++` 才是 +kPointerSize，
+        // 而 `kVariableRawData` / `kFixedRawData` / `kSkip` 都按字节前进。用"槽"记账时，
+        // 长度不是 tagged size 整数倍的 raw（6.x 的对象里就有 int32 尾巴）会算成 0 槽，
+        // 循环空转、把兄弟对象整片吞进来 —— node8 的 destructure/operators 就这么死的。
+        // 改为按字节记账，槽号只在写槽位时取整。
+        let ts = self.tagged_size;
+        let size_bytes = size_words * unit;
+        let mut consumed_bytes = ts; // map 已占 1 个 tagged 槽
         let t_deferred = self.opt_tag("kDeferred");
-        while consumed < size_words {
+        while consumed_bytes < size_bytes {
             // 老族：`kDeferred` 出现在对象头之后 → 该对象剩下的槽在 deferred 段里
             if t_deferred.is_some() && self.peek() == t_deferred {
                 self.byte()?;
@@ -881,30 +899,26 @@ impl<'a> Walker<'a> {
                 return Ok(id);
             }
             let v = self.parse_ref(depth + 1)?;
-            // 6.x 的 `*WithSkip` 前缀：跳过若干字节后值才落位（槽数 = 字节 / tagged size）
-            let extra_words = std::mem::take(&mut self.extra_skip) / self.tagged_size.max(1);
-            if let SlotValue::Skip(words) = v {
-                // 只推进槽指针、不写值。V8 6.2 的 `OutputRawData` 在变长 raw 之后会把同一个
-                // `to_skip` 再写一遍（定长分支才清零），于是"raw(L)+skip(L)"成对出现：
-                // 槽指针理论上要前进两次，但对象的 size 只按一次算。实测（node8/10 全
-                // fixture）忠实前进会顶爆槽账、夹到对象末尾则与 V8 自己的 size 自洽。
-                consumed += words;
-                slot_index += words;
-                continue;
-            }
-            if let SlotValue::StreamBytes(_) = v {
-                // 已在 parse_ref 里把字节吃掉；槽指针与对象字节数都不动
-                continue;
-            }
-            // 忠实记账：raw/repeat 按声明长度推进槽指针（V8 `ReadData` 就是这么走的）。
-            // 曾试过"夹到对象剩余预算"——能让解析不再报错，但会掩盖首次错位、
-            // 让后续内容悄悄错位（实测矩阵分数毫无变化，反而更难定位），故不采用。
-            let n_slots = match &v {
-                SlotValue::Raw(r) => r.len / self.tagged_size,
-                SlotValue::Repeat(n, _) => *n,
-                SlotValue::RepeatPrev(n) => *n,
-                _ => 1,
+            // 6.x 的 `*WithSkip` 前缀：先跳过若干**字节**，值才落位
+            let extra_bytes = std::mem::take(&mut self.extra_skip);
+            // 该项在**对象内**占的字节数（V8 `ReadData` 的 `current` 前进量）
+            let n_bytes = match &v {
+                SlotValue::Raw(r) => if r.advances { r.len } else { 0 },
+                SlotValue::Repeat(n, _) => *n * ts,
+                SlotValue::RepeatPrev(n) => *n * ts,
+                SlotValue::Skip(bytes) => *bytes,
+                SlotValue::StreamBytes(_) => 0,
+                _ => ts, // 引用：`current++`
             };
+            if let SlotValue::StreamBytes(_) = v {
+                // 只吃流、不进对象字节数（如 kOffHeapBackingStore 的内联缓冲）
+                continue;
+            }
+            if let SlotValue::Skip(_) = v {
+                // 只跳过、不写值
+                consumed_bytes += n_bytes;
+                continue;
+            }
             // 6.x 的 repeat = "复制前一个槽"：展开成 Repeat(n, 上一个槽的值)
             let v = match v {
                 SlotValue::RepeatPrev(n) => {
@@ -921,16 +935,18 @@ impl<'a> Walker<'a> {
                 let vec_pos = self.objects[id].slots.len();
                 self.pending.entry(*pid).or_default().push((id, vec_pos));
             }
-            self.push_slot(id, slot_index + extra_words, v);
-            consumed += n_slots + extra_words;
-            slot_index += n_slots + extra_words;
+            let at = consumed_bytes + extra_bytes;
+            self.push_slot(id, at / ts, v);
+            consumed_bytes = at + n_bytes;
         }
         if std::env::var("JSCD_DBG_LEGACY").is_ok() {
-            eprintln!("[objend] id={id} pos={tag_offset} consumed={consumed} budget={size_words}");
+            eprintln!(
+                "[objend] id={id} pos={tag_offset} bytes={consumed_bytes} budget={size_bytes} (words {size_words})"
+            );
         }
-        if consumed != size_words {
+        if consumed_bytes != size_bytes {
             return Err(format!(
-                "object {id} (at payload +{tag_offset}) size mismatch: consumed {consumed} of {size_words} words"
+                "object {id} (at payload +{tag_offset}) size mismatch: consumed {consumed_bytes} of {size_bytes} bytes"
             ));
         }
         Ok(id)
@@ -1238,22 +1254,29 @@ pub fn parse_with<'a>(
                         let mut consumed = 1usize;
                         while consumed < size_words {
                             let v = w.parse_ref(1)?;
-                            let n = match &v {
-                                SlotValue::Raw(r) => r.len / w.tagged_size,
-                                SlotValue::Repeat(n, _) => *n,
-                                SlotValue::RepeatPrev(n) => *n,
-                                SlotValue::Skip(n) => *n,
-                                _ => 1,
+                            let ts = w.tagged_size;
+                            let n_bytes = match &v {
+                                SlotValue::Raw(r) => if r.advances { r.len } else { 0 },
+                                SlotValue::Repeat(n, _) => *n * ts,
+                                SlotValue::RepeatPrev(n) => *n * ts,
+                                SlotValue::Skip(bytes) => *bytes,
+                                SlotValue::StreamBytes(_) => 0,
+                                _ => ts,
                             };
-                            for k in 0..n {
+                            if let SlotValue::Skip(_) = v {
+                                consumed += n_bytes;
+                                continue;
+                            }
+                            let n_slots = n_bytes / ts.max(1);
+                            for k in 0..n_slots.max(1) {
                                 let val = match &v {
                                     SlotValue::Repeat(_, inner) => (**inner).clone(),
                                     other => other.clone(),
                                 };
                                 w.push_slot(id, slot_index + k, val);
                             }
-                            slot_index += n;
-                            consumed += n;
+                            slot_index += n_slots.max(1);
+                            consumed += n_bytes.max(ts);
                         }
                         return Ok(());
                     }

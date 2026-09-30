@@ -83,6 +83,13 @@ pub struct VersionTable {
     /// 长度字段的偏移（表未给时按 12 兜底）。
     #[serde(default)]
     pub string_length_offset: Option<usize>,
+    /// 变长 raw（`kVariableRawData`）自身是否推进对象的槽指针。
+    /// V8 **6.2** 的 `CopyRaw` 之后**不**动 `current`（紧跟着的 `kSkip` 才推进，
+    /// 序列化端在变长分支漏了 `to_skip = 0` 正是为此）；6.8 起改成自己推进
+    /// （`current = current + size_in_bytes`）。搞错会让对象槽账整体漂移 ——
+    /// node8/10 的四个 fixture 全卡在这。
+    #[serde(default = "default_true")]
+    pub var_raw_advances: bool,
     /// 字符区起始偏移（表未给时按 16 兜底）。
     #[serde(default)]
     pub string_chars_offset: Option<usize>,
@@ -92,6 +99,10 @@ pub struct VersionTable {
 
 fn default_min_context_slots() -> usize {
     2
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl VersionTable {
