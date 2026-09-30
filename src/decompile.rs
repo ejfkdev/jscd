@@ -2866,9 +2866,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .filter(|n| !n.is_empty())
             .map(|n| sanitize_var(&n));
         let catch_var = resolved.unwrap_or_else(|| "e".to_string());
-        // catch 体里读异常走的是 catch context 槽 2 → 绑到同一个名字，
-        // 否则参数叫 e、引用却是 __ctx.ctx2（还曾在参数位置输出 `__ctx.catch` → 语法错误）
-        self.slot_aliases.insert(2, catch_var.clone());
+        // catch 体里读异常走的是 catch context 的 `THROWN_OBJECT_INDEX = MIN_CONTEXT_SLOTS`
+        // 槽 → 绑到同一个名字，否则参数叫 e、引用却是 `__ctx.ctx4`（≤7.x 的
+        // MIN_CONTEXT_SLOTS 是 4，不能写死 2），运行时就变成 undefined.message。
+        self.slot_aliases
+            .insert(self.d.table.min_context_slots, catch_var.clone());
         self.line(&format!("}} catch ({catch_var}) {{"));
         self.indent += 1;
         if let Err(e) = self.emit_range(catch_start, catch_setup + 1) {
@@ -4759,9 +4761,15 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         comment_safe(&format!(" {}", args))
                     }
                 ));
-                // 保守假设：可能写 acc（用合法标识符占位，保证语法可解析）
+                // 保守假设：可能写 acc。占位必须**跑得起来**：裸标识符（旧写法
+                // `__unknown_X`）会 ReferenceError（node12 的 for-of 里一条
+                // StackCheck 就把它存进寄存器、随后被求值）；`__runtime.X` 是
+                // 万能桩（未知名退化成空函数），取值/调用都不炸。
                 if !matches!(base.as_str(), "Jump" | "Star") {
-                    self.acc = Some(Expr::Ident(format!("__unknown_{base}")));
+                    self.acc = Some(Expr::Member {
+                        obj: Box::new(Expr::Ident("__runtime".into())),
+                        key: Key::Ident(base.to_string()),
+                    });
                 }
             }
         }

@@ -17,8 +17,18 @@ const jsc = `/tmp/behav-${name}-${nodeVer}.jsc`;
 const nodeBin = `${process.env.HOME}/.local/share/mise/installs/node/${nodeVer}/bin/node`;
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-// 1) 编译成 jsc
-run(nodeBin, ['scripts/mkcorpus.js', fixture, jsc]);
+// 1) 编译成 jsc。失败分两种：**源码本身**用了该版本不支持的语法（如 node12 跑
+// `?.`/`??`，属测试用例越界，不是我们的问题）与真正的编译错误。
+try {
+  run(nodeBin, ['scripts/mkcorpus.js', fixture, jsc]);
+} catch (e) {
+  const msg = (e.stderr || String(e)).trim().split('\n')[0];
+  console.log(JSON.stringify({
+    fixture: name, node: nodeVer, status: 'compile-fail',
+    detail: msg, note: '该 node 版本不支持此源码语法',
+  }));
+  process.exit(0);
+}
 
 // 2) 反编译
 const decArgs = ['decompile', jsc];

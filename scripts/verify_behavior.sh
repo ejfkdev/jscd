@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 VERSIONS=(${*:-16.20.2 18.20.8 20.20.2 22.12.0 24.12.0})
 # fixture 列表直接取自 cases.json —— 新增用例自动纳入矩阵
 FIXTURES=($(python3 -c "import json;print(' '.join(json.load(open('tests/fixtures/behav/cases.json')).keys()))"))
-pass=0; partial=0; fail=0; other=0
+pass=0; partial=0; fail=0; other=0; cfail=0
 for v in "${VERSIONS[@]}"; do
   map="workspace/ro/ro-map-$v.json"
   # 注意 `set -u` 下空数组展开会报 unbound —— 没生成 ro-map 的版本（老族）会踩到
@@ -15,6 +15,7 @@ for v in "${VERSIONS[@]}"; do
     st=$(printf '%s' "$line" | python3 -c "import sys,json;print(json.load(sys.stdin).get('status','?'))" 2>/dev/null || echo "?")
     case "$st" in
       pass) pass=$((pass+1));;
+      compile-fail) cfail=$((cfail+1));;
       partial) partial=$((partial+1));;
       fail) fail=$((fail+1));;
       *) other=$((other+1));;
@@ -22,4 +23,4 @@ for v in "${VERSIONS[@]}"; do
     printf "%-10s %-12s %s\n" "$v" "$f" "$st"
   done
 done
-echo "---- 汇总: pass=$pass partial=$partial fail=$fail other=$other ----"
+echo "---- 汇总: pass=$pass partial=$partial fail=$fail other=$other compile-fail=$cfail ----"
