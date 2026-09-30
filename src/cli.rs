@@ -280,6 +280,25 @@ fn disasm_cmd(file: &Path, common: &Common, filter: Option<&str>, json_flag: boo
     emit(common, &text, &json_out(&text), json_flag)
 }
 
+/// 按表的头布局切出 payload（老族还要跳过预留表与桩键）。
+fn t_payload<'a>(data: &'a [u8], table: &crate::tables::VersionTable) -> &'a [u8] {
+    let legacy_family = table.serialization.legacy.contains_key("kSpaceMask");
+    if !legacy_family {
+        return data;
+    }
+    let hl = &table.header;
+    let rd = |off: Option<usize>| -> usize {
+        off.and_then(|o| data.get(o..o + 4))
+            .and_then(|b| b.try_into().ok())
+            .map(u32::from_le_bytes)
+            .unwrap_or(0) as usize
+    };
+    let num_res = rd(hl.num_reservations);
+    let num_keys = rd(hl.num_stub_keys);
+    let start = (hl.header_size + 4 * (num_res + num_keys) + 7) & !7;
+    data.get(start..).unwrap_or(&[])
+}
+
 /// 解压 → 头 → 识别 → 表 → payload 反序列化（tagged_size 自动回退）。
 fn parse_cache<'a>(
     data: &'a [u8],
@@ -293,6 +312,12 @@ fn parse_cache<'a>(
 > {
     let h0 = crate::header::Header::parse(data)?;
     let ident = crate::tables::identify(h0.version_hash);
+    // 调试：`JSCD_TABLE=6.2.414.78` 强制只用某张表（老族多版本候选混在一起时定位用）
+    if let Ok(v) = std::env::var("JSCD_TABLE") {
+        if let Some(t) = crate::tables::table_for(&v) {
+            return crate::serializer::parse_with(t_payload(&data, &t), &t, &[]).map(|c| (h0, t, c));
+        }
+    }
     // 候选表：精确识别到的排第一；识别不到（老族哈希算法不同）时逐个试
     let mut candidates: Vec<crate::tables::VersionTable> = Vec::new();
     if let Some(t) = crate::tables::table_for(ident.v8) {
@@ -352,7 +377,7 @@ fn parse_cache<'a>(
             match crate::serializer::parse_with(payload, &t, &reservations) {
                 Ok(c) => return Ok((h, t, c)),
                 Err(e) => {
-                    if errors.len() < 6 {
+                    if errors.len() < 40 {
                         errors.push(format!("{} tagged_size={ts}: {e}", t.v8))
                     }
                 }

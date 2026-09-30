@@ -1258,9 +1258,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             if b != "CallRuntime" && b != "CallJSRuntime" {
                 return false;
             }
-            // `CallRuntime [DeclareGlobals], …`：id 在操作数里，按名字表判定
+            // `CallRuntime [DeclareGlobals], …`：id 在操作数里，按名字表判定。
+            // 6.x 的解释器发的是 `DeclareGlobalsForInterpreter`（同一件事），
+            // 只认前者会让 node8/10 的顶层代码永不执行。
             matches!(i.operands.first(), Some(Operand::RuntimeId(v))
-                if d.table.runtime_names.get(*v as usize).map(|n| n == "DeclareGlobals").unwrap_or(false))
+                if d.table.runtime_names.get(*v as usize)
+                    .map(|n| n == "DeclareGlobals" || n == "DeclareGlobalsForInterpreter")
+                    .unwrap_or(false))
         });
 
         Ok(FnCtx {

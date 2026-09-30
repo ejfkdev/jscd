@@ -75,6 +75,17 @@ pub struct VersionTable {
     /// 的 `n` 写成 `__ctx.ctx4`，而闭包里读它用的是名字 → 变量对不上（node12 closure）。
     #[serde(default = "default_min_context_slots")]
     pub min_context_slots: usize,
+    /// 字符串**长度字段**是 Smi 还是 int32。V8 ≤6.x：`String::kLengthOffset = Name::kSize`
+    /// 且 `kSize = kLengthOffset + kPointerSize`（长度占一个 tagged 槽，字符区在 12+ts）；
+    /// 7.x 起改成 int32（字符区在 16）。读错时长度恒为 0，所有字符串都成空串。
+    #[serde(default)]
+    pub string_length_smi: bool,
+    /// 长度字段的偏移（表未给时按 12 兜底）。
+    #[serde(default)]
+    pub string_length_offset: Option<usize>,
+    /// 字符区起始偏移（表未给时按 16 兜底）。
+    #[serde(default)]
+    pub string_chars_offset: Option<usize>,
     #[serde(default)]
     pub serialization: SerializationCfg,
 }
@@ -123,9 +134,12 @@ pub struct OperandTypeInfo {
 pub struct SerializationCfg {
     #[serde(default)]
     pub tags: HashMap<String, u8>,
-    /// 老族（V8 ≤ 8.4）：标签值与掩码常量都在这张表里（`tags` 为空）
+    /// 老族（V8 ≤ 8.4）：标签值与掩码常量都在这张表里（`tags` 为空）。
+    /// 值域用 u32：表里除标签外还有普通常量（如 `kInstanceTypes = 256`），
+    /// 用 u8 会让整张表反序列化失败 —— node8/10 的表曾因此**静默不可用**
+    /// （`table_for` 返回 None，只好退化成"逐个试所有表"）。
     #[serde(default)]
-    pub legacy: HashMap<String, u8>,
+    pub legacy: HashMap<String, u32>,
     #[serde(default)]
     pub code_items: HashMap<String, u8>,
     #[serde(default)]
@@ -160,6 +174,17 @@ pub struct ParameterCountCfg {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ScopeInfoLayout {
+    /// 6.x 的数值域多一个 `StackLocalCount`：ContextLocalCount 落在槽 5、变量区从槽 6 起。
+    /// （8.x 是槽 4 / 槽 5。）表未给时按各自家族默认值推。
+    #[serde(default)]
+    pub context_local_count_slot: Option<usize>,
+    #[serde(default)]
+    pub variable_part: Option<usize>,
+    /// 变量区是否含"形参名 + 栈局部名"前缀（V8 ≤6.x：`ParameterNamesIndex` →
+    /// `StackLocalFirstSlotIndex` → `StackLocalNamesIndex` → 才是 context 局部）。
+    /// 少算这段前缀会把**形参名**当成函数名（node10 的 `target` 读成参数 `a`）。
+    #[serde(default)]
+    pub parameter_names_first: bool,
     /// flags 是否 Smi 编码（V8 ≤ 12）；false 时为裸 uint32（13.x）
     pub flags_smi: bool,
     /// position_info 是否在 names/infos 之前（13.x）
@@ -339,6 +364,18 @@ pub use embedded_tables_shim::{EMBEDDED_TABLE_FILES, MANIFEST_JSON};
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// 内嵌的每张表都必须能反序列化（表结构改动/提取脚本出问题时立刻暴露；
+    /// node8/10 曾因 `roots`/`runtime_names` 抽成数字而整张表静默不可用）。
+    #[test]
+    fn every_embedded_table_deserializes() {
+        let raw = embed::EMBEDDED_TABLE_FILES;
+        assert!(!raw.is_empty());
+        for (name, text) in raw.iter() {
+            let t: Result<VersionTable, _> = serde_json::from_str(text);
+            assert!(t.is_ok(), "{name} 反序列化失败: {:?}", t.err());
+        }
+    }
 
     #[test]
     fn identify_known_hash_is_exact() {

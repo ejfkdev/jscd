@@ -296,6 +296,8 @@ mod tests {
             payload_length: 20,
             checksum: 24,
             header_size: 28,
+            num_reservations: None,
+            num_stub_keys: None,
         };
         // [0..16] magic/vh/sh/fh + [16] ro + [20] plen + [24] checksum
         let mut data = Vec::new();

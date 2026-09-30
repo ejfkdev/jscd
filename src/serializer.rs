@@ -128,6 +128,13 @@ pub enum SlotValue {
     Ref(Ref),
     /// 连续相同引用（FixedRepeat/VariableRepeat）
     Repeat(usize, Box<SlotValue>),
+    /// 6.x 的 repeat：语义是"复制**前一个槽**的值"（V8 `UnalignedCopy(&object, current - 1)`），
+    /// 流里**没有**额外的引用；展开时用同对象上一个槽的值补上。
+    RepeatPrev(usize),
+    /// 6.x 的跳过：`kSkip` / `*WithSkip` 跳过若干槽（V8 直接推进槽指针），不写值。
+    Skip(usize),
+    /// 只从流里吃掉若干字节（如 kOffHeapBackingStore 的内联缓冲），**不**推进槽指针。
+    StreamBytes(usize),
     /// raw chunk（字节在 payload 里，不复制）
     Raw(Raw),
     ClearedWeak,
@@ -216,12 +223,17 @@ struct Walker<'a> {
     pos: usize,
     tagged_size: usize,
     tags: &'a std::collections::HashMap<String, u8>,
+    /// 老族的**全部**常量（含 ≥256 的普通常量），供 `lnum()` 用
+    legacy_consts: &'a std::collections::HashMap<String, u32>,
     /// 老族（V8 ≤ 8.4）的分配器状态：backref 用 (chunk, offset) 寻址，
     /// 需要按 reservation 表模拟分配才能把引用映射回对象。
     legacy: Option<LegacyAlloc>,
     objects: Vec<Object>,
     hot: HotRing,
     pending: std::collections::HashMap<u32, Vec<(ObjId, usize)>>,
+    /// 6.x 的 `*WithSkip` 前缀读到的待跳过字节数：值落在跳过之后的位置，
+    /// 由对象内容循环统一记账（槽指针 += skip，再写值）。
+    extra_skip: usize,
     /// 版本表（调试打印 root 名字用）
     table: &'a VersionTable,
 }
@@ -290,6 +302,61 @@ impl<'a> Walker<'a> {
         }
     }
 
+    /// 版本表里的整数常量（老族把 `kNumberOfSpaces`/`kSpaceTagSize`/`kPageSizeBits`/… 与
+    /// 标签一起放在 legacy 表里；值可能是任意 u32）。
+    #[inline]
+    fn lnum(&self, name: &str) -> Option<u32> {
+        self.legacy_consts.get(name).copied()
+    }
+
+    /// 6.x 线格式：backref 是**一个**按 `SerializerReference` 位域打包的 uint32，
+    /// 且 hot/根常量有 `*WithSkip` 变体（7.8/8.4 都没有 `kBackrefWithSkip`）。
+    #[inline]
+    fn is_six_x(&self) -> bool {
+        self.legacy_consts.contains_key("kBackrefWithSkip")
+    }
+    #[inline]
+    fn n_spaces(&self) -> u8 {
+        self.lnum("kNumberOfSpaces").map(|v| v as u8).unwrap_or(6)
+    }
+    #[inline]
+    fn map_space(&self) -> u8 {
+        self.lnum("kMapSpace").map(|v| v as u8).unwrap_or(4)
+    }
+    #[inline]
+    fn lo_space(&self) -> u8 {
+        self.lnum("kLoSpace").map(|v| v as u8).unwrap_or(5)
+    }
+
+    /// hot 标签 → (是否 WithSkip, index)。6.2 的两个区间不相邻（0x38 / 0x58）。
+    fn hot_tag_index(&self, b: u8) -> Option<(bool, usize)> {
+        let plain = self.opt_tag("kHotObject")?;
+        if (plain..plain + 8).contains(&b) {
+            return Some((false, (b & 7) as usize));
+        }
+        if let Some(hs) = self.opt_tag("kHotObjectWithSkip") {
+            if (hs..hs + 8).contains(&b) {
+                return Some((true, (b & 7) as usize));
+            }
+        }
+        None
+    }
+
+    /// 根常量标签 → (是否 WithSkip, root index)（index = data & kRootArrayConstantsMask）。
+    fn root_const_tag_index(&self, b: u8) -> Option<(bool, usize)> {
+        let mask = self.lnum("kRootArrayConstantsMask").unwrap_or(0x1f) as u8;
+        let plain = self.opt_tag("kRootArrayConstants")?;
+        if (plain..plain + mask + 1).contains(&b) {
+            return Some((false, (b & mask) as usize));
+        }
+        if let Some(hs) = self.opt_tag("kRootArrayConstantsWithSkip") {
+            if (hs..hs + mask + 1).contains(&b) {
+                return Some((true, (b & mask) as usize));
+            }
+        }
+        None
+    }
+
     #[inline]
     fn push_slot(&mut self, id: ObjId, index: usize, value: SlotValue) {
         if let Ok(want) = std::env::var("JSCD_DBG_OBJSLOTS") {
@@ -313,7 +380,11 @@ impl<'a> Walker<'a> {
         let ref_pos = self.pos;
         let b0 = self.data.get(ref_pos).copied().unwrap_or(0);
         let t_new = self.opt_tag("kNewObject").unwrap_or(0);
-        let new_spaces = if self.legacy.is_some() { 6 } else { 0x08 };
+        let new_spaces = if self.legacy.is_some() {
+            self.n_spaces()
+        } else {
+            0x08
+        };
         let is_new = (t_new..t_new + new_spaces).contains(&b0);
         if is_new {
             // 行要在该对象的 map 引用之前打印 → 先手工解码 tag+size（不消费字节）。
@@ -337,9 +408,9 @@ impl<'a> Walker<'a> {
             Ok(_) => {}
         }
         let t_backref = self.opt_tag("kBackref").unwrap_or(8);
-        let t_hot = self.opt_tag("kHotObject").unwrap_or(0x90);
+        let _t_hot = self.opt_tag("kHotObject").unwrap_or(0x90);
         let t_root = self.opt_tag("kRootArray");
-        let t_rootc = self.opt_tag("kRootArrayConstants").unwrap_or(0x40);
+        let _t_rootc = self.opt_tag("kRootArrayConstants").unwrap_or(0x40);
         let desc = match r.as_ref().unwrap() {
             SlotValue::Ref(Ref::Object(id)) => format!("obj={id} ty={}", self.obj_map_name(*id)),
             SlotValue::Ref(Ref::Root(ix)) => format!("root={ix}"),
@@ -347,18 +418,22 @@ impl<'a> Walker<'a> {
             SlotValue::Ref(Ref::Attached(i)) => format!("attached={i}"),
             SlotValue::Raw(_) => "raw".into(),
             SlotValue::Repeat(n, _) => format!("repeat={n}"),
+            SlotValue::RepeatPrev(n) => format!("repeatprev={n}"),
+            SlotValue::Skip(n) => format!("skip={n}"),
+            SlotValue::StreamBytes(n) => format!("streambytes={n}"),
             SlotValue::WeakRef(_) => "weak".into(),
             SlotValue::ClearedWeak => "cleared".into(),
             SlotValue::PendingRef(_) => "pending".into(),
         };
-        if (t_backref..t_backref + 6).contains(&b0) {
+        let n_sp_dbg = self.n_spaces();
+        if (t_backref..t_backref + n_sp_dbg).contains(&b0) {
             eprintln!("[ref] backref pos={ref_pos} space={} {desc}", b0 - t_backref);
-        } else if (t_hot..t_hot + 8).contains(&b0) {
-            eprintln!("[ref] hot pos={ref_pos} i={} {desc}", b0 - t_hot);
+        } else if let Some((ws, i)) = self.hot_tag_index(b0) {
+            eprintln!("[ref] hot pos={ref_pos} i={i} skip={ws} {desc}");
         } else if Some(b0) == t_root {
             eprintln!("[ref] root pos={ref_pos} {desc}");
-        } else if (t_rootc..t_rootc + 32).contains(&b0) {
-            eprintln!("[ref] rootconst pos={ref_pos} i={} {desc}", b0 - t_rootc);
+        } else if let Some((ws, i)) = self.root_const_tag_index(b0) {
+            eprintln!("[ref] rootconst pos={ref_pos} i={i} skip={ws} {desc}");
         } else {
             eprintln!("[ref] other pos={ref_pos} b={b0:#04x} {desc}");
         }
@@ -377,7 +452,8 @@ impl<'a> Walker<'a> {
             }
             let t_new = self.tag("kNewObject")?;
             let t_backref = self.tag("kBackref")?;
-            if (t_new..t_new + 6).contains(&b_raw) {
+            let n_sp = self.n_spaces();
+            if (t_new..t_new + n_sp).contains(&b_raw) {
                 let space = (b_raw - t_new) as u8;
                 let id = self.parse_new_object_space(depth, space)?;
                 // **不能**入 hot 环：V8 8.4 只在 `PutRoot`（根数组分支）与
@@ -386,55 +462,19 @@ impl<'a> Walker<'a> {
                 // `target` 名槽（hot 3）因此指到了 inc 的 SFI，函数名全丢。
                 return Ok(SlotValue::Ref(Ref::Object(id)));
             }
-            if (t_backref..t_backref + 6).contains(&b_raw) {
-                let space = (b_raw - t_backref) as u8;
-                // MAP(4)/LO(5)：V8 `PutBackReference` 只写一个序数
-                // （`case SnapshotSpace::kMap: PutInt(map_index)`、
-                //   `case kLargeObject: PutInt(large_object_index)`），
-                // 其余空间才写 (chunk_index, chunk_offset) 两个。
-                // 早先一律读两段 → 从这里开始整条流错位（大 payload 上表现为
-                // 若干 KB 之后撞上非法标签 0x98）。
-                if space == 4 || space == 5 {
-                    let index = self.putint()? as usize;
-                    match self.legacy.as_ref().and_then(|l| l.resolve_ordinal(space, index)) {
-                        Some(id) => {
-                            self.hot.add(HotEntry::Object(id));
-                            return Ok(SlotValue::Ref(Ref::Object(id)));
-                        }
-                        None => {
-                            return Err(format!(
-                                "legacy {} backref index {index} out of range (have {})",
-                                if space == 4 { "map" } else { "large-object" },
-                                if space == 4 {
-                                    self.legacy.as_ref().map_or(0, |l| l.maps.len())
-                                } else {
-                                    self.legacy.as_ref().map_or(0, |l| l.large.len())
-                                }
-                            ));
-                        }
+            // 6.x：`kBackrefWithSkip`（0x10..0x15）——先读"跳过"字节数（跳过的是对象内的
+            // **槽指针**，不是解析流程），随后与普通 backref 同构。
+            if self.is_six_x() {
+                if let Some(t_bs) = self.opt_tag("kBackrefWithSkip") {
+                    if (t_bs..t_bs + n_sp).contains(&b_raw) {
+                        let skip = self.putint()? as usize;
+                        self.extra_skip += skip;
+                        return self.legacy_backref((b_raw - t_bs) as u8);
                     }
                 }
-                let chunk = self.putint()?;
-                let offset = self.putint()?;
-                match self.legacy.as_ref().and_then(|l| l.resolve(space, chunk, offset)) {
-                    Some(id) => {
-                        self.hot.add(HotEntry::Object(id));
-                        return Ok(SlotValue::Ref(Ref::Object(id)));
-                    }
-                    None => {
-                        // 老族里也有**只读堆引用**：RO 堆不在 payload 内（它来自 V8 快照），
-                        // 于是 V8 写的是 (space, chunk, offset) 形式的地址，这里的 offset 就是
-                        // RO 堆内的偏移 —— 与 `kReadOnlyHeapRef` 同一套 (chunk, offset) 编号。
-                        // 实测 node14 `branch`：V8 轨迹里是 `back reference to: String "small"/"big"`，
-                        // 而地址 0x…3c7861 / 0x…3c7639 相对 0x…3c0000 正是 30816 / 30264 ✓。
-                        // 这类引用交给 ro-map 解析（查不到时反编译器会留占位）。
-                        if std::env::var("JSCD_DBG_LEGACY").is_ok() {
-                            eprintln!("[ro-ref] ({space},{chunk},{offset}) → 按只读堆引用处理");
-                        }
-                        self.hot.add(HotEntry::Ro(chunk, offset));
-                        return Ok(SlotValue::Ref(Ref::RoRef(chunk, offset)));
-                    }
-                }
+            }
+            if (t_backref..t_backref + n_sp).contains(&b_raw) {
+                return self.legacy_backref((b_raw - t_backref) as u8);
             }
             // 老族专有：chunk 切换 / 对齐 / 延迟内容
             if Some(b_raw) == self.opt_tag("kNextChunk") {
@@ -456,14 +496,23 @@ impl<'a> Walker<'a> {
         }
         let t_new = self.tag("kNewObject")?;
         let t_backref = self.tag("kBackref")?;
-        let t_hot = self.tag("kHotObject")?;
-        let t_root_const = self.tag("kRootArrayConstants")?;
+        let _t_hot = self.tag("kHotObject")?;
+        let _t_root_const = self.tag("kRootArrayConstants")?;
         let t_fixed_raw = self.tag("kFixedRawData")?;
         let t_fixed_repeat = self.tag_any(&["kFixedRepeat", "kFixedRepeatRoot"]);
         let t_fixed_repeat_root_only =
             self.opt_tag("kFixedRepeat").is_none() && self.opt_tag("kFixedRepeatRoot").is_some();
 
-        if (t_new..t_backref).contains(&b) {
+        // 「新对象」的取值区间要按**空间数**算，不能想当然用 `t_new..t_backref`：
+        // 6.2 只有 5 个空间，`kRootArray` 恰好落在 0x05 —— 落在 kNewObject 的
+        // 数值区间内（标签表里两者是相邻的独立值）。按区间判定会把 root 引用
+        // 当成"新对象 + 空间 5"（node8 的第一个 payload 就撞上：root 284 → 假对象）。
+        let n_new = if self.legacy.is_some() {
+            self.n_spaces() as u8
+        } else {
+            t_backref.saturating_sub(t_new)
+        };
+        if (t_new..t_new.saturating_add(n_new)).contains(&b) {
             let id = self.parse_new_object(depth)?;
             Ok(SlotValue::Ref(Ref::Object(id)))
         } else if b == t_backref {
@@ -473,8 +522,11 @@ impl<'a> Walker<'a> {
             }
             self.hot.add(HotEntry::Object(idx)); // PutBackReference 会入 hot 环
             Ok(SlotValue::Ref(Ref::Object(idx)))
-        } else if (t_hot..t_hot + 8).contains(&b_raw) {
-            let i = (b_raw - t_hot) as usize;
+        } else if let Some((with_skip, i)) = self.hot_tag_index(b_raw) {
+            if with_skip {
+                let skip = self.putint()? as usize;
+                self.extra_skip += skip;
+            }
             match self.hot.get(i) {
                 Some(HotEntry::Object(id)) => Ok(SlotValue::Ref(Ref::Object(id))),
                 Some(HotEntry::Root(r)) => Ok(SlotValue::Ref(Ref::Root(r))),
@@ -485,14 +537,66 @@ impl<'a> Walker<'a> {
             let idx = self.putint()? as usize;
             self.hot.add(HotEntry::Root(idx));
             Ok(SlotValue::Ref(Ref::Root(idx)))
-        } else if (t_root_const..t_root_const + 32).contains(&b_raw) {
-            Ok(SlotValue::Ref(Ref::Root((b_raw - t_root_const) as usize)))
+        } else if let Some((with_skip, i)) = self.root_const_tag_index(b_raw) {
+            if with_skip {
+                let skip = self.putint()? as usize;
+                self.extra_skip += skip;
+            }
+            Ok(SlotValue::Ref(Ref::Root(i)))
         } else if Some(b) == self.opt_tag("kReadOnlyHeapRef") {
             let c = self.putint()?;
             let o = self.putint()?;
             Ok(SlotValue::Ref(Ref::RoRef(c, o)))
         } else if b == self.tag("kAttachedReference")? {
             Ok(SlotValue::Ref(Ref::Attached(self.putint()? as usize)))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kBuiltin") {
+            // 6.x：`kBuiltin <index>` —— 内建代码对象（不在 payload 内）。
+            // 占位成"内建空间"的 RoRef，ro-map 不会误命中（空间号 ≠ 0）。
+            let i = self.putint()?;
+            Ok(SlotValue::Ref(Ref::RoRef(u32::MAX - 1, i)))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kExternalReference") {
+            // 6.x：外部引用按 id 编号（地址由 embedder 提供）→ 占位
+            let i = self.putint()?;
+            Ok(SlotValue::Ref(Ref::RoRef(u32::MAX - 2, i)))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kApiReference") {
+            // `kApiReference <skip> <id>`（skip = 先跳过的字节数）
+            let skip = self.putint()? as usize;
+            self.extra_skip += skip;
+            let i = self.putint()?;
+            Ok(SlotValue::Ref(Ref::RoRef(u32::MAX - 3, i)))
+        } else if self.is_six_x()
+            && (Some(b) == self.opt_tag("kInternalReference")
+                || Some(b) == self.opt_tag("kInternalReferenceEncoded"))
+        {
+            // `<pc_offset> <target_offset>`：就地改 reloc，不写槽
+            let _ = self.putint()?;
+            let _ = self.putint()?;
+            Ok(SlotValue::Skip(0))
+        } else if self.is_six_x()
+            && (Some(b) == self.opt_tag("kDeoptimizerEntryPlain")
+                || Some(b) == self.opt_tag("kDeoptimizerEntryFromCode"))
+        {
+            let _ = self.putint()?;
+            Ok(SlotValue::Skip(0))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kOffHeapBackingStore") {
+            // `byte_length` + 内联缓冲字节（不写槽）
+            let len = self.putint()? as usize;
+            Ok(SlotValue::StreamBytes(len))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kVariableRawCode") {
+            // `size_in_bytes` + 直接写进 Code 体的字节（不推槽）
+            let len = self.putint()? as usize;
+            Ok(SlotValue::StreamBytes(len))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kEmbedderFieldsData") {
+            // `<object_id> <size>` + 字节（不写普通槽）
+            let _ = self.putint()?;
+            let len = self.putint()? as usize;
+            Ok(SlotValue::StreamBytes(len))
+        } else if self.is_six_x() && Some(b) == self.opt_tag("kOffHeapTarget") {
+            // `<skip> <builtin_index>`：写一个值（槽推进 1）
+            let skip = self.putint()? as usize;
+            self.extra_skip += skip;
+            let _ = self.putint()?;
+            Ok(SlotValue::Ref(Ref::RoRef(u32::MAX - 4, 0)))
         } else if Some(b) == self.opt_tag("kPartialSnapshotCache") {
             // 7.8：部分快照缓存（老族专有）→ 与只读缓存同样按"外部对象"编号
             let i = self.putint()? as usize;
@@ -531,8 +635,18 @@ impl<'a> Walker<'a> {
             // 报 `legacy backref (0,0,30816) 未命中` 就是这个。
             let bytes = if self.legacy.is_some() { n } else { n * self.tagged_size };
             Ok(SlotValue::Raw(self.raw(bytes.max(1))?))
+        } else if Some(b) == self.opt_tag("kSkip") {
+            // 6.x：`kSkip` —— 跳过若干**字节**的槽（值不写）
+            let bytes = self.putint()? as usize;
+            Ok(SlotValue::Skip(bytes / self.tagged_size.max(1)))
         } else if t_fixed_repeat.map_or(false, |t| (t..t + 16).contains(&b)) {
             let base = t_fixed_repeat.unwrap();
+            // 6.x 的计数从 1 起（`DecodeFixedRepeatCount = bytecode - kFixedRepeatStart`，
+            // kFixedRepeatStart = kFixedRepeat - 1），且值是"前一个槽"；
+            // 7.8/8.4 从 2 起（kFirstEncodableRepeatCount = 2）且流里带引用。
+            if self.is_six_x() {
+                return Ok(SlotValue::RepeatPrev((b - base + 1) as usize));
+            }
             let n = (b - base + 2) as usize;
             if t_fixed_repeat_root_only {
                 let root = self.byte()? as usize;
@@ -542,6 +656,11 @@ impl<'a> Walker<'a> {
                 Ok(SlotValue::Repeat(n, Box::new(inner)))
             }
         } else if Some(b) == self.tag_any(&["kVariableRepeat"]) {
+            if self.is_six_x() {
+                // 6.x：`int repeats = source_.GetInt();`（无 +N 偏移），值 = 前一个槽
+                let n = self.putint()? as usize;
+                return Ok(SlotValue::RepeatPrev(n));
+            }
             let n = self.putint()? as usize + 18;
             let inner = self.parse_ref(depth + 1)?;
             Ok(SlotValue::Repeat(n, Box::new(inner)))
@@ -565,6 +684,109 @@ impl<'a> Walker<'a> {
         }
     }
 
+    /// 老族 backref 的两种线格式。
+    ///
+    /// - **7.8 / 8.4**：`PutBackReference` 写两个 varint（chunk_index, chunk_offset），
+    ///   但 MAP / LO 空间只写一个序数（map_index / large_object_index）。
+    /// - **6.x**：写**一个** uint32，按 `SerializerReference` 位域打包
+    ///   （`[SpaceBits][ValueIndex]`，ValueIndex = chunk_index<<16 | chunk_offset>>3），
+    ///   MAP/LO 的 ValueIndex 就是序数本身；RO 空间按页号+页内偏移解析。
+    fn legacy_backref(&mut self, space: u8) -> R<SlotValue> {
+        let map_space = self.map_space();
+        let lo_space = self.lo_space();
+        if self.is_six_x() {
+            let bf = self.putint()? as u32;
+            let space_tag = self.lnum("kSpaceTagSize").unwrap_or(3);
+            // V8 写的是 `reference.back_reference()` = **只有** ValueIndex 那一段
+            // （`bitfield_ & (ChunkOffsetBits::kMask | ChunkIndexBits::kMask)`），
+            // 空间号在**标签**里 —— 位域高位恒为 0，不能当空间用。
+            let value_bits = 32 - space_tag;
+            let index = bf & ((1u32 << value_bits) - 1);
+            if space == map_space {
+                return match self.legacy.as_ref().and_then(|l| l.resolve_ordinal(4, index as usize)) {
+                    Some(id) => {
+                        self.hot.add(HotEntry::Object(id));
+                        Ok(SlotValue::Ref(Ref::Object(id)))
+                    }
+                    None => Err(format!("legacy map backref index {index} out of range")),
+                };
+            }
+            if space == lo_space {
+                return match self.legacy.as_ref().and_then(|l| l.resolve_ordinal(5, index as usize)) {
+                    Some(id) => {
+                        self.hot.add(HotEntry::Object(id));
+                        Ok(SlotValue::Ref(Ref::Object(id)))
+                    }
+                    None => Err(format!("legacy large-object backref index {index} out of range")),
+                };
+            }
+            let align_bits = (self.tagged_size as u32).max(1).trailing_zeros();
+            let off_bits = self
+                .lnum("kPageSizeBits")
+                .unwrap_or(19)
+                .saturating_sub(align_bits);
+            let chunk_offset = (index & ((1u32 << off_bits) - 1)) << align_bits;
+            let chunk_index = index >> off_bits;
+            return match self
+                .legacy
+                .as_ref()
+                .and_then(|l| l.resolve(space, chunk_index, chunk_offset))
+            {
+                Some(id) => {
+                    self.hot.add(HotEntry::Object(id));
+                    Ok(SlotValue::Ref(Ref::Object(id)))
+                }
+                None => {
+                    // 只读堆对象不在 payload 内（与 8.4 同一处理）：交给 ro-map。
+                    self.hot.add(HotEntry::Ro(chunk_index, chunk_offset));
+                    Ok(SlotValue::Ref(Ref::RoRef(chunk_index, chunk_offset)))
+                }
+            };
+        }
+
+        // 7.8 / 8.4
+        if space == map_space || space == lo_space {
+            let index = self.putint()? as usize;
+            let canonical = if space == map_space { 4 } else { 5 };
+            return match self.legacy.as_ref().and_then(|l| l.resolve_ordinal(canonical, index)) {
+                Some(id) => {
+                    self.hot.add(HotEntry::Object(id));
+                    Ok(SlotValue::Ref(Ref::Object(id)))
+                }
+                None => Err(format!(
+                    "legacy {} backref index {index} out of range (have {})",
+                    if space == map_space { "map" } else { "large-object" },
+                    if space == map_space {
+                        self.legacy.as_ref().map_or(0, |l| l.maps.len())
+                    } else {
+                        self.legacy.as_ref().map_or(0, |l| l.large.len())
+                    }
+                )),
+            };
+        }
+        let chunk = self.putint()?;
+        let offset = self.putint()?;
+        match self.legacy.as_ref().and_then(|l| l.resolve(space, chunk, offset)) {
+            Some(id) => {
+                self.hot.add(HotEntry::Object(id));
+                Ok(SlotValue::Ref(Ref::Object(id)))
+            }
+            None => {
+                // 老族里也有**只读堆引用**：RO 堆不在 payload 内（它来自 V8 快照），
+                // 于是 V8 写的是 (space, chunk, offset) 形式的地址，这里的 offset 就是
+                // RO 堆内的偏移 —— 与 `kReadOnlyHeapRef` 同一套 (chunk, offset) 编号。
+                // 实测 node14 `branch`：V8 轨迹里是 `back reference to: String "small"/"big"`，
+                // 而地址 0x…3c7861 / 0x…3c7639 相对 0x…3c0000 正是 30816 / 30264 ✓。
+                // 这类引用交给 ro-map 解析（查不到时反编译器会留占位）。
+                if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+                    eprintln!("[ro-ref] ({space},{chunk},{offset}) → 按只读堆引用处理");
+                }
+                self.hot.add(HotEntry::Ro(chunk, offset));
+                Ok(SlotValue::Ref(Ref::RoRef(chunk, offset)))
+            }
+        }
+    }
+
     fn parse_new_object(&mut self, depth: usize) -> R<ObjId> {
         self.parse_new_object_space(depth, 0)
     }
@@ -573,6 +795,11 @@ impl<'a> Walker<'a> {
     fn parse_new_object_space(&mut self, depth: usize, space: u8) -> R<ObjId> {
         let tag_offset = self.pos.saturating_sub(1);
         let size_words = self.putint()? as usize;
+        // 6.x：LO 空间对象在 size 之后还有一个「可执行性」字节
+        // （V8 `Allocate(LO_SPACE)` 里 `Executability exec = source_.Get()`，在布置内容之前）。
+        if self.legacy.is_some() && self.is_six_x() && space == self.lo_space() {
+            let _ = self.byte()?;
+        }
         // 老族（≤8.4）的 size 单位是 `1 << kObjectAlignmentBits`，而 V8 8.4 的
         // `kObjectAlignmentBits = kTaggedSizeLog2` —— 也就是**等于 tagged size**
         // （指针压缩构建 ts=4 → 4 字节/单位，非压缩 ts=8 → 8）。按 8 算会让每个对象的
@@ -649,18 +876,43 @@ impl<'a> Walker<'a> {
                 return Ok(id);
             }
             let v = self.parse_ref(depth + 1)?;
+            // 6.x 的 `*WithSkip` 前缀：跳过若干字节后值才落位（槽数 = 字节 / tagged size）
+            let extra_words = std::mem::take(&mut self.extra_skip) / self.tagged_size.max(1);
+            if let SlotValue::Skip(words) = v {
+                // 只推进槽指针、不写值
+                consumed += words;
+                slot_index += words;
+                continue;
+            }
+            if let SlotValue::StreamBytes(_) = v {
+                // 已在 parse_ref 里把字节吃掉；槽指针与对象字节数都不动
+                continue;
+            }
             let n_slots = match &v {
                 SlotValue::Raw(r) => r.len / self.tagged_size,
                 SlotValue::Repeat(n, _) => *n,
+                SlotValue::RepeatPrev(n) => *n,
                 _ => 1,
+            };
+            // 6.x 的 repeat = "复制前一个槽"：展开成 Repeat(n, 上一个槽的值)
+            let v = match v {
+                SlotValue::RepeatPrev(n) => {
+                    let prev = self.objects[id]
+                        .slots
+                        .last()
+                        .map(|s| s.value.clone())
+                        .unwrap_or(SlotValue::ClearedWeak);
+                    SlotValue::Repeat(n, Box::new(prev))
+                }
+                other => other,
             };
             if let SlotValue::PendingRef(pid) = &v {
                 let vec_pos = self.objects[id].slots.len();
                 self.pending.entry(*pid).or_default().push((id, vec_pos));
             }
-            self.push_slot(id, slot_index, v);
-            consumed += n_slots;
-            slot_index += n_slots;
+            self.push_slot(id, slot_index + extra_words, v);
+            consumed += n_slots + extra_words;
+            slot_index += n_slots + extra_words;
         }
         if consumed != size_words {
             return Err(format!(
@@ -847,7 +1099,11 @@ pub fn parse_with<'a>(
     let mut merged_map: std::collections::HashMap<String, u8> = table.serialization.tags.clone();
     // 老族（≤8.4）以 legacy 表为准：源码树里同时存在现代枚举，tags 会串味
     for (k, v) in &table.serialization.legacy {
-        merged_map.insert(k.clone(), *v);
+        // 只并进 u8 能表示的标签；≥256 的是普通常量（kInstanceTypes 之类），
+        // 由 `lnum()` 直接查 legacy 表。
+        if let Ok(v8) = u8::try_from(*v) {
+            merged_map.insert(k.clone(), v8);
+        }
     }
     let merged_tags: &'static std::collections::HashMap<String, u8> =
         Box::leak(Box::new(merged_map));
@@ -880,12 +1136,25 @@ pub fn parse_with<'a>(
         pos: 0,
         tagged_size: ts,
         tags: merged_tags,
+        legacy_consts: &table.serialization.legacy,
         legacy: legacy_ctx,
         objects: Vec::new(),
         hot: HotRing::default(),
         pending: std::collections::HashMap::new(),
+        extra_skip: 0,
         table,
     };
+    if std::env::var("JSCD_DBG_LEGACY").is_ok() {
+        eprintln!(
+            "[table] v8={} six_x={} spaces={} map={} lo={} ts={}",
+            table.v8,
+            w.is_six_x(),
+            w.n_spaces(),
+            w.map_space(),
+            w.lo_space(),
+            ts
+        );
+    }
     let b = w.byte()?;
     let t_new = w.tag("kNewObject")?;
     if !(t_new..w.tag("kBackref")?).contains(&b) {

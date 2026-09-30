@@ -235,6 +235,9 @@ impl<'a> Disassembler<'a> {
             function_variable_bits: [12, 13],
             receiver_bits: [7, 8],
             has_inferred_bit: 14,
+            context_local_count_slot: None,
+            variable_part: None,
+            parameter_names_first: false,
         });
         // ScopeInfo 的数值域各占一个 slot：9.x–12.x 是 Smi（值在高 32 位），
         // ≤8.4 与 13.x 是**裸 int32**（`FOR_EACH_SCOPE_INFO_NUMERIC_FIELD` 的
@@ -272,12 +275,24 @@ impl<'a> Disassembler<'a> {
         }
         if !cfg.position_info_early {
             // 槽位 = (变量区起点) + 2n + saved + receiver；起点 ≤8.4 为 5、9.x–12.x 为 4
-            let Some(n) = self.num_field(id, base + 2, flags_smi) else {
+            // ContextLocalCount 的槽位随版本：8.x = base+2（槽 4），6.x 多一个
+            // StackLocalCount → 槽 5（表里给）。
+            let clc_slot = cfg.context_local_count_slot.unwrap_or(base + 2);
+            let Some(n) = self.num_field(id, clc_slot, flags_smi) else {
                 return (None, None);
             };
-            let vpart = if legacy { 5 } else { 4 };
+            let vpart = cfg
+                .variable_part
+                .unwrap_or(if legacy { 5 } else { 4 });
             let mut cursor =
                 vpart + 2 * n as usize + has_saved as usize + has_receiver as usize;
+            if cfg.parameter_names_first {
+                // ≤6.x：变量区 = 形参名(ParameterCount) + 栈局部首槽(1) + 栈局部名(StackLocalCount)
+                // + context 名 + context 信息 + …，函数名在这些之后。
+                let param = self.num_field(id, clc_slot.wrapping_sub(2), flags_smi).unwrap_or(0);
+                let stack = self.num_field(id, clc_slot.wrapping_sub(1), flags_smi).unwrap_or(0);
+                cursor += param as usize + 1 + stack as usize;
+            }
             // V8 `ScopeInfo::HasFunctionName()`（8.4 到 13.x 都是同一条：
             //   `return VariableAllocationInfo::NONE != FunctionVariableBits::decode(Flags());`）
             // —— 只有 NONE(0) 表示"没有名字槽"；UNUSED(3) 只是函数变量没被用到，槽位照样
@@ -795,18 +810,32 @@ impl<'a> Disassembler<'a> {
 
     pub fn string_value(&self, id: ObjId) -> Option<String> {
         let obj = self.cache.obj(id);
-        // 字符串布局（真机实证，含压缩/非压缩家族一致）：
-        //   @0 map | @8 hash_field(int32) | @12 length(int32) | @16 chars
-        let length = self
-            .cache
-            .raw_at(id, 12, 4)
-            .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?;
+        // 字符串布局：
+        //   @0 map | @8 hash_field | @12 length | chars
+        // 长度的**形态**随版本变：≤6.x 是 Smi（占一个 tagged 槽，字符区在 12+ts = 20），
+        // 7.x 起是 int32（字符区在 16）。按 6.x 读成 int32 时长度恒为 0（Smi 的低半字为 0），
+        // 于是所有字符串都变成空串 —— node8 的 SFI 名、全局名全丢。
+        let len_off = self.table.string_length_offset.unwrap_or(12);
+        let length = if self.table.string_length_smi {
+            let ts = self.layout.tagged_size;
+            let d = self.cache.raw_at(id, len_off, ts)?;
+            if ts == 8 {
+                (read_u64(d) >> 32) as u32 as usize
+            } else {
+                let raw = u32::from_le_bytes(d.try_into().ok()?);
+                ((raw as i32) >> 1) as usize
+            }
+        } else {
+            self.cache
+                .raw_at(id, len_off, 4)
+                .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?
+        };
         let is_one_byte = match obj.ty {
             crate::serializer::Ty::Str(crate::serializer::StrKind::OneByte) => true,
             crate::serializer::Ty::Str(crate::serializer::StrKind::TwoByte) => false,
             _ => obj.ty.name(self.table).contains("OneByte"),
         };
-        let chars_off = 16;
+        let chars_off = self.table.string_chars_offset.unwrap_or(16);
         let d = self.cache.raw_at(id, chars_off, length)?;
         if is_one_byte {
             Some(String::from_utf8_lossy(d).into_owned())

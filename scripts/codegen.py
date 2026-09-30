@@ -255,6 +255,83 @@ def extract_bytecodes(text):
 
 # ------------------------------------------------------------------- roots.h
 
+def _split_top_args(inner):
+    """按顶层逗号切分宏实参（跳过字符串字面量与括号）。"""
+    args, depth, cur, in_str = [], 0, "", None
+    for ch in inner:
+        if in_str:
+            cur += ch
+            if ch == in_str:
+                in_str = None
+            continue
+        if ch in ("\"", "'"):
+            in_str = ch
+            cur += ch
+            continue
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            args.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        args.append(cur.strip())
+    return args
+
+
+def _roots_six_x(*sources):
+    """6.x（Node 8/10 的 V8 6.2/6.8）根名表。
+
+    条目形态：`V(Type, name, camel_name)`（用 camel_name 作索引名）、
+    字符串 `V(name, "literal")`（用 `String:<literal>`，反编译时直接字面量化）、
+    符号 `V(name[, "desc"])`、访问器 `V(name, AccessorName)`、
+    结构映射 `V(NAME, Name, name)`、数据处理器 `V(NAME, Name, Size, name)`。
+    """
+    texts = [t for t in sources if t]
+
+    def body(name):
+        for t in texts:
+            m = re.search(rf"#define {name}\(V\)(.*?)(?=\n#define |\Z)", t, re.S)
+            if m:
+                return m.group(1)
+        return None
+
+    def entries(name):
+        b = body(name)
+        if b is None:
+            return None
+        b = b.replace("\\\n", " ")
+        out = []
+        for m in re.finditer(r"\bV\(([^()]*)\)", b):
+            out.append(_split_top_args(m.group(1)))
+        return out
+
+    out = []
+    for a in entries("STRONG_ROOT_LIST") or []:
+        out.append(a[2] if len(a) >= 3 else a[0])
+    for a in entries("INTERNALIZED_STRING_LIST") or []:
+        lit = a[1].strip()
+        if lit.startswith('"') and lit.endswith('"'):
+            lit = lit[1:-1]
+        out.append("String:" + lit)
+    for name in ("PRIVATE_SYMBOL_LIST", "PUBLIC_SYMBOL_LIST", "WELL_KNOWN_SYMBOL_LIST"):
+        for a in entries(name) or []:
+            out.append("Symbol:" + a[0])
+    for a in entries("ACCESSOR_INFO_LIST") or []:
+        out.append(a[1] if len(a) >= 2 else a[0])
+    for a in entries("STRUCT_LIST") or []:
+        out.append(a[1] if len(a) >= 2 else a[0])
+    for a in entries("DATA_HANDLER_LIST") or []:
+        out.append((a[1] + a[2] + "Map") if len(a) >= 3 else a[0])
+    out.append("StringTable")
+    for a in entries("SMI_ROOT_LIST") or []:
+        out.append(a[2] if len(a) >= 3 else a[0])
+    return out
+
+
 def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
     if torque_count is None:
         torque_count = TORQUE_MAP_COUNT
@@ -264,6 +341,13 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
     是构建期由 torque 生成的（.tq 声明序），此处以 0 条占位——该段及其后的根索引
     不可靠，运行时对未知根走结构指纹分类（见 serializer.rs classify）。
     """
+    # 6.x：根列表在 heap/heap.h 的 STRONG_ROOT_LIST/SMI_ROOT_LIST，其余子列表在
+    # heap-symbols.h（字符串/符号）、accessors.h（访问器）、objects.h（结构映射）。
+    # 枚举顺序见 RootListIndex（STRONG → 字符串 → 私有/公开/知名符号 → 访问器信息 →
+    # STRUCT → DATA_HANDLER → string_table → SMI）。
+    if text and "STRONG_ROOT_LIST" in text:
+        return _roots_six_x(text, symbols_text, defs_text)
+
     sources = [text] + [s for s in (symbols_text, defs_text) if s]
 
     def grab(name):
@@ -552,7 +636,12 @@ def extract_runtime_names(text):
     text = strip_disabled_blocks(text)
 
     def macro_body(name):
+        # 10.x+ 是 `#define X(F, I)`；6.x–9.x 是 `#define X(F)`（枚举里
+        # `FOR_EACH_INTRINSIC(F) FOR_EACH_INTRINSIC(I)` 各展开一遍）
         m = re.search(rf"#define {name}\(F, I\)(.*?)(?=\n#define |\Z)", text, re.S)
+        if m:
+            return m.group(1)
+        m = re.search(rf"#define {name}\(F\)(.*?)(?=\n#define |\Z)", text, re.S)
         return m.group(1) if m else None
 
     def invocations(body):
@@ -577,6 +666,11 @@ def extract_runtime_names(text):
             i = k + 1
 
     out = []
+    # 枚举顺序是 `FOR_EACH_INTRINSIC(F) FOR_EACH_INTRINSIC(I)` —— **所有 F 条目在前、
+    # 所有 I 条目在后**。宏体里 F/I 是穿插写的（6.8 就有一个 I( 混在 F 段里），
+    # 按 body 顺序收集会让 inline 段整体错位（node8/10 的 DeclareGlobals 读成
+    # DeclareGlobalsForInterpreter）。
+    inline = []
 
     def expand(macro_name, depth=0):
         if depth > 6:
@@ -600,7 +694,7 @@ def extract_runtime_names(text):
             if ident in ("F", "I"):
                 name = inner.split(",")[0].strip()
                 if name and name[0].isalpha():
-                    out.append(name)
+                    (out if ident == "F" else inline).append(name)
             elif ident.startswith("IF_"):
                 # IF_WASM(FOR_EACH_INTRINSIC_WASM, F, I) 之类：按开关决定是否展开
                 flag = ident
@@ -617,7 +711,15 @@ def extract_runtime_names(text):
 
     expand("FOR_EACH_INTRINSIC_RETURN_PAIR_IMPL")
     expand("FOR_EACH_INTRINSIC_RETURN_OBJECT_IMPL")
-    return out
+    if not out:
+        # 6.x–9.x：枚举是 `FOR_EACH_INTRINSIC(F) FOR_EACH_INTRINSIC(I)`，起点宏没有
+        # `_IMPL` 后缀。**必须展开聚合宏本身**（它按 TRIPLE→PAIR→OBJECT 的顺序拼子列表，
+        # 少展开一个子列表会让后面所有 id 整体偏移 —— node8 的 DeclareGlobals 曾因此
+        # 读成 DeclareEvalFunction）。
+        expand("FOR_EACH_INTRINSIC")
+        # inline 段是同一份列表用 I 再展开一次：F/I 已经各归各位，这里补上 I 段
+        return out + (inline if inline else list(out))
+    return out + inline
 
 
 def extract_intrinsic_names(text):
