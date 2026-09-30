@@ -180,6 +180,9 @@ impl<'a> Elem<'a> {
 enum HotEntry {
     Object(ObjId),
     Root(usize),
+    /// 只读堆引用（解不出对象 id）：V8 的 `PutBackReference` 对 RO 对象同样入环，
+    /// 占位必须记账，否则后续 hot 索引整体错位。
+    Ro(u32, u32),
 }
 
 /// HotObjectsList：固定 8 槽环形数组，写入即前进（对齐 serializer.h 语义）。
@@ -274,6 +277,11 @@ impl<'a> Walker<'a> {
     }
     #[inline]
     fn push_slot(&mut self, id: ObjId, index: usize, value: SlotValue) {
+        if let Ok(want) = std::env::var("JSCD_DBG_OBJSLOTS") {
+            if want == "*" || want.parse::<usize>() == Ok(id) {
+                eprintln!("[slot] obj={id} idx={index} value={value:?}");
+            }
+        }
         self.objects[id].slots.push(Slot { index, value });
     }
 
@@ -357,7 +365,10 @@ impl<'a> Walker<'a> {
             if (t_new..t_new + 6).contains(&b_raw) {
                 let space = (b_raw - t_new) as u8;
                 let id = self.parse_new_object_space(depth, space)?;
-                self.hot.add(HotEntry::Object(id));
+                // **不能**入 hot 环：V8 8.4 只在 `PutRoot`（根数组分支）与
+                // `PutBackReference` 两处 `hot_objects_.Add`，新对象不入环。
+                // 多记一笔会让后续 hot 索引整体错位 —— node14 closure 的
+                // `target` 名槽（hot 3）因此指到了 inc 的 SFI，函数名全丢。
                 return Ok(SlotValue::Ref(Ref::Object(id)));
             }
             if (t_backref..t_backref + 6).contains(&b_raw) {
@@ -405,6 +416,7 @@ impl<'a> Walker<'a> {
                         if std::env::var("JSCD_DBG_LEGACY").is_ok() {
                             eprintln!("[ro-ref] ({space},{chunk},{offset}) → 按只读堆引用处理");
                         }
+                        self.hot.add(HotEntry::Ro(chunk, offset));
                         return Ok(SlotValue::Ref(Ref::RoRef(chunk, offset)));
                     }
                 }
@@ -451,6 +463,7 @@ impl<'a> Walker<'a> {
             match self.hot.get(i) {
                 Some(HotEntry::Object(id)) => Ok(SlotValue::Ref(Ref::Object(id))),
                 Some(HotEntry::Root(r)) => Ok(SlotValue::Ref(Ref::Root(r))),
+                Some(HotEntry::Ro(c, o)) => Ok(SlotValue::Ref(Ref::RoRef(c, o))),
                 None => Err(format!("hot object index {i} out of ring")),
             }
         } else if b == self.tag("kRootArray")? {

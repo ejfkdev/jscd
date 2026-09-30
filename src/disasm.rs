@@ -274,19 +274,15 @@ impl<'a> Disassembler<'a> {
             let vpart = if legacy { 5 } else { 4 };
             let mut cursor =
                 vpart + 2 * n as usize + has_saved as usize + has_receiver as usize;
-            // V8 `ScopeInfo::HasFunctionName()`：function_variable 必须是
-            // CONTEXT(2)/STACK(1) 才算有名字；NONE(0) 与 **UNUSED(3)** 都表示没有。
-            // 只在**位域位置有版本证据**（表里 scope_info 是从该版本头文件提取的）时用这条
-            // 严格规则：7.x 的 ScopeFlags 是链式声明（`using XField = Prev::Next<T,n>;`），
-            // 我们的表里没有它的位域、默认值对 7.8 是错的，用严格规则会把函数名读没
-            // （node12 的 fixture 全变 target-missing）。
-            let strict_unused = self.table.scope_info.is_some();
-            let has_name_bits = if strict_unused {
-                matches!(function_var, 1 | 2)
-            } else {
-                function_var != 0
-            };
-            let function_name = if has_name_bits {
+            // V8 `ScopeInfo::HasFunctionName()`（8.4 到 13.x 都是同一条：
+            //   `return VariableAllocationInfo::NONE != FunctionVariableBits::decode(Flags());`）
+            // —— 只有 NONE(0) 表示"没有名字槽"；UNUSED(3) 只是函数变量没被用到，槽位照样
+            // 保留（里面是 `kNoSharedNameSentinel`，一个 Smi → 序列化成 raw 字）。
+            // 所以判定交给**槽里的值**：是字符串才算名字（`scope_function_name` 对非字符串的
+            // Ref/Raw 一律返回空串），非字符串就走 inferred / 匿名。
+            // 早先按"必须 STACK/CONTEXT"过滤，把 node14 的真名一起丢了 —— closure 的
+            // `target` 在 flags 里就是 function_var=3，产物成了 `_anon_4` → target-missing。
+            let function_name = if function_var != 0 {
                 let slot = cursor;
                 cursor += 2;
                 Some(slot)
