@@ -888,21 +888,17 @@ impl<'a> Walker<'a> {
                 // `to_skip` 再写一遍（定长分支才清零），于是"raw(L)+skip(L)"成对出现：
                 // 槽指针理论上要前进两次，但对象的 size 只按一次算。实测（node8/10 全
                 // fixture）忠实前进会顶爆槽账、夹到对象末尾则与 V8 自己的 size 自洽。
-                let remaining = size_words.saturating_sub(consumed);
-                let take = words.min(remaining);
-                if words > remaining && std::env::var("JSCD_DBG_LEGACY").is_ok() {
-                    eprintln!(
-                        "[skip] obj={id} words={words} 超出剩余 {remaining}（夹到对象末尾）consumed={consumed} budget={size_words}"
-                    );
-                }
-                consumed += take;
-                slot_index += take;
+                consumed += words;
+                slot_index += words;
                 continue;
             }
             if let SlotValue::StreamBytes(_) = v {
                 // 已在 parse_ref 里把字节吃掉；槽指针与对象字节数都不动
                 continue;
             }
+            // 忠实记账：raw/repeat 按声明长度推进槽指针（V8 `ReadData` 就是这么走的）。
+            // 曾试过"夹到对象剩余预算"——能让解析不再报错，但会掩盖首次错位、
+            // 让后续内容悄悄错位（实测矩阵分数毫无变化，反而更难定位），故不采用。
             let n_slots = match &v {
                 SlotValue::Raw(r) => r.len / self.tagged_size,
                 SlotValue::Repeat(n, _) => *n,
@@ -1222,18 +1218,22 @@ pub fn parse_with<'a>(
                         }
                     }
                     let t_new = w.tag("kNewObject")?;
-                    if legacy_tolerant && (t_new..t_new + 6).contains(&b) {
-                        // 老族 deferred 条目：kNewObject+space + backref(2 ints) + size + 剩余槽
+                    let n_sp = w.n_spaces();
+                    if legacy_tolerant && (t_new..t_new + n_sp).contains(&b) {
+                        // 老族 deferred 条目（V8 `DeserializeDeferredObjects`）：
+                        //   kNewObject+space | backref | size | 剩余槽
+                        // backref 的**编码随版本**：6.x 是一个位域 uint32（空间号在标签里），
+                        // 7.8/8.4 才是 (chunk, offset) 两段 —— 早先这里写死两段，
+                        // 6.x 的 deferred 段一律解不出（node8 的四个 fixture 就卡在这）。
                         let space = (b - t_new) as u8;
                         w.byte()?;
-                        let chunk = w.putint()?;
-                        let offset = w.putint()?;
+                        let id = match w.legacy_backref(space)? {
+                            SlotValue::Ref(Ref::Object(id)) => id,
+                            other => {
+                                return Err(format!("deferred backref 不是对象引用: {other:?}"))
+                            }
+                        };
                         let size_words = w.putint()? as usize;
-                        let id = w
-                            .legacy
-                            .as_ref()
-                            .and_then(|l| l.resolve(space, chunk, offset))
-                            .ok_or_else(|| format!("deferred backref ({space},{chunk},{offset})"))?;
                         let mut slot_index = w.objects[id].slots.len().max(1);
                         let mut consumed = 1usize;
                         while consumed < size_words {
@@ -1241,6 +1241,8 @@ pub fn parse_with<'a>(
                             let n = match &v {
                                 SlotValue::Raw(r) => r.len / w.tagged_size,
                                 SlotValue::Repeat(n, _) => *n,
+                                SlotValue::RepeatPrev(n) => *n,
+                                SlotValue::Skip(n) => *n,
                                 _ => 1,
                             };
                             for k in 0..n {
