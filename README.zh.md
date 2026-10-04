@@ -49,7 +49,9 @@ hello world
 `JSCD_NO_OPT=1`。
 
 Node 22+（V8 12.4+）上有些内建属性名存在只读堆里。行为矩阵覆盖到的 29 个 V8 minor，`jscd` 都
-内置了名表（`tables/ro_map_*`）、自动还原；别的构建用 `jscd ro-map` 生成一张，再以 `--ro-map` 传入。
+内置了名表（`tables/ro_map_*`）、自动还原 —— 但**只在 macOS 上**：只读堆的编号跟平台走，换系统
+就得自己建（`jscd ro-map` 生成后 `--ro-map` 传入；`JSCD_NO_RO_MAP=1` 可关掉内嵌表）。
+没有名表时这类名字落成 `<ro0_…>` 占位，绝不会给错名字。
 
 ## 安装
 
@@ -92,9 +94,10 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
   `-` 表示 stdout。
 - V8 版本超出当前表范围时**直接报错**，报错里点名识别到的 V8 版本与当前支持范围，而不是静默吐一份
   只有运行时前导的文件；`jscd info` 的 `supported: yes|no` 也是为这件事准备的。
-- 只读堆里的属性名（Node 22+）对 `tables/ro_map_*` 里收录的构建**自动解析**；要用别的构建，可以用
-  `scripts/build_ro_map.sh` 生成后 `--ro-map` 指定。**不匹配的表会被忽略**（宁可留 `<ro0_…>`
-  占位也不给错名字）。
+- 只读堆里的属性名（Node 22+）对 `tables/ro_map_*` 里收录的构建**自动解析** —— 只在 **macOS**
+  上（那批表就是在 macOS 上提取的；只读堆编号跟平台走，只有信得过的表才自动套用）。换平台就用
+  `scripts/build_ro_map.sh` / `jscd ro-map` 自己生成后 `--ro-map` 指定，`JSCD_NO_RO_MAP=1`
+  可关掉内嵌表。**不匹配的表会被忽略**（宁可留 `<ro0_…>` 占位也不给错名字）。
 - 命令行信息跟随语言：按 `JSCD_LANG`（→ `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` →
   `LC_CTYPE`）识别——`zh*` 选中文、其余英文，`JSCD_LANG=zh|en` 可强制。
 
@@ -365,7 +368,8 @@ CONTRIBUTING.md   构建、改动要过的门禁、怎么加 fixture
 
 - 拿不到源码文本与原始标识符，名字都是重建出来的。
 - V8 内建显示为 `__runtime.*` / `__intrinsic.*` 调用（只有最小桩实现）。
-- 解不出的作用域槽写成 `__ctx.ctxN`；只读堆里的名字需要 `--ro-map`。
+- 解不出的作用域槽写成 `__ctx.ctxN`。Node 22+ 的内建名要靠只读堆名表：内嵌的那批只适用
+  macOS（见[用法](#用法)），Linux/Windows 上自己用 `jscd ro-map` 建一张，或接受 `<ro…>` 占位。
 - `decompile` 追求可读可跑，不做字节级往返一致。
 
 ## 许可

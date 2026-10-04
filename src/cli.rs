@@ -478,9 +478,44 @@ fn unsupported_msg(ident: &crate::tables::Identified, hash: u32, errors: &[Strin
     }
 }
 
-/// 内嵌 ro-map（按精确 V8 版本）包成 `Rc` —— 命令里的 Disassembler/Decompiler 都用它。
+/// 平台不符（表是 macOS 探针建的）或被 `JSCD_NO_RO_MAP` 关掉时的**一次性提示**。
+///
+/// 走 stderr，别污染 stdout 的产物；只在"这张 V8 版本本来有内嵌表"时才说。
+fn note_missing_ro_map(v8: &str) {
+    if crate::decompile::embedded_ro_map_applies()
+        || !crate::ro_embed::RO_MAPS.iter().any(|(k, _)| *k == v8)
+    {
+        return;
+    }
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        eprintln!(
+            "{}",
+            crate::bif!(
+                "note: the embedded read-only-heap name table for V8 {0} was built on macOS, not applied here\n      (builtin names show as <ro…>; build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)",
+                "提示：V8 {0} 的内嵌只读堆名表是在 macOS 上提取的，本平台不套用\n      （内建名会显示成 <ro…> 占位；要真名就在本平台用 `jscd ro-map <探针.jsc> -o names.json` 建一张）";
+                v8
+            )
+        );
+    });
+}
+
+/// 内嵌 ro-map（按精确 V8 版本）包成 `Rc` —— `Disassembler` 用这个形态。
 fn embedded_ro_map(v8: &str) -> Option<std::rc::Rc<crate::decompile::RoMap>> {
-    crate::decompile::RoMap::embedded(v8).map(std::rc::Rc::new)
+    let map = crate::decompile::RoMap::embedded(v8);
+    if map.is_none() {
+        note_missing_ro_map(v8);
+    }
+    map.map(std::rc::Rc::new)
+}
+
+/// 同上，不过给 `Decompiler`（它收 `Option<RoMap>`）。
+fn embedded_ro_map_plain(v8: &str) -> Option<crate::decompile::RoMap> {
+    let map = crate::decompile::RoMap::embedded(v8);
+    if map.is_none() {
+        note_missing_ro_map(v8);
+    }
+    map
 }
 
 fn json_out(text: &str) -> String {
@@ -497,8 +532,9 @@ pub fn decompile_text(
     let (_h, table, cache) = parse_cache(&data)?;
     let rmap = match ro_map {
         Some(p) => Some(crate::decompile::RoMap::load(p)?),
-        // 按**文件里识别到的** V8 版本查内嵌表（表的代表版本未必等于文件的版本）
-        None => crate::decompile::RoMap::embedded(crate::tables::identify(_h.version_hash).v8),
+        // 按**文件里识别到的** V8 版本查内嵌表（表的代表版本未必等于文件的版本）；
+        // 走 embedded_ro_map 是为了在平台不符时也给出一次提示。
+        None => embedded_ro_map_plain(crate::tables::identify(_h.version_hash).v8),
     };
     let d = crate::decompile::Decompiler::new(&cache, &table)
         .with_ro_map(rmap)

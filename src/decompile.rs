@@ -731,12 +731,40 @@ pub struct RoMap {
     pub v8: String,
 }
 
+/// 内嵌只读堆名表适用的平台。这批表是用 **macOS 上的探针编译**提取出来的。
+///
+/// 只读堆的 (chunk, offset) 编号不只随 V8 版本走，也随**平台/架构**走：CI 实测同一个
+/// V8 11.3.244.8，macOS arm64 上 `/` 落在 (0,12776)，Linux x64 上该编号取不到 —— 产物里
+/// 就成了 `<ro0_12776>` 占位。占位只是不好看，**错位后套用别人的名字却是静默给错**，
+/// 所以非 macOS 平台一律不自动套用内嵌表：
+/// 想要真名就在本平台用 `jscd ro-map` 建一张（或 `--ro-map` 指定）。
+///
+/// `JSCD_NO_RO_MAP=1` 可显式关掉内嵌表（怀疑手里这张表跟本构建对不上时用）。
+pub const EMBEDDED_RO_MAP_PLATFORM: &str = "macos";
+
+/// 内嵌表是否适用：平台一致，且没被 `JSCD_NO_RO_MAP` 关掉。纯函数，便于测试。
+pub fn embedded_ro_map_applies_on(os: &str, disabled: bool) -> bool {
+    !disabled && os == EMBEDDED_RO_MAP_PLATFORM
+}
+
+/// 本进程是否适用内嵌表。
+pub fn embedded_ro_map_applies() -> bool {
+    embedded_ro_map_applies_on(
+        std::env::consts::OS,
+        std::env::var_os("JSCD_NO_RO_MAP").is_some(),
+    )
+}
+
 impl RoMap {
     /// 内嵌表里按 **精确 V8 版本**取只读堆名表（`jscd` 自带，Node 22+ 不必再手动 `--ro-map`）。
     ///
     /// 必须精确匹配：只读堆地址 (chunk/offset) 是按 V8 版本编号的，同 minor 的不同 patch
     /// 都可能不同 —— 错配会**静默给出错误的属性名**，比留 `<ro0_…>` 占位更糟。
+    /// 平台不符（表是 macOS 探针建的，见 `EMBEDDED_RO_MAP_PLATFORM`）时同样不套用。
     pub fn embedded(v8: &str) -> Option<Self> {
+        if !embedded_ro_map_applies() {
+            return None;
+        }
         let text = crate::ro_embed::RO_MAPS
             .iter()
             .find(|(m, _)| *m == v8)
@@ -9280,4 +9308,32 @@ fn name_was_preserving(name: &str) -> bool {
             | "StaDataPropertyInLiteral" | "DefineKeyedOwnPropertyInLiteral"
             | "StaInArrayLiteral" | "DefineKeyedOwnProperty" | "CollectTypeProfile"
     ) || name.starts_with("Star") && name[4..].chars().all(|c| c.is_ascii_digit())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_ro_map_is_platform_gated() {
+        // 表是用 macOS 探针建的：只有"在 macOS 上且没被 JSCD_NO_RO_MAP 关掉"才自动套用。
+        assert!(embedded_ro_map_applies_on("macos", false));
+        assert!(!embedded_ro_map_applies_on("linux", false));
+        assert!(!embedded_ro_map_applies_on("windows", false));
+        assert!(!embedded_ro_map_applies_on("macos", true));
+        assert!(!embedded_ro_map_applies_on("linux", true));
+    }
+
+    #[test]
+    fn embedded_tables_parse_on_their_platform() {
+        if std::env::consts::OS != EMBEDDED_RO_MAP_PLATFORM
+            || std::env::var_os("JSCD_NO_RO_MAP").is_some()
+        {
+            return; // 换平台 / 显式关掉时这条不适用
+        }
+        let m = RoMap::embedded("11.3.244.8").expect("内嵌表应当能解析");
+        assert_eq!(m.v8, "11.3.244.8");
+        assert!(!m.entries.is_empty());
+        assert!(RoMap::embedded("99.9.999.9").is_none(), "没有的表要返回 None");
+    }
 }

@@ -51,7 +51,10 @@ shows the raw translation instead — V8's register shuffling, one instruction a
 
 On Node 22+ (V8 12.4+) some built-in property names live in the read-only heap. For the 29 V8
 minors covered by the behavior matrix `jscd` ships a name table (`tables/ro_map_*`) and resolves
-them automatically; for anything else, generate one with `jscd ro-map` and pass `--ro-map`.
+them automatically — **on macOS**, where those tables were extracted: read-only-heap indices are
+platform-specific, so on other systems build your own with `jscd ro-map` and pass `--ro-map`
+(`JSCD_NO_RO_MAP=1` turns the embedded table off). Without a table such names show as `<ro0_…>`
+placeholders — never as the wrong name.
 
 ## Install
 
@@ -97,8 +100,11 @@ jscd --help                      # bilingual help (-h, `help`, `help <SUBCOMMAND
   supported range** in the message, rather than silently emitting a runtime-only file;
   `jscd info` carries a `supported: yes|no` line for the same reason.
 - Read-only-heap names (Node 22+) resolve automatically for the builds shipped in
-  `tables/ro_map_*`; use `--ro-map` for other builds (`scripts/build_ro_map.sh`). A table that
-  does not match is ignored — you get `<ro0_…>` placeholders rather than wrong names.
+  `tables/ro_map_*` — on macOS, the platform those tables were extracted on (RO indices depend on
+  the platform, so an embedded table is applied only where it can be trusted). Elsewhere build one
+  with `jscd ro-map` / `scripts/build_ro_map.sh` and pass `--ro-map`; `JSCD_NO_RO_MAP=1` disables
+  the embedded table. A table that does not match is ignored — you get `<ro0_…>` placeholders
+  rather than wrong names.
 - The interface language follows `JSCD_LANG` (→ `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` →
   `LC_CTYPE`): `zh*` is Chinese, anything else English. `JSCD_LANG=zh|en` forces one.
 
@@ -391,7 +397,9 @@ CONTRIBUTING.md   build, the gates a change must pass, how to add a fixture
 
 - No source text and no original identifiers; names are reconstructed.
 - V8 builtins appear as `__runtime.*` / `__intrinsic.*` calls with minimal stubs.
-- Scope slots that cannot be named print as `__ctx.ctxN`; read-only-heap names require `--ro-map`.
+- Scope slots that cannot be named print as `__ctx.ctxN`. Built-in names on Node 22+ need a
+  read-only-heap name table: the embedded ones are macOS-only (see [Usage](#usage)), so on
+  Linux/Windows build your own (`jscd ro-map`) or live with `<ro…>` placeholders.
 - `decompile` targets readable, runnable output, not byte-identical round-tripping.
 
 ## License

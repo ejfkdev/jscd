@@ -19,8 +19,11 @@ the surrounding style rather than reformatting wholesale.
 - `cargo clippy --all-targets -- -D warnings` — the project keeps **zero warnings**; a plain
   `cargo build` must be silent too.
 - `scripts/ci_smoke.sh` — compiles every fixture to a real `.jsc` with the `node` on `PATH`,
-  decompiles it, gates the product with `node --check`, and byte-compares the 5 whole-script
-  fixtures against their originals. No npm packages needed.
+  decompiles it and gates the product with `node --check`. Where a trustworthy read-only-heap name
+  table exists (macOS — see `EMBEDDED_RO_MAP_PLATFORM` in `src/decompile.rs`) it also
+  byte-compares the 5 whole-script fixtures against their originals; elsewhere those fixtures get
+  the syntax gate only, because built-in names degrade to `<ro…>` placeholders there. No npm
+  packages needed.
 - If you touched version handling, run the behaviour matrix for at least the affected Node lines:
   `bash scripts/verify_behavior.sh 20.20.2` (Node versions come from `mise`; see the README's
   Verification section for the full matrix and its numbers).
