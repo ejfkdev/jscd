@@ -112,7 +112,17 @@ fn info_cmd(file: &Path, common: &Common, json: bool) -> Result<(), String> {
     let header = crate::tables::table_for(ident.v8)
         .and_then(|t| crate::header::Header::parse_with(&data, &t.header).ok())
         .unwrap_or(h0);
-    let text = header.render_text(file, &ident);
+    let mut text = header.render_text(file, &ident);
+    // 只读堆名表是 macOS 探针建的：本平台不套用时把话说明白（info 是给人看的诊断命令，
+    // 这里多一行不会破坏 stdout 模式"只有产物"的约定）。
+    if crate::ro_embed::RO_MAPS.iter().any(|(k, _)| *k == ident.v8)
+        && !crate::decompile::embedded_ro_map_applies()
+    {
+        text.push_str(crate::bif!(
+            "ro_map:        embedded table exists but was built on macOS — not applied here\n               (build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)\n",
+            "ro_map:        有内嵌名表，但在 macOS 上提取的 —— 本平台不套用\n               （要真名就在本平台建一张：`jscd ro-map <探针.jsc> -o names.json`）\n"
+        ));
+    }
     emit(common, &text, &header.render_json(file, &ident), json)
 }
 
@@ -478,44 +488,17 @@ fn unsupported_msg(ident: &crate::tables::Identified, hash: u32, errors: &[Strin
     }
 }
 
-/// 平台不符（表是 macOS 探针建的）或被 `JSCD_NO_RO_MAP` 关掉时的**一次性提示**。
-///
-/// 走 stderr，别污染 stdout 的产物；只在"这张 V8 版本本来有内嵌表"时才说。
-fn note_missing_ro_map(v8: &str) {
-    if crate::decompile::embedded_ro_map_applies()
-        || !crate::ro_embed::RO_MAPS.iter().any(|(k, _)| *k == v8)
-    {
-        return;
-    }
-    static ONCE: std::sync::Once = std::sync::Once::new();
-    ONCE.call_once(|| {
-        eprintln!(
-            "{}",
-            crate::bif!(
-                "note: the embedded read-only-heap name table for V8 {0} was built on macOS, not applied here\n      (builtin names show as <ro…>; build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)",
-                "提示：V8 {0} 的内嵌只读堆名表是在 macOS 上提取的，本平台不套用\n      （内建名会显示成 <ro…> 占位；要真名就在本平台用 `jscd ro-map <探针.jsc> -o names.json` 建一张）";
-                v8
-            )
-        );
-    });
-}
-
 /// 内嵌 ro-map（按精确 V8 版本）包成 `Rc` —— `Disassembler` 用这个形态。
+///
+/// 注意：这里**不说话**。stdout 模式只输出产物、不许有诊断（tests/cli.rs 的约定）；
+/// 平台不符这件事在 `jscd info` 里说明（那本来就是给人看的诊断命令）。
 fn embedded_ro_map(v8: &str) -> Option<std::rc::Rc<crate::decompile::RoMap>> {
-    let map = crate::decompile::RoMap::embedded(v8);
-    if map.is_none() {
-        note_missing_ro_map(v8);
-    }
-    map.map(std::rc::Rc::new)
+    crate::decompile::RoMap::embedded(v8).map(std::rc::Rc::new)
 }
 
 /// 同上，不过给 `Decompiler`（它收 `Option<RoMap>`）。
 fn embedded_ro_map_plain(v8: &str) -> Option<crate::decompile::RoMap> {
-    let map = crate::decompile::RoMap::embedded(v8);
-    if map.is_none() {
-        note_missing_ro_map(v8);
-    }
-    map
+    crate::decompile::RoMap::embedded(v8)
 }
 
 fn json_out(text: &str) -> String {
