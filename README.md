@@ -1,11 +1,13 @@
 # jscd
 
 Reverse [bytenode](https://github.com/bytenode/bytenode)-compiled `.jsc` files back to JavaScript.
+Static parsing only: one pure-Rust binary — no patched V8, no Node runtime, no network.
 
-A `.jsc` is a V8 code cache (`v8::ScriptCompiler::CreateCodeCache`). `jscd` parses it statically:
-pure Rust, one binary, no patched V8, no Node runtime, no network.
+Supports **Node 8.0.0 → 26.10.0** (510 releases / 36 V8 minors); **≈ 25k `.jsc` files pass the
+tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
+optimization layers (register folding → swc copy propagation) make the decompiled source readable.
 
-**English** (this file) · [中文](README.zh.md) · [Version-by-version notes](docs/VERSIONS.md) (Chinese)
+**English** · [中文](README.zh.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.96+](https://img.shields.io/badge/rust-1.96%2B-orange.svg)](Cargo.toml)
@@ -306,6 +308,8 @@ checkout is required:
 ```sh
 python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-existing
 ```
+
+Version-by-version engineering notes: [docs/VERSIONS.md](docs/VERSIONS.md) (Chinese).
 
 ## How it works
 

@@ -1,11 +1,13 @@
 # jscd
 
-把 [bytenode](https://github.com/bytenode/bytenode) 编译的 `.jsc` 还原成 JavaScript。
+把 [bytenode](https://github.com/bytenode/bytenode) 编译的 `.jsc` 还原成 JavaScript。纯静态解析：
+纯 Rust 单二进制，不需要打过补丁的 V8，也不需要 Node 运行时、不联网。
 
-`.jsc` 是 V8 的代码缓存（`v8::ScriptCompiler::CreateCodeCache`）。`jscd` 纯静态解析：纯 Rust、
-单二进制、不需要打过补丁的 V8、不需要 Node 运行时、不联网。
+支持 **Node 8.0.0 → 26.10.0**（510 个发布 / 36 个 V8 minor），**≈ 25k 份 `.jsc` 通过测试、0 失败**
+（31 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → swc 复制传播）
+提升反编译源码的可读性。
 
-[English](README.md)（默认） · **中文**（本文件） · [逐版本工程笔记](docs/VERSIONS.md)
+[English](README.md) · **中文**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.96+](https://img.shields.io/badge/rust-1.96%2B-orange.svg)](Cargo.toml)
@@ -286,6 +288,8 @@ Node 发布都在 `tables/manifest.json` 里（510 条），每个 V8 minor 一�
 ```sh
 python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-existing
 ```
+
+逐版本的工程笔记（6.x/7.x 各代字节码差异都记在里面）：[docs/VERSIONS.md](docs/VERSIONS.md)。
 
 ## 实现
 
