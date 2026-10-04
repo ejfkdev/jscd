@@ -16,9 +16,20 @@
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
 
-**目录：**[快速上手](#快速上手) · [安装](#安装) · [用法](#用法) · [支持的版本](#支持的版本) ·
-[实现](#实现) · [验证](#验证) · [仓库结构](#仓库结构) · [已知限制](#已知限制) ·
-[参与贡献](CONTRIBUTING.md)
+**目录：**[特性](#特性) · [快速上手](#快速上手) · [安装](#安装) · [用法](#用法) ·
+[CLI 参考](#cli-参考) · [支持的版本](#支持的版本) · [实现](#实现) · [验证](#验证) ·
+[仓库结构](#仓库结构) · [已知限制](#已知限制) · [参与贡献](CONTRIBUTING.md)
+
+## 特性
+
+- **覆盖全** —— Node 8.0.0 → 26.10.0（510 个发布 / 36 个 V8 minor）都能识别；表范围外的 V8 明确报错，不猜。
+- **产物能跑** —— `--runtime` 补上 `__runtime` 桩，反编译结果直接 `node` 可跑；`--verify` 再过一遍
+  `node --check`。
+- **产物能读** —— 两层优化把字节码的寄存器搬运折回表达式（寄存器折叠 → swc 复制传播）；
+  `JSCD_NO_OPT=1` 可对照原样。
+- **名字尽量还原** —— 作用域槽名反推、内建名查只读堆名表；绝不输出会抛 `ReferenceError` 的标识符。
+- **单文件零依赖** —— 纯 Rust：不需要 Node、不联网、不打补丁；Linux 静态二进制压完约 2.8 MB。
+- **验证可复现** —— 31 条版本线 × 41 份用例逐用例对拍 + 语料扫描，每个数字都能自己复跑（见[验证](#验证)）。
 
 ## 快速上手
 
@@ -116,7 +127,8 @@ cargo install --path .       # ……或把这份构建装进 ~/.cargo/bin
 `clippy --all-targets -- -D warnings`，以及端到端冒烟 `scripts/ci_smoke.sh` —— fixture 真编译成
 `.jsc` → 反编译 → 语法门禁 + 整脚本行为对拍），再推一个**带说明的 annotated tag**；tag 说明就是
 GitHub Release 的描述。tag 一推即触发 `.github/workflows/release.yml`，在上面那六个平台重建裸
-二进制。之后 `cargo publish` 发到 crates.io（`release.sh` 保证 tag 与 `Cargo.toml` 版本一致）；
+二进制。之后 `cargo publish` 发到 crates.io（`release.sh` 保证 tag 与 `Cargo.toml` 版本一致），
+再跑一次 `python3 scripts/update_readme_help.py` 刷新下面的 CLI 帮助；
 [Homebrew tap](https://github.com/ejfkdev/homebrew-tap) 与
 [Scoop bucket](https://github.com/ejfkdev/scoop-bucket) 每天自动更新时会带上新版本。
 
@@ -135,17 +147,15 @@ jscd ro-map probe.jsc > m.json   # 生成只读堆名表
 jscd --help                      # 双语帮助（-h、`help`、`help <子命令>`）
 ```
 
-- **输入**是一个 `.jsc` 文件，或目录（递归找 `*.jsc`）。**输出**默认：文件输入 → stdout；
-  目录输入 → 输入同级的 `<输入名>-out/`（保持层级）。`-o` / 位置参数 OUTPUT 可指定文件或目录，
-  `-` 表示 stdout。
-- V8 版本超出当前表范围时**直接报错**，报错里点名识别到的 V8 版本与当前支持范围，而不是静默吐一份
-  只有运行时前导的文件；`jscd info` 的 `supported: yes|no` 也是为这件事准备的。
-- 只读堆里的属性名（Node 22+）对 `tables/ro_map_*` 里收录的构建**自动解析** —— 只在 **macOS**
-  上（那批表就是在 macOS 上提取的；只读堆编号跟平台走，只有信得过的表才自动套用）。换平台就用
-  `scripts/build_ro_map.sh` / `jscd ro-map` 自己生成后 `--ro-map` 指定，`JSCD_NO_RO_MAP=1`
-  可关掉内嵌表。**不匹配的表会被忽略**（宁可留 `<ro0_…>` 占位也不给错名字）。
-- 命令行信息跟随语言：按 `JSCD_LANG`（→ `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` →
-  `LC_CTYPE`）识别——`zh*` 选中文、其余英文，`JSCD_LANG=zh|en` 可强制。
+- **输入**是一个 `.jsc` 文件，或目录（递归找 `*.jsc`）；**输出**默认：文件 → stdout，目录 → 输入同级的
+  `<输入名>-out/`（保持层级）—— `-o` / 位置参数 OUTPUT 可指定文件或目录，`-` 表示 stdout。
+- 表范围外的 V8 **直接报错**，报错里点名识别到的版本与支持范围（`jscd info` 的 `supported: yes|no`
+  同理），不会静默吐一份只有运行时前导的文件。
+- 只读堆里的内建名（Node 22+）在**内嵌名表适用的平台（macOS）**自动还原（只读堆编号跟平台走）；别的平台用
+  `jscd ro-map` 自己建一张再 `--ro-map` 传入（`JSCD_NO_RO_MAP=1` 可关掉内嵌表）。对不上的表会被忽略：
+  宁可留 `<ro0_…>` 占位，也不给错名字。
+- 界面语言跟随 `JSCD_LANG`（再依次看 `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` / `LC_CTYPE`）：
+  `zh*` 中文、其余英文，`JSCD_LANG=zh|en` 可强制。
 
 | 旗标 | 适用 | 作用 |
 | --- | --- | --- |
@@ -158,6 +168,263 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 | `--runtime` | `decompile` | 保留可运行前导（`__runtime` 占位实现 + 上下文变量提升 + 别名块）。**默认不带**；想让产物能 `node` 跑就加上 |
 | `-h, --help` | 全部形态 | 打印帮助（`jscd help <子命令>` 看单个命令） |
 | `-v, -V, --version` | 全部形态 | 打印名字、版本与仓库地址 |
+
+## CLI 参考
+
+`--help` 与 `help <子命令>` 的输出原样收在这里（刷新用 `python3 scripts/update_readme_help.py`）。
+
+<!-- BEGIN help:cli -->
+<details>
+<summary>完整 CLI 帮助 —— <code>jscd --help</code> 与每个子命令，原样输出</summary>
+
+**`jscd --help`**
+
+```console
+$ jscd --help
+jscd v0.1.0 — V8 代码缓存 → JavaScript
+https://github.com/ejfkdev/jscd  (MIT license)
+
+把 bytenode 编译的 .jsc（V8 代码缓存）还原成 JavaScript。纯静态解析 ——
+不需要打过补丁的 V8，也不需要 Node 运行时；目录输入会递归处理。
+
+用法：jscd [选项] <输入> [输出]              # 默认动作就是反编译
+      jscd <子命令> [参数...]              # 分阶段分析
+      jscd help [子命令] | version | -h | -v | -V
+
+输入    .jsc 文件，或目录（递归找 *.jsc）。
+输出    文件、目录，或 `-` 表示 stdout：
+          <文件.js>   单个输入文件时写这个文件
+          <目录>      目录输入时写入该目录，保持层级
+          默认：文件输入 → stdout；目录输入 → 输入同级的 <输入名>-out/
+
+选项：
+  -o, --output <路径>   输出文件 / 目录 / -（与位置参数 OUTPUT 等价）
+      --ro-map <路径>   只读堆名表（decompile 用，还原内建属性名）
+      --verify          用 `node --check` 实编译校验产物（decompile）
+      --runtime         保留可运行前导（`__runtime` 占位实现），产物能直接 `node` 跑；
+                        默认**不带**，只输出还原出来的代码本身
+      --filter <子串>   只输出名字含该子串的函数（disasm）
+      --json            机器可读输出（info/strings/functions/disasm/ro-map）
+      --quiet           不打印逐文件进度（目录输入时）
+  -h, --help            打印本帮助
+  -v, -V, --version     打印名字、版本与仓库地址
+      JSCD_LANG=zh|en   强制帮助/报错的语言（默认自动识别）
+
+子命令：
+  decompile   重建 JavaScript（默认动作，等价于直接 `jscd <输入>`）
+  info        头部字段与识别出的 Node/V8 版本
+  strings     常量池里的字符串与符号
+  functions   SharedFunctionInfo 树（名字、形参、字节码长度）
+  disasm      字节码反汇编（View8 兼容文本）
+  ro-map      从探针缓存生成只读堆名表
+  help        打印帮助（可跟子命令名）
+  version     打印名字、版本与仓库地址
+
+示例：
+  jscd app.jsc                        反编译并打到 stdout
+  jscd app.jsc app.js                 反编译到文件
+  jscd dist/                          dist/**.jsc → dist-out/**.js
+  jscd dist/ out/                     ……改写到 out/
+  jscd decompile --ro-map m.json a.jsc   带只读堆名表
+  jscd info app.jsc                   头部字段与 V8 版本
+  jscd disasm --filter main app.jsc   只看某个函数的字节码
+  jscd help disasm                    单个子命令的详细帮助（带示例）
+  jscd ro-map probe.jsc -o names.json
+                                      生成只读堆名表（见 `jscd help ro-map`）
+```
+
+**`jscd help decompile`**
+
+```console
+$ jscd help decompile
+jscd decompile — 重建 JavaScript（默认动作，等价于直接 `jscd <输入>`）
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd decompile [选项] <输入> [输出]
+      jscd [选项] <输入> [输出]           # 等价写法
+
+输入是 .jsc 文件，或目录（递归找 *.jsc）。输出是文件、目录或 `-`（stdout）。
+默认：文件输入 → stdout；目录输入 → 输入同级的 <输入名>-out/。
+
+选项：
+  -o, --output <路径>   输出文件 / 目录 / -（默认 stdout）
+      --ro-map <路径>   只读堆名表（`jscd ro-map` 生成）；
+                        用来还原内建属性名（`a.length`、`o.push`）
+      --verify          用 `node --check` 实编译校验产物
+      --runtime         保留可运行前导（`__runtime` 占位实现），产物能直接跑；
+                        默认不带，只输出还原出来的代码
+      --quiet           不打印逐文件进度（目录输入时）
+
+示例：
+  jscd decompile app.jsc                 反编译并打到 stdout
+  jscd decompile app.jsc app.js          写到 app.js
+  jscd decompile dist/                   dist/**.jsc -> dist-out/**.js
+  jscd --ro-map names.json a.jsc > a.js  带只读堆名表
+  jscd decompile --runtime --verify a.jsc -o a.run.js
+                                         可运行、已语法校验的产物
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help info`**
+
+```console
+$ jscd help info
+jscd info — 头部字段与识别出的 Node/V8 版本
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd info [选项] <文件>
+
+打印代码缓存头部：magic、版本哈希、V8/Node 版本、旗标、payload 大小，
+以及当前版本是否支持该 V8 版本。
+
+选项：
+  -o, --output <路径>   写到文件（'-' = stdout；默认就是 stdout）
+      --json            单个 JSON 对象：file、size_raw、brotli、
+                        version_hash、v8、node、supported 等
+
+示例：
+  jscd info app.jsc                      头部字段与 V8 版本
+  jscd info --json app.jsc | jq .supported   这个 V8 版本受支持吗？
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help strings`**
+
+```console
+$ jscd help strings
+jscd strings — 常量池里的字符串与符号
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd strings [选项] <文件>
+
+把该缓存能引用到的字符串/符号常量逐行列出。JSON 里的 `from_roots`
+是从根函数可达的那一部分。
+
+选项：
+  -o, --output <路径>   写到文件（'-' = stdout；默认就是 stdout）
+      --json            {"count":N,"strings":[...],"from_roots":[...]}
+
+示例：
+  jscd strings app.jsc                   所有常量，一行一个
+  jscd strings --json app.jsc | jq .count    数一数有多少条
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help functions`**
+
+```console
+$ jscd help functions
+jscd functions — SharedFunctionInfo 树（名字、形参、字节码长度）
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd functions [选项] <文件>
+
+列出 SharedFunctionInfo 树：id、名字、形参个数、字节码长度、栈帧大小、
+是否已编译、嵌套深度。
+
+选项：
+  -o, --output <路径>   写到文件（'-' = stdout；默认就是 stdout）
+      --json            {"count":N,"functions":[{"id","name","params"、
+                        "bytecode_length"、"frame_size"、"compiled"、"depth"}]}
+
+示例：
+  jscd functions app.jsc                 整棵 SFI 树
+  jscd functions --json app.jsc | jq '.functions[].name'
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help disasm`**
+
+```console
+$ jscd help disasm
+jscd disasm — 字节码反汇编（View8 兼容文本）
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd disasm [选项] <文件>
+
+打印 View8 兼容的字节码反汇编：默认每个函数都打，`--filter` 只看
+名字含该子串的那些。
+
+选项：
+      --filter <子串>   只输出名字含该子串的函数
+  -o, --output <路径>   写到文件（'-' = stdout；默认就是 stdout）
+      --json            {"disassembly":"<完整反汇编文本>"}
+
+示例：
+  jscd disasm app.jsc                    完整字节码清单
+  jscd disasm --filter main app.jsc      只看名字含 main 的函数
+  jscd disasm --json app.jsc > d.json    机器可读的清单
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help ro-map`**
+
+```console
+$ jscd help ro-map
+jscd ro-map — 从探针缓存生成只读堆名表
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd ro-map [选项] <探针.jsc>
+
+走一遍探针缓存的只读堆，写出「根索引 -> 属性名」的名表，反编译产物里
+就会是 `a.length` 而不是 `<ro0_1120>`。每个 V8 版本建一张
+（探针构造方法见 docs/VERSIONS.md）。
+
+选项：
+  -o, --output <路径>   把名表写到文件（默认 stdout）
+      --json            {"schema","v8","tags","entries":{"0/1120":"length"}}
+
+示例：
+  jscd ro-map probe.jsc -o names.json    生成一张名表
+  jscd ro-map probe.jsc | head           瞄一眼根 0 的名字
+  jscd ro-map --json probe.jsc | jq '.entries'   只看 entries
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help help`**
+
+```console
+$ jscd help help
+jscd help — 打印帮助（可跟子命令名）
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd help [子命令]
+
+打印主帮助；带子命令名时打印那个子命令的帮助（用法、选项、示例）。
+
+示例：
+  jscd help                              主帮助
+  jscd help disasm                       disasm 的详细帮助（带示例）
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+**`jscd help version`**
+
+```console
+$ jscd help version
+jscd version — 打印名字、版本与仓库地址
+https://github.com/ejfkdev/jscd  (MIT license)
+
+用法：jscd version
+
+打印名字、版本、仓库地址与许可（`-v` / `-V` / `--version` 同效）。
+
+示例：
+  jscd version                           与 `jscd -v` 相同
+
+全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
+```
+
+</details>
+<!-- END help:cli -->
+
 
 默认输出**只有还原出来的代码本身**：没有运行时前导，也没有注释（连结构性分隔注释也会被 AST 层
 清掉；`JSCD_NO_OPT=1` 才保留）。加 `--runtime` 才会补上 `__runtime` 代理（字节码调到的 V8 内建给
@@ -187,18 +454,14 @@ supported:     yes
 
 ### 两层优化
 
-`JSCD_NO_OPT=1` 把两层都关掉，便于和原样对拍。
+`JSCD_NO_OPT=1` 关掉两层，便于和原样对拍。
 
-1. **文本层**（`src/opt.rs`）：删字节码特有的寄存器搬运 —— 只读一次的变量并进使用处、之后先被重写
-   才被读的存储、没人再用的寄存器声明、`DeclareGlobals` 这类纯簿记；把"空声明 + 单次赋值"并成
-   声明器初始化；删掉 `CallProperty` 渲染副产品的"方法加载中转"（`rX = A.B;` —— 调用那行已经把
-   属性读搬到了调用处，留着会让 getter 多跑一次）；并且做**表达式重建** —— V8 会把接收者和每个
-   实参都先算进寄存器，这一趟把"只读一次"的装载并回调用点，按 JS 的求值顺序（接收者 → 属性 →
-   实参从左到右）摆放，所以不换序。判不准的一律不并：跨块、循环头、无括号控制体
-   （`if (c) r0 = f();` 里 `f()` 可能不该执行）、以及"之后还要用这个值"（含 `r2 = new r2(a0)`
-   这种自引用写）。
-2. **AST 级**（`src/opt_js.rs`）：把文本交给 [swc](https://swc.rs)（terser 的 Rust 移植）做
-   **复制传播**、无用变量删除与常量折叠：
+1. **文本层**（`src/opt.rs`）：把字节码的寄存器搬运折回表达式 —— 只读一次的值并进使用处、之后先被重写才被读的
+   存储删掉、没人再用的寄存器声明与 `DeclareGlobals` 这类簿记清掉、`let r0; … r0 = E;` 并成声明器初始化，
+   并把**接收者/实参的装载在调用点按 JS 求值顺序重建**（接收者 → 属性 → 实参），不换序。判不准的一律不并：
+   跨块、循环头、无括号控制体、以及之后还要用的值（含 `r2 = new r2(a0)` 这种自引用写）。
+2. **AST 层**（`src/opt_js.rs`）：文本再过一遍 [swc](https://swc.rs)（terser 的 Rust 移植）——
+   **复制传播**、无用变量删除、常量折叠：
 
    ```js
    let r0, r1, r2, r3;        // 反编译原样             // 两层跑完
@@ -209,10 +472,9 @@ supported:     yes
    r2.log(r3);
    ```
 
-   管线与取向都是校准过的：`paren_remover → resolver → optimize → hygiene → fixer`
-   （少 `paren_remover` 会误编译），优化前包一层函数（swc 只在函数作用域做复制传播，而产物在真实
-   运行时本来就是 `Module.wrap` 的函数体），压完剥壳；不改名、不合语句、不转箭头函数、保函数名。
-   产物不是合法 JS 或解析失败 → 保持文本级结果。
+   管线 `paren_remover → resolver → optimize → hygiene → fixer`（少 `paren_remover` 会误编译）；优化前包一层
+   函数（swc 只在函数作用域做复制传播，而产物在真实运行时本来就是 `Module.wrap` 的函数体），压完剥壳。
+   不改名、不合语句、不转箭头函数；产物不合法或可疑 → 保留文本级结果。
 
 ## 支持的版本
 
@@ -295,14 +557,12 @@ python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-
 
 ### .jsc 里有什么
 
-里面没有源码文本；头部的 `source_hash` 字段记录的是源码**长度**，不是哈希。可还原的数据：
+里面没有源码文本；头部的 `source_hash` 存的是源码**长度**，不是哈希。能还原出来的：头部字段
+（`version_hash`、`flag_hash`、payload 大小、校验和、Brotli / 原始）、`SharedFunctionInfo` 树与作用域信息
+（形参 / 上下文 / 栈局部槽）、常量池、字节码数组、源码位置表与 handler 表。
 
-- 头部字段：`version_hash`、`flag_hash`、payload 长度、校验和、Brotli 或原始 payload
-- `SharedFunctionInfo` 树与作用域信息（形参、上下文、栈局部槽）
-- 字符串与字面量常量池、字节码数组、源码位置表、handler 表
-
-`decompile` 输出语法合法的伪 JS 重建结果。只以槽位形式存在的名字按槽名输出（`rN`、`__ctx.ctxN`、
-`_anon_N`），不会写成会抛 `ReferenceError` 的标识符。
+`decompile` 把只以槽位存在的名字**按槽名输出**（`rN`、`__ctx.ctxN`、`_anon_N`）——不会写成会抛
+`ReferenceError` 的标识符。
 
 ### 处理流程
 
@@ -319,20 +579,18 @@ python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-
 
 四层门禁，每一层都能单独复现：
 
-1. **行为矩阵**（`scripts/verify_behavior.sh`）—— 每个 fixture 在**该版本的 Node**里编译成
-   `.jsc` → jscd 反编译（带可运行前导）→ 语法门禁 → **跑产物与原始函数逐用例比对返回值**；另有
-   两道结构门禁：默认产物不许丢顶层函数声明（防优化层 DCE）、known-fail 单独统计不混进回归信号。
-2. **整脚本对拍**（`scripts/script_diff.js`）—— 完整脚本直接跑 `node`，比 stdout 与退出码（覆盖
-   "顶层只有语句 / 只有 const / 只有 class / async"这些 `target` 型用例照不到的形态）。
-3. **语料扫描**（`scripts/verify_samples.py`）—— 大规模样本 × 多版本：编译 → 反编译 →
-   `node --check` → 在 vm 里以最小 test262 桩加载（我们自己生成的 `__`/`_anon_`/`ctx`/`phi` 名字
-   若 ReferenceError 即判为 bug）。
-4. **单元测试与静态检查** —— `cargo test`（56 条）+ `cargo clippy --all-targets`（0 告警）+
-   `cargo build`（0 告警）+ 零依赖端到端冒烟 `scripts/ci_smoke.sh`（编译 → 反编译 → 语法门禁 →
-   5 个整脚本 fixture 真跑对拍）。
+1. **行为矩阵**（`scripts/verify_behavior.sh`）—— 每个 fixture 在**该版本的 Node** 里编译成 `.jsc` → 反编译
+   → 语法门禁 → 跑产物与原始函数**逐用例比对返回值**。另有两道结构门禁：默认产物不许丢顶层函数声明
+   （防优化层 DCE）、known-fail 单独统计，不让它掩盖回归。
+2. **整脚本对拍**（`scripts/script_diff.js`）—— 完整脚本跑 `node`，比 stdout 与退出码（覆盖"顶层只有语句 /
+   只有 const / 只有 class / async"这些 `target` 型用例照不到的形态）。
+3. **语料扫描**（`scripts/verify_samples.py`）—— 大样本 × 多版本：编译 → 反编译 → `node --check` → 在 vm 里
+   加载（我们自己生成的名字若 `ReferenceError` 即判为 bug）。
+4. **单元测试与静态检查** —— `cargo test`（58 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
+   （0 告警）+ 零依赖端到端冒烟 `scripts/ci_smoke.sh`。
 
 ```sh
-cargo test                                              # 56 条单测
+cargo test                                              # 58 条单测
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # 语料；另有 --offset、--samples
 ```

@@ -54,6 +54,9 @@ new entry joins the matrix automatically.
 
 - `docs/VERSIONS.md` — per-V8-version engineering notes (Chinese), the place to record a new
   version finding.
+- The CLI help section embedded in both READMEs is generated: after changing any help text
+  (or cutting a release) run `python3 scripts/update_readme_help.py` — it rewrites the marked
+  block in place, `--check` just reports drift.
 - `docs/stream-format.md` — the serialized-payload format notes.
 - Version numbers: `build.rs` injects the git tag as `jscd --version` (and falls back to the
   `Cargo.toml` version when there is no `.git`, e.g. a crates.io install); releases are cut with

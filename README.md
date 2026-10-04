@@ -16,10 +16,25 @@ optimization layers (register folding → swc copy propagation) make the decompi
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
 
-**Contents:** [Quick start](#quick-start) · [Install](#install) · [Usage](#usage) ·
-[Supported versions](#supported-versions) · [How it works](#how-it-works) ·
-[Verification](#verification) · [Repository layout](#repository-layout) · [Limitations](#limitations) ·
-[Contributing](CONTRIBUTING.md)
+**Contents:** [Highlights](#highlights) · [Quick start](#quick-start) · [Install](#install) ·
+[Usage](#usage) · [CLI reference](#cli-reference) · [Supported versions](#supported-versions) ·
+[How it works](#how-it-works) · [Verification](#verification) · [Repository layout](#repository-layout) ·
+[Limitations](#limitations) · [Contributing](CONTRIBUTING.md)
+
+## Highlights
+
+- **Coverage** — every Node release from 8.0.0 → 26.10.0 (510 releases / 36 V8 minors) is
+  identified; a V8 outside the tables is a clear error, not a guess.
+- **Runnable output** — `--runtime` adds the `__runtime` stubs so the result runs under `node`;
+  `--verify` puts it through `node --check`.
+- **Readable output** — two optimization layers fold bytecode register shuffling back into
+  expressions (register folding → swc copy propagation); `JSCD_NO_OPT=1` shows the raw form.
+- **Names recovered** — scope slots are named, builtins resolved through a read-only-heap name
+  table; never an identifier that throws `ReferenceError`.
+- **One dependency-free binary** — pure Rust: no Node, no network, no patched V8; the Linux build
+  is a 2.8 MB static binary (UPX).
+- **Reproducible verification** — 31 Node lines × 41 fixtures compared case by case, plus corpus
+  sweeps; every number rerunnable (see [Verification](#verification)).
 
 ## Quick start
 
@@ -122,7 +137,8 @@ Requires Rust 1.96+ (swc, the JS optimizer, needs a recent rustc). No system dep
 compiled to real `.jsc`, decompiled, syntax-gated and run-compared), then pushes an **annotated**
 tag whose message becomes the GitHub Release description. The tag triggers
 `.github/workflows/release.yml`, which rebuilds the six bare binaries listed above. Then
-`cargo publish` to crates.io (`release.sh` keeps the tag and the `Cargo.toml` version in sync); the
+`cargo publish` to crates.io (`release.sh` keeps the tag and the `Cargo.toml` version in sync), and
+`python3 scripts/update_readme_help.py` to refresh the CLI help below; the
 [Homebrew tap](https://github.com/ejfkdev/homebrew-tap) and the
 [Scoop bucket](https://github.com/ejfkdev/scoop-bucket) pick the new release up on their daily
 auto-update run.
@@ -142,20 +158,17 @@ jscd ro-map probe.jsc > m.json   # build a read-only-heap name table
 jscd --help                      # bilingual help (-h, `help`, `help <SUBCOMMAND>`)
 ```
 
-- **Input** is one `.jsc` file, or a directory scanned recursively for `*.jsc`. **Output** defaults
-  to stdout for a file, and to `<INPUT>-out/` (tree mirrored) for a directory; `-o` / the OUTPUT
-  argument writes to a file or directory, `-` means stdout.
-- A `.jsc` from a V8 outside the table range is **rejected with the detected version and the
-  supported range** in the message, rather than silently emitting a runtime-only file;
-  `jscd info` carries a `supported: yes|no` line for the same reason.
-- Read-only-heap names (Node 22+) resolve automatically for the builds shipped in
-  `tables/ro_map_*` — on macOS, the platform those tables were extracted on (RO indices depend on
-  the platform, so an embedded table is applied only where it can be trusted). Elsewhere build one
-  with `jscd ro-map` / `scripts/build_ro_map.sh` and pass `--ro-map`; `JSCD_NO_RO_MAP=1` disables
-  the embedded table. A table that does not match is ignored — you get `<ro0_…>` placeholders
-  rather than wrong names.
-- The interface language follows `JSCD_LANG` (→ `LC_ALL` → `LC_MESSAGES` → `LANGUAGE` → `LANG` →
-  `LC_CTYPE`): `zh*` is Chinese, anything else English. `JSCD_LANG=zh|en` forces one.
+- **Input** is one `.jsc` file, or a directory scanned recursively for `*.jsc`; **output** defaults
+  to stdout for a file and to `<INPUT>-out/` (tree mirrored) for a directory — `-o` / the OUTPUT
+  argument writes elsewhere, `-` means stdout.
+- A `.jsc` from an unsupported V8 is **rejected with the detected version and the supported range**
+  in the message (`jscd info` prints `supported: yes|no`) — never a silent, runtime-only file.
+- Read-only-heap names (Node 22+) resolve automatically where an embedded table applies (**macOS** —
+  RO indices are platform-specific); elsewhere build one with `jscd ro-map` and pass `--ro-map`
+  (`JSCD_NO_RO_MAP=1` disables the embedded table). A mismatched table is ignored: you get
+  `<ro0_…>` placeholders, never a wrong name.
+- The interface language follows `JSCD_LANG` (then `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` /
+  `LC_CTYPE`): `zh*` is Chinese, anything else English; `JSCD_LANG=zh|en` forces one.
 
 | Flag | Applies to | Effect |
 | --- | --- | --- |
@@ -168,6 +181,266 @@ jscd --help                      # bilingual help (-h, `help`, `help <SUBCOMMAND
 | `--runtime` | `decompile` | keep the runnable preamble (`__runtime` stubs, flattened `context` vars, name aliases). **Off by default** — add it when you want to run the product with `node` |
 | `-h, --help` | all forms | print help (`jscd help <SUBCOMMAND>` for one command) |
 | `-v, -V, --version` | all forms | print name, version and repository |
+
+## CLI reference
+
+Everything the CLI prints for `--help` and `help <SUBCOMMAND>`, verbatim (regenerate with `python3 scripts/update_readme_help.py`).
+
+<!-- BEGIN help:cli -->
+<details>
+<summary>Full CLI help — <code>jscd --help</code> and every subcommand, verbatim</summary>
+
+**`jscd --help`**
+
+```console
+$ jscd --help
+jscd v0.1.0 — V8 code cache → JavaScript
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Reconstructs JavaScript from bytenode-compiled .jsc files (V8 code caches).
+Static parsing — no patched V8, no Node runtime. Directories are scanned
+recursively.
+
+Usage: jscd [OPTIONS] <INPUT> [OUTPUT]     # decompile (default action)
+       jscd <SUBCOMMAND> [ARGS...]         # stage-by-stage analysis
+       jscd help [SUBCOMMAND] | version | -h | -v | -V
+
+INPUT   a .jsc file, or a directory (scanned recursively for *.jsc).
+OUTPUT  a file, a directory, or `-` for stdout:
+          <file.js>   one input file
+          <dir>       directory input, tree mirrored
+          default: stdout for a file; <INPUT>-out/ next to it for a directory
+
+Options:
+  -o, --output <path>   output file / directory / - (same as OUTPUT)
+      --ro-map <path>   read-only-heap name table (decompile)
+      --verify          syntax-gate the result with `node --check` (decompile)
+      --runtime         keep the runnable prelude (`__runtime` stubs) so the output
+                        can be run with node; off by default — the output is
+                        then just the reconstructed code
+      --filter <substr> only functions whose name contains substr (disasm)
+      --json            machine-readable output (info/strings/functions/disasm/ro-map)
+      --quiet           suppress per-file progress (directory input)
+  -h, --help            print this help
+  -v, -V, --version     print name, version, repository
+      JSCD_LANG=zh|en   force the help/error language (default: auto-detect)
+
+Subcommands:
+  decompile   reconstruct JavaScript (default action: `jscd <INPUT>`)
+  info        header fields and the detected Node/V8 version
+  strings     string and symbol constants from the constant pools
+  functions   SharedFunctionInfo tree (names, params, bytecode sizes)
+  disasm      bytecode disassembly (View8-compatible text)
+  ro-map      build a read-only-heap name table from a probe cache
+  help        print help (`jscd help <SUBCOMMAND>`)
+  version     print name, version and repository
+
+Examples:
+  jscd app.jsc                        decompile to stdout
+  jscd app.jsc app.js                 decompile to a file
+  jscd dist/                          dist/**.jsc → dist-out/**.js
+  jscd dist/ out/                     ... into out/ instead
+  jscd decompile --ro-map m.json a.jsc   with a name table
+  jscd info app.jsc                   header fields and V8 version
+  jscd disasm --filter main app.jsc   one function's bytecode
+  jscd help disasm                    per-subcommand help with examples
+  jscd ro-map probe.jsc -o names.json
+                                      build a name table (see `jscd help ro-map`)
+```
+
+**`jscd help decompile`**
+
+```console
+$ jscd help decompile
+jscd decompile — reconstruct JavaScript (default action: `jscd <INPUT>`)
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd decompile [OPTIONS] <INPUT> [OUTPUT]
+       jscd [OPTIONS] <INPUT> [OUTPUT]     # same thing
+
+INPUT is a .jsc file, or a directory (scanned recursively for *.jsc).
+OUTPUT is a file, a directory, or `-` for stdout. Default: stdout for a
+file input; <INPUT>-out/ next to it for a directory.
+
+Options:
+  -o, --output <path>   output file / directory / - (default: stdout)
+      --ro-map <path>   read-only-heap name table from `jscd ro-map`;
+                        restores builtin names (`a.length`, `o.push`)
+      --verify          syntax-gate the result with `node --check`
+      --runtime         keep the runnable prelude (`__runtime` stubs) so the
+                        output runs under node; off by default
+      --quiet           suppress per-file progress (directory input)
+
+Examples:
+  jscd decompile app.jsc                 decompile to stdout
+  jscd decompile app.jsc app.js          write to app.js
+  jscd decompile dist/                   dist/**.jsc -> dist-out/**.js
+  jscd --ro-map names.json a.jsc > a.js  with a read-only-heap name table
+  jscd decompile --runtime --verify a.jsc -o a.run.js
+                                         runnable, syntax-checked output
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help info`**
+
+```console
+$ jscd help info
+jscd info — header fields and the detected Node/V8 version
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd info [OPTIONS] <FILE>
+
+Prints the code-cache header: magic, version hash, V8/Node version, flags,
+payload size, and whether this build supports that V8 version.
+
+Options:
+  -o, --output <path>   write to a file ('-' = stdout; default stdout)
+      --json            one JSON object: file, size_raw, brotli,
+                        version_hash, v8, node, supported, ...
+
+Examples:
+  jscd info app.jsc                      header fields and V8 version
+  jscd info --json app.jsc | jq .supported   is this V8 version supported?
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help strings`**
+
+```console
+$ jscd help strings
+jscd strings — string and symbol constants from the constant pools
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd strings [OPTIONS] <FILE>
+
+Dumps the string/symbol constants this cache can reference, one per line.
+The JSON `from_roots` list is the subset reachable from the root function.
+
+Options:
+  -o, --output <path>   write to a file ('-' = stdout; default stdout)
+      --json            {"count":N,"strings":[...],"from_roots":[...]}
+
+Examples:
+  jscd strings app.jsc                   all constants, one per line
+  jscd strings --json app.jsc | jq .count    how many constants
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help functions`**
+
+```console
+$ jscd help functions
+jscd functions — SharedFunctionInfo tree (names, params, bytecode sizes)
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd functions [OPTIONS] <FILE>
+
+Lists the SharedFunctionInfo tree: id, name, parameter count, bytecode
+length, frame size, whether it was compiled, and nesting depth.
+
+Options:
+  -o, --output <path>   write to a file ('-' = stdout; default stdout)
+      --json            {"count":N,"functions":[{"id","name","params",
+                        "bytecode_length","frame_size","compiled","depth"}]}
+
+Examples:
+  jscd functions app.jsc                 the whole SFI tree
+  jscd functions --json app.jsc | jq '.functions[].name'
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help disasm`**
+
+```console
+$ jscd help disasm
+jscd disasm — bytecode disassembly (View8-compatible text)
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd disasm [OPTIONS] <FILE>
+
+Prints View8-compatible bytecode disassembly for every function, or only
+the ones whose name contains --filter.
+
+Options:
+      --filter <substr> only functions whose name contains substr
+  -o, --output <path>   write to a file ('-' = stdout; default stdout)
+      --json            {"disassembly":"<the whole listing>"}
+
+Examples:
+  jscd disasm app.jsc                    full bytecode listing
+  jscd disasm --filter main app.jsc      only functions named *main*
+  jscd disasm --json app.jsc > d.json    machine-readable listing
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help ro-map`**
+
+```console
+$ jscd help ro-map
+jscd ro-map — build a read-only-heap name table from a probe cache
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd ro-map [OPTIONS] <PROBE.jsc>
+
+Walks a probe cache's read-only heap and writes a name table (root index ->
+property name), so decompiled output says `a.length` instead of `<ro0_1120>`.
+Build one table per V8 version (see docs/VERSIONS.md for the probe recipe).
+
+Options:
+  -o, --output <path>   write the table to a file (default: stdout)
+      --json            {"schema","v8","tags","entries":{"0/1120":"length"}}
+
+Examples:
+  jscd ro-map probe.jsc -o names.json    build a name table
+  jscd ro-map probe.jsc | head           peek at root 0's names
+  jscd ro-map --json probe.jsc | jq '.entries'   just the entries
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help help`**
+
+```console
+$ jscd help help
+jscd help — print help (`jscd help <SUBCOMMAND>`)
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd help [SUBCOMMAND]
+
+Prints the main help, or one subcommand's help (usage, options, examples).
+
+Examples:
+  jscd help                              main help
+  jscd help disasm                       the disasm page with examples
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+**`jscd help version`**
+
+```console
+$ jscd help version
+jscd version — print name, version and repository
+https://github.com/ejfkdev/jscd  (MIT license)
+
+Usage: jscd version
+
+Prints name, version, repository and license (`-v` / `-V` / `--version` too).
+
+Examples:
+  jscd version                           same as `jscd -v`
+
+Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
+```
+
+</details>
+<!-- END help:cli -->
+
 
 By default the output is **just the reconstructed code** — no runtime preamble and no comments
 (the AST layer strips even the structural markers; `JSCD_NO_OPT=1` keeps them). `--runtime`
@@ -201,18 +474,15 @@ supported:     yes
 
 `JSCD_NO_OPT=1` disables both, for diffing against the raw translation.
 
-1. **Text layer** (`src/opt.rs`): folds away bytecode register shuffling — single-use values are
-   inlined into their use, stores overwritten before any read are dropped, unused register
-   declarations and pure bookkeeping such as `DeclareGlobals` are removed, `let r0; … r0 = E;` is
-   lifted into a declarator initializer, the `CallProperty`-rendering leftover `rX = A.B;` is
-   dropped (the call already reads the property at the call site, so keeping it would run a getter
-   twice), and **expressions are rebuilt**: V8 hoists the receiver and every argument into
-   registers, and a dedicated pass folds those single-use loads back into the call, in JavaScript
-   evaluation order (receiver → property → arguments), so nothing is reordered. It refuses to
-   cross blocks, loop headers, braceless control bodies, or any later use of the value (including
-   the self-referencing write `r2 = new r2(a0)`).
-2. **AST layer** (`src/opt_js.rs`): the text is handed to [swc](https://swc.rs) — the Rust port of
-   terser — for **copy propagation**, unused-variable elimination and constant folding:
+1. **Text layer** (`src/opt.rs`): folds bytecode register shuffling back into expressions —
+   single-use values inlined into their use, stores overwritten before any read dropped, unused
+   register declarations and pure bookkeeping (`DeclareGlobals`) removed, `let r0; … r0 = E;` lifted
+   into a declarator, and **receiver/argument loads rebuilt at the call site in JavaScript
+   evaluation order** (receiver → property → arguments), so nothing is reordered. It refuses to
+   cross blocks, loop headers, braceless control bodies, or a value that is still used later
+   (including the self-referencing write `r2 = new r2(a0)`).
+2. **AST layer** (`src/opt_js.rs`): the text then goes through [swc](https://swc.rs) — terser's Rust
+   port — for **copy propagation**, unused-variable elimination and constant folding:
 
    ```js
    let r0, r1, r2, r3;        // as decompiled            // after both layers
@@ -223,12 +493,11 @@ supported:     yes
    r2.log(r3);
    ```
 
-   The pipeline is calibrated: `paren_remover → resolver → optimize → hygiene → fixer` (skipping
-   `paren_remover` miscompiles), the snippet is wrapped in a function first (swc only propagates
-   copies inside function scope, and the payload is a `Module.wrap` function body at runtime
-   anyway) and the wrapper is stripped afterwards; no renaming, no statement merging, no arrow
-   conversion, names and parameters kept. Unparseable or suspicious output → the text-layer result
-   is kept instead.
+   Pipeline: `paren_remover → resolver → optimize → hygiene → fixer` (skipping `paren_remover`
+   miscompiles); the snippet is wrapped in a function first (swc only propagates copies inside a
+   function scope — and the payload *is* a `Module.wrap` body at runtime) and the wrapper is
+   stripped afterwards. No renaming, no statement merging, no arrow conversion; unparseable or
+   suspicious output → the text-layer result is kept.
 
 ## Supported versions
 
@@ -316,15 +585,12 @@ Version-by-version engineering notes: [docs/VERSIONS.md](docs/VERSIONS.md) (Chin
 ### What a `.jsc` holds
 
 It contains no source text, and the header's `source_hash` field stores the source *length*, not a
-hash. Recoverable data:
+hash. Recoverable: header fields (`version_hash`, `flag_hash`, payload size, checksum, Brotli or
+raw), the `SharedFunctionInfo` tree with scope info (parameter / context / stack slots), constant
+pools, bytecode arrays, source-position and handler tables.
 
-- header fields: `version_hash`, `flag_hash`, payload length, checksum, Brotli or raw payload
-- `SharedFunctionInfo` tree and scope info (parameter, context and stack slots)
-- string and literal constant pools, bytecode arrays, source-position and handler tables
-
-`decompile` emits a syntactically valid pseudo-JS reconstruction. Names that exist only as scope
-slots are printed as slot names (`rN`, `__ctx.ctxN`, `_anon_N`), never as identifiers that would
-throw `ReferenceError`.
+`decompile` prints names that exist only as scope slots *as slot names* (`rN`, `__ctx.ctxN`,
+`_anon_N`) — never as identifiers that would throw `ReferenceError`.
 
 ### Pipeline
 
@@ -345,23 +611,22 @@ throw `ReferenceError`.
 Four gates, each reproducible on its own:
 
 1. **Behavior matrix** (`scripts/verify_behavior.sh`) — every fixture is compiled to `.jsc` with that
-   Node version, decompiled by jscd (with the runnable prelude), gated on syntax, then the
-   product and the original function are **compared case by case on their return values**. Two
-   structural gates ride along: the default (non-`--runtime`) product may not lose top-level
-   declarations (AST-layer DCE guard), and known-fails are counted separately so they cannot mask
-   regressions.
+   Node version → decompiled → syntax-gated → run, and the product and the original function are
+   **compared case by case on their return values**. Two structural gates ride along: the default
+   product may not lose top-level declarations (AST-layer DCE guard), and known-fails are counted
+   separately so they cannot mask regressions.
 2. **Whole-script diffing** (`scripts/script_diff.js`) — a complete script is run under `node` and
-   stdout/exit code compared (covers "top level is statements only / `const` only / `class` only /
-   `async`", which `target`-style fixtures cannot reach).
+   stdout/exit code compared (covers top-level statements / `const` / `class` / `async`, which
+   `target`-style fixtures cannot reach).
 3. **Corpus sweeps** (`scripts/verify_samples.py`) — large sample sets × many versions: compile →
-   decompile → `node --check` → load in a `vm` with a minimal test262 stub (a `ReferenceError`
-   naming anything we generate — `__*`, `_anon_*`, `ctx*`, `phi*` — is a bug).
-4. **Unit tests and static checks** — `cargo test` (56 tests) + `cargo clippy --all-targets`
+   decompile → `node --check` → load in a `vm` (a `ReferenceError` naming anything we generate —
+   `__*`, `_anon_*`, `ctx*`, `phi*` — is a bug).
+4. **Unit tests and static checks** — `cargo test` (58 tests) + `cargo clippy --all-targets`
    (0 warnings) + `cargo build` (0 warnings) + the dependency-free end-to-end smoke
-   `scripts/ci_smoke.sh` (compile → decompile → syntax-gate → run the 5 whole-script fixtures).
+   `scripts/ci_smoke.sh`.
 
 ```sh
-cargo test                                              # 56 unit tests
+cargo test                                              # 58 unit tests
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # corpus; also --offset, --samples
 ```
