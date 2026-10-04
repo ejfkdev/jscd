@@ -1,9 +1,16 @@
 **jscd @VERSION@** — reverse bytenode-compiled `.jsc` (V8 code cache) back to JavaScript.
 Static parsing: no patched V8, no Node runtime, no subprocesses.
 
-### Downloads
+### Install
 
-Bare, ready-to-run binaries — no archive, no installer; each file *is* the executable.
+```sh
+brew install ejfkdev/tap/jscd                                        # macOS / Linux
+scoop bucket add ejfkdev https://github.com/ejfkdev/scoop-bucket && scoop install jscd   # Windows
+cargo binstall jscd                                                  # anywhere with Rust (cargo-binstall)
+```
+
+Or take a bare binary straight from this release (no archive, no installer — the file *is* the
+executable):
 
 | file | platform | build notes |
 | --- | --- | --- |

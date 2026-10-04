@@ -85,6 +85,9 @@ scoop install https://raw.githubusercontent.com/ejfkdev/scoop-bucket/main/bucket
 (Linux / macOS / Windows × x64 / arm64; Linux amd64 is a static musl build, Linux and Windows
 are UPX-compressed):
 
+Grab one straight from the release page (no archive, no installer — the file *is* the
+executable):
+
 ```sh
 curl -fLO https://github.com/ejfkdev/jscd/releases/download/v0.1.0/jscd-v0.1.0-linux-amd64
 chmod +x jscd-v0.1.0-linux-amd64
