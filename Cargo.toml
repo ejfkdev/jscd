@@ -10,6 +10,34 @@ license = "MIT"
 keywords = ["bytenode", "v8", "jsc", "reverse-engineering", "bytecode"]
 categories = ["command-line-utilities"]
 
+# cargo-binstall（`cargo binstall jscd`）：产物是**裸二进制**、资产名不用 rustc 三元组，
+# 所以除了默认模板还要逐目标覆写 pkg-url（pkg-fmt = "bin" 表示"URL 本身就是可执行文件"）。
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }"
+pkg-fmt = "bin"
+
+[package.metadata.binstall.overrides.aarch64-apple-darwin]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-macos-arm64"
+
+[package.metadata.binstall.overrides.x86_64-apple-darwin]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-macos-amd64"
+
+# linux-amd64 是静态 musl，glibc 系统同样能用 → gnu/musl 两个目标都指它
+[package.metadata.binstall.overrides.x86_64-unknown-linux-musl]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-linux-amd64"
+
+[package.metadata.binstall.overrides.x86_64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-linux-amd64"
+
+[package.metadata.binstall.overrides.aarch64-unknown-linux-gnu]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-linux-arm64"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-windows-amd64.exe"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-windows-arm64.exe"
+
 [lib]
 name = "jscd"
 path = "src/lib.rs"
