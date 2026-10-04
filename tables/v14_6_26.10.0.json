@@ -1,0 +1,3800 @@
+{
+ "bytecode_array": {
+  "fields": {
+   "__var_bytes": 64,
+   "constant_pool": 40,
+   "frame_size": 48,
+   "handler_table": 32,
+   "incoming_new_target_or_generator_register": 56,
+   "length": 8,
+   "max_arguments": 54,
+   "optional_padding": 60,
+   "parameter_size": 52,
+   "source_position_table": 24,
+   "wrapper": 16
+  },
+  "header_size": 64
+ },
+ "bytecodes": [
+  {
+   "acc": "",
+   "name": "Wide",
+   "operands": [],
+   "prefix": "Wide"
+  },
+  {
+   "acc": "",
+   "name": "ExtraWide",
+   "operands": [],
+   "prefix": "ExtraWide"
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreakWide",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreakExtraWide",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak0",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak1",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak2",
+   "operands": [
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak3",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak4",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak5",
+   "operands": [
+    "RuntimeId",
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DebugBreak6",
+   "operands": [
+    "RuntimeId",
+    "Reg",
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "Ldar",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaZero",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaSmi",
+   "operands": [
+    "Imm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaUndefined",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaNull",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaTheHole",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaTrue",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaFalse",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaContextSlotNoCell",
+   "operands": [
+    "Reg",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaContextSlot",
+   "operands": [
+    "Reg",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaImmutableContextSlot",
+   "operands": [
+    "Reg",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaCurrentContextSlotNoCell",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaCurrentContextSlot",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaImmutableCurrentContextSlot",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star",
+   "operands": [
+    "RegOut"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "Mov",
+   "operands": [
+    "Reg",
+    "RegOut"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "PushContext",
+   "operands": [
+    "RegOut"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "PopContext",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestReferenceEqual",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestUndetectable",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestNull",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestUndefined",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestTypeOf",
+   "operands": [
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaGlobal",
+   "operands": [
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaGlobalInsideTypeof",
+   "operands": [
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "StaGlobal",
+   "operands": [
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "StaContextSlotNoCell",
+   "operands": [
+    "Reg",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "StaCurrentContextSlotNoCell",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "StaContextSlot",
+   "operands": [
+    "Reg",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "StaCurrentContextSlot",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupSlot",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupContextSlotNoCell",
+   "operands": [
+    "Idx",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupContextSlot",
+   "operands": [
+    "Idx",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupGlobalSlot",
+   "operands": [
+    "Idx",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupSlotInsideTypeof",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupContextSlotNoCellInsideTypeof",
+   "operands": [
+    "Idx",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupContextSlotInsideTypeof",
+   "operands": [
+    "Idx",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaLookupGlobalSlotInsideTypeof",
+   "operands": [
+    "Idx",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "StaLookupSlot",
+   "operands": [
+    "Idx",
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "GetNamedProperty",
+   "operands": [
+    "Reg",
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "GetNamedPropertyFromSuper",
+   "operands": [
+    "Reg",
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "GetKeyedProperty",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "GetEnumeratedKeyedProperty",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "LdaModuleVariable",
+   "operands": [
+    "Imm",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "StaModuleVariable",
+   "operands": [
+    "Imm",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "SetNamedProperty",
+   "operands": [
+    "Reg",
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "DefineNamedOwnProperty",
+   "operands": [
+    "Reg",
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "SetKeyedProperty",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "DefineKeyedOwnProperty",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Flag8",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "StaInArrayLiteral",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "DefineKeyedOwnPropertyInLiteral",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Flag8",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "SetPrototypeProperties",
+   "operands": [
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Add",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Sub",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Mul",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Div",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Mod",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Exp",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseOr",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseXor",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseAnd",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ShiftLeft",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ShiftRight",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ShiftRightLogical",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Add_StringConstant_Internalize",
+   "operands": [
+    "Reg",
+    "Idx",
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "AddSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "SubSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "MulSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DivSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ModSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ExpSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseOrSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseXorSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseAndSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ShiftLeftSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ShiftRightSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ShiftRightLogicalSmi",
+   "operands": [
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Inc",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Dec",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Negate",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "BitwiseNot",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ToBooleanLogicalNot",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "LogicalNot",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TypeOf",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DeletePropertyStrict",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "DeletePropertySloppy",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "GetSuperConstructor",
+   "operands": [
+    "RegOut"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "FindNonDefaultConstructorOrConstruct",
+   "operands": [
+    "Reg",
+    "Reg",
+    "RegOutPair"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallAnyReceiver",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallProperty",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallProperty0",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallProperty1",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallProperty2",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallUndefinedReceiver",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallUndefinedReceiver0",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallUndefinedReceiver1",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallUndefinedReceiver2",
+   "operands": [
+    "Reg",
+    "Reg",
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallWithSpread",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallRuntime",
+   "operands": [
+    "RuntimeId",
+    "RegList",
+    "RegCount"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "CallRuntimeForPair",
+   "operands": [
+    "RuntimeId",
+    "RegList",
+    "RegCount",
+    "RegOutPair"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CallJSRuntime",
+   "operands": [
+    "NativeContextIndex",
+    "RegList",
+    "RegCount"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "InvokeIntrinsic",
+   "operands": [
+    "IntrinsicId",
+    "RegList",
+    "RegCount"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "Construct",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ConstructWithSpread",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ConstructForwardAllArgs",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestEqual",
+   "operands": [
+    "Reg",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestEqualStrict",
+   "operands": [
+    "Reg",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestLessThan",
+   "operands": [
+    "Reg",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestGreaterThan",
+   "operands": [
+    "Reg",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestLessThanOrEqual",
+   "operands": [
+    "Reg",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestGreaterThanOrEqual",
+   "operands": [
+    "Reg",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestInstanceOf",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "TestIn",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ToName",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ToNumber",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ToNumeric",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "ToObject",
+   "operands": [
+    "RegOut"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ToString",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "ToBoolean",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateRegExpLiteral",
+   "operands": [
+    "Idx",
+    "Idx",
+    "Flag16"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateArrayLiteral",
+   "operands": [
+    "Idx",
+    "Idx",
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "CreateArrayFromIterable",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateEmptyArrayLiteral",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateObjectLiteral",
+   "operands": [
+    "Idx",
+    "Idx",
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateEmptyObjectLiteral",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CloneObject",
+   "operands": [
+    "Reg",
+    "Flag8",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "GetTemplateObject",
+   "operands": [
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateClosure",
+   "operands": [
+    "Idx",
+    "Idx",
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateBlockContext",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateCatchContext",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateFunctionContext",
+   "operands": [
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateFunctionContextWithCells",
+   "operands": [
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateEvalContext",
+   "operands": [
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateWithContext",
+   "operands": [
+    "Reg",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateMappedArguments",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateUnmappedArguments",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "CreateRestParameter",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "JumpLoop",
+   "operands": [
+    "UImm",
+    "Imm",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "Jump",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "JumpConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfNullConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfNotNullConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfUndefinedConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfNotUndefinedConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfUndefinedOrNullConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfTrueConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfFalseConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfJSReceiverConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "JumpIfForInDoneConstant",
+   "operands": [
+    "Idx",
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfToBooleanTrueConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfToBooleanFalseConstant",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfToBooleanTrue",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfToBooleanFalse",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfTrue",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfFalse",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfNull",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfNotNull",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfUndefined",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfNotUndefined",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfUndefinedOrNull",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "JumpIfJSReceiver",
+   "operands": [
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "JumpIfForInDone",
+   "operands": [
+    "UImm",
+    "Reg",
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "SwitchOnSmiNoFeedback",
+   "operands": [
+    "Idx",
+    "UImm",
+    "Imm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "ForInEnumerate",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "ForInPrepare",
+   "operands": [
+    "RegOutTriple",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "ForInNext",
+   "operands": [
+    "Reg",
+    "Reg",
+    "RegPair",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "ForInStep",
+   "operands": [
+    "RegInOut"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "ForOfNext",
+   "operands": [
+    "Reg",
+    "Reg",
+    "RegOutPair",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "rw",
+   "name": "SetPendingMessage",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Throw",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "ReThrow",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Return",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "ThrowReferenceErrorIfHole",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "ThrowSuperNotCalledIfHole",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "ThrowSuperAlreadyCalledIfNotHole",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "ThrowIfNotSuperConstructor",
+   "operands": [
+    "Reg"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "SwitchOnGeneratorState",
+   "operands": [
+    "Reg",
+    "Idx",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "SuspendGenerator",
+   "operands": [
+    "Reg",
+    "RegList",
+    "RegCount",
+    "UImm"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "ResumeGenerator",
+   "operands": [
+    "Reg",
+    "RegOutList",
+    "RegCount"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "w",
+   "name": "GetIterator",
+   "operands": [
+    "Reg",
+    "Idx",
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "Debugger",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "IncBlockCounter",
+   "operands": [
+    "Idx"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "Abort",
+   "operands": [
+    "Flag8"
+   ],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star15",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star14",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star13",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star12",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star11",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star10",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star9",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star8",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star7",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star6",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star5",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star4",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star3",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star2",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star1",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "r",
+   "name": "Star0",
+   "operands": [],
+   "prefix": null
+  },
+  {
+   "acc": "",
+   "name": "Illegal",
+   "operands": [],
+   "prefix": null
+  }
+ ],
+ "frame": {
+  "closure_index": -5,
+  "context_index": -6,
+  "cp_slots": 0,
+  "extra_slots": 3,
+  "first_param": -9,
+  "reg_file_start": -7
+ },
+ "hash": {
+  "algorithm": "left_fold"
+ },
+ "header": {
+  "checksum": 24,
+  "flag_hash": 12,
+  "header_size": 32,
+  "payload_length": 20,
+  "read_only_checksum": 16,
+  "source_hash": 8,
+  "version_hash": 4
+ },
+ "intrinsic_names": [
+  "AsyncFunctionAwait",
+  "AsyncFunctionEnter",
+  "AsyncFunctionReject",
+  "AsyncFunctionResolve",
+  "AsyncGeneratorAwait",
+  "AsyncGeneratorReject",
+  "AsyncGeneratorResolve",
+  "AsyncGeneratorYieldWithAwait",
+  "CreateJSGeneratorObject",
+  "GeneratorGetResumeMode",
+  "GeneratorClose",
+  "GetImportMetaObject",
+  "CopyDataProperties",
+  "CopyDataPropertiesWithExcludedPropertiesOnStack",
+  "CreateIterResultObject",
+  "CreateAsyncFromSyncIterator"
+ ],
+ "operand_types": {
+  "Flag16": {
+   "scalable": false,
+   "size": 2
+  },
+  "Flag8": {
+   "scalable": false,
+   "size": 1
+  },
+  "Idx": {
+   "scalable": true,
+   "size": 1
+  },
+  "Imm": {
+   "scalable": true,
+   "size": 1
+  },
+  "IntrinsicId": {
+   "scalable": false,
+   "size": 1
+  },
+  "NativeContextIndex": {
+   "scalable": false,
+   "size": 1
+  },
+  "None": {
+   "scalable": false,
+   "size": 0
+  },
+  "Reg": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegCount": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegInOut": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegList": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegOut": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegOutList": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegOutPair": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegOutTriple": {
+   "scalable": true,
+   "size": 1
+  },
+  "RegPair": {
+   "scalable": true,
+   "size": 1
+  },
+  "RuntimeId": {
+   "scalable": false,
+   "size": 2
+  },
+  "UImm": {
+   "scalable": true,
+   "size": 1
+  }
+ },
+ "parameter_count": {
+  "direct": true
+ },
+ "roots": [
+  "UndefinedValue",
+  "TheHoleValue",
+  "NullValue",
+  "TrueValue",
+  "FalseValue",
+  "String:",
+  "String:prototype",
+  "String:name",
+  "String:length",
+  "ByteArrayMap",
+  "FixedArrayMap",
+  "FixedCOWArrayMap",
+  "FixedDoubleArrayMap",
+  "HashTableMap",
+  "SymbolMap",
+  "SeqOneByteStringMap",
+  "InternalizedOneByteStringMap",
+  "SharedFunctionInfoMap",
+  "CellMap",
+  "GlobalPropertyCellMap",
+  "HeapNumberMap",
+  "TransitionArrayMap",
+  "PropertyArrayMap",
+  "WeakFixedArrayMap",
+  "EmptyEnumCache",
+  "EmptyScopeInfo",
+  "EmptyPropertyArray",
+  "EmptyFixedArray",
+  "EmptyDescriptorArray",
+  "EmptyWeakArrayList",
+  "InvalidPrototypeValidityCell",
+  "ManyClosuresCell",
+  "ArgumentsMarker",
+  "Exception",
+  "HashTableHoleValue",
+  "OptimizedOut",
+  "PromiseHoleValue",
+  "PropertyCellHoleValue",
+  "StaleRegister",
+  "TerminationException",
+  "UninitializedValue",
+  "MetaMap",
+  "FreeSpaceMap",
+  "OnePointerFillerMap",
+  "TwoPointerFillerMap",
+  "AccessorInfoMap",
+  "ArrayListMap",
+  "AtomRegExpDataMap",
+  "BigIntMap",
+  "BytecodeArrayMap",
+  "ClosureFeedbackCellArrayMap",
+  "CodeMap",
+  "ContextCellMap",
+  "CoverageInfoMap",
+  "DictionaryTemplateInfoMap",
+  "DoubleStringCacheMap",
+  "FeedbackMetadataArrayMap",
+  "FeedbackVectorMap",
+  "ForeignMap",
+  "GlobalDictionaryMap",
+  "InstructionStreamMap",
+  "InterceptorInfoMap",
+  "IrRegExpDataMap",
+  "ManyClosuresCellMap",
+  "MegaDomHandlerMap",
+  "ModuleInfoMap",
+  "NameDictionaryMap",
+  "NameToIndexHashTableMap",
+  "NoClosuresCellMap",
+  "NumberDictionaryMap",
+  "ObjectBoilerplateDescriptionMap",
+  "OneClosureCellMap",
+  "OrderedHashMapMap",
+  "OrderedHashSetMap",
+  "OrderedNameDictionaryMap",
+  "PreparseDataMap",
+  "RegExpDataMap",
+  "RegExpMatchInfoMap",
+  "RegisteredSymbolTableMap",
+  "ScopeInfoMap",
+  "ScriptContextTableMap",
+  "SimpleNameDictionaryMap",
+  "SimpleNumberDictionaryMap",
+  "SmallOrderedHashMapMap",
+  "SmallOrderedHashSetMap",
+  "SmallOrderedNameDictionaryMap",
+  "SourceTextModuleMap",
+  "SwissNameDictionaryMap",
+  "SyntheticModuleMap",
+  "WasmImportDataMap",
+  "WasmCapiFunctionDataMap",
+  "WasmDispatchTableMap",
+  "WasmDispatchTableForImportsMap",
+  "WasmExportedFunctionDataMap",
+  "WasmInternalFunctionMap",
+  "WasmFuncRefMap",
+  "WasmJSFunctionDataMap",
+  "WasmNullMap",
+  "WasmResumeDataMap",
+  "WasmSuspenderObjectMap",
+  "WasmContinuationObjectMap",
+  "WasmTrustedInstanceDataMap",
+  "WasmTypeInfoMap",
+  "WeakArrayListMap",
+  "EphemeronHashTableMap",
+  "EmbedderDataArrayMap",
+  "WeakCellMap",
+  "TrustedFixedArrayMap",
+  "TrustedWeakFixedArrayMap",
+  "TrustedByteArrayMap",
+  "ProtectedFixedArrayMap",
+  "ProtectedWeakFixedArrayMap",
+  "InterpreterDataMap",
+  "SharedFunctionInfoWrapperMap",
+  "TrustedForeignMap",
+  "UncompiledDataWithoutPreparseDataMap",
+  "UncompiledDataWithPreparseDataMap",
+  "UncompiledDataWithoutPreparseDataWithJobMap",
+  "UncompiledDataWithPreparseDataAndJobMap",
+  "SeqTwoByteStringMap",
+  "ConsTwoByteStringMap",
+  "ConsOneByteStringMap",
+  "ThinTwoByteStringMap",
+  "ThinOneByteStringMap",
+  "SlicedTwoByteStringMap",
+  "SlicedOneByteStringMap",
+  "ExternalTwoByteStringMap",
+  "ExternalOneByteStringMap",
+  "InternalizedTwoByteStringMap",
+  "ExternalInternalizedTwoByteStringMap",
+  "ExternalInternalizedOneByteStringMap",
+  "UncachedExternalInternalizedTwoByteStringMap",
+  "UncachedExternalInternalizedOneByteStringMap",
+  "UncachedExternalTwoByteStringMap",
+  "UncachedExternalOneByteStringMap",
+  "SharedSeqOneByteStringMap",
+  "SharedSeqTwoByteStringMap",
+  "SharedExternalOneByteStringMap",
+  "SharedExternalTwoByteStringMap",
+  "SharedUncachedExternalOneByteStringMap",
+  "SharedUncachedExternalTwoByteStringMap",
+  "UndefinedMap",
+  "NullMap",
+  "BooleanMap",
+  "HoleMap",
+  "JSSharedArrayMap",
+  "JSAtomicsMutexMap",
+  "JSAtomicsConditionMap",
+  "EmptyByteArray",
+  "EmptyObjectBoilerplateDescription",
+  "EmptyArrayBoilerplateDescription",
+  "EmptyClosureFeedbackCellArray",
+  "EmptySlowElementDictionary",
+  "EmptyOrderedHashMap",
+  "EmptyOrderedHashSet",
+  "EmptyFeedbackMetadata",
+  "EmptyPropertyDictionary",
+  "EmptyOrderedPropertyDictionary",
+  "EmptySwissPropertyDictionary",
+  "NoOpInterceptorInfo",
+  "EmptyArrayList",
+  "EmptyWeakFixedArray",
+  "NanValue",
+  "UndefinedNanValue",
+  "HoleNanValue",
+  "InfinityValue",
+  "MinusZeroValue",
+  "MinusInfinityValue",
+  "MaxSafeInteger",
+  "MaxUInt32",
+  "SmiMinValue",
+  "SmiMaxValuePlusOne",
+  "SelfReferenceMarker",
+  "BasicBlockCountersMarker",
+  "GlobalThisBindingScopeInfo",
+  "EmptyFunctionScopeInfo",
+  "NativeScopeInfo",
+  "ShadowRealmScopeInfo",
+  "EmptySymbolTable",
+  "UndefinedContextCell",
+  "HashSeed",
+  "PreallocatedNumberStringTable",
+  "WasmNull",
+  "String:enumerable",
+  "String:configurable",
+  "String:value",
+  "String:writable",
+  "String:adoptText",
+  "String:approximatelySign",
+  "String:baseName",
+  "String:accounting",
+  "String:breakType",
+  "String:calendars",
+  "String:cardinal",
+  "String:caseFirst",
+  "String:ceil",
+  "String:compare",
+  "String:collation",
+  "String:collations",
+  "String:compact",
+  "String:compactDisplay",
+  "String:currency",
+  "String:currencyDisplay",
+  "String:currencySign",
+  "String:dateStyle",
+  "String:dateTimeField",
+  "String:dayPeriod",
+  "String:daysDisplay",
+  "String:decimal",
+  "String:dialect",
+  "String:digital",
+  "String:endRange",
+  "String:engineering",
+  "String:exceptZero",
+  "String:expand",
+  "String:exponentInteger",
+  "String:exponentMinusSign",
+  "String:exponentSeparator",
+  "String:fallback",
+  "String:first",
+  "String:firstDay",
+  "String:firstDayOfWeek",
+  "String:floor",
+  "String:format",
+  "String:formatMatcher",
+  "String:fraction",
+  "String:fractionalDigits",
+  "String:fractionalSecond",
+  "String:full",
+  "String:granularity",
+  "String:grapheme",
+  "String:group",
+  "String:h11",
+  "String:h12",
+  "String:h23",
+  "String:h24",
+  "String:halfCeil",
+  "String:halfEven",
+  "String:halfExpand",
+  "String:halfFloor",
+  "String:halfTrunc",
+  "String:hour12",
+  "String:hourCycle",
+  "String:hourCycles",
+  "String:hoursDisplay",
+  "String:ideo",
+  "String:ignorePunctuation",
+  "String:Invalid Date",
+  "String:integer",
+  "String:isWordLike",
+  "String:kana",
+  "String:language",
+  "String:languageDisplay",
+  "String:lessPrecision",
+  "String:letter",
+  "String:list",
+  "String:literal",
+  "String:locale",
+  "String:localeMatcher",
+  "String:loose",
+  "String:lower",
+  "String:ltr",
+  "String:maximumFractionDigits",
+  "String:maximumSignificantDigits",
+  "String:microsecondsDisplay",
+  "String:millisecondsDisplay",
+  "String:min2",
+  "String:minimalDays",
+  "String:minimumFractionDigits",
+  "String:minimumIntegerDigits",
+  "String:minimumSignificantDigits",
+  "String:-0",
+  "String:minusSign",
+  "String:minutesDisplay",
+  "String:monthsDisplay",
+  "String:morePrecision",
+  "String:nan",
+  "String:nanosecondsDisplay",
+  "String:narrowSymbol",
+  "String:negative",
+  "String:never",
+  "String:none",
+  "String:notation",
+  "String:normal",
+  "String:numberingSystem",
+  "String:numberingSystems",
+  "String:numeric",
+  "String:ordinal",
+  "String:percentSign",
+  "String:plusSign",
+  "String:quarter",
+  "String:region",
+  "String:relatedYear",
+  "String:roundingPriority",
+  "String:rtl",
+  "String:scientific",
+  "String:secondsDisplay",
+  "String:segment",
+  "String:Segment Iterator",
+  "String:Segments",
+  "String:sensitivity",
+  "String:sep",
+  "String:shared",
+  "String:signDisplay",
+  "String:standard",
+  "String:startRange",
+  "String:strict",
+  "String:stripIfInteger",
+  "String:style",
+  "String:term",
+  "String:textInfo",
+  "String:timeStyle",
+  "String:timeZones",
+  "String:trailingZeroDisplay",
+  "String:trunc",
+  "String:2-digit",
+  "String:type",
+  "String:unknown",
+  "String:upper",
+  "String:usage",
+  "String:useGrouping",
+  "String:unitDisplay",
+  "String:variants",
+  "String:weekday",
+  "String:weekend",
+  "String:weeksDisplay",
+  "String:weekInfo",
+  "String:yearName",
+  "String:yearsDisplay",
+  "String:\\0",
+  "String:\\x01",
+  "String:\\x02",
+  "String:\\x03",
+  "String:\\x04",
+  "String:\\x05",
+  "String:\\x06",
+  "String:\\a",
+  "String:\\b",
+  "String:\\t",
+  "String:\\n",
+  "String:\\v",
+  "String:\\f",
+  "String:\\r",
+  "String:\\x0e",
+  "String:\\x0f",
+  "String:\\x10",
+  "String:\\x11",
+  "String:\\x12",
+  "String:\\x13",
+  "String:\\x14",
+  "String:\\x15",
+  "String:\\x16",
+  "String:\\x17",
+  "String:\\x18",
+  "String:\\x19",
+  "String:\\x1a",
+  "String:\\x1b",
+  "String:\\x1c",
+  "String:\\x1d",
+  "String:\\x1e",
+  "String:\\x1f",
+  "String: ",
+  "String:!",
+  "String:\\",
+  "String:#",
+  "String:$",
+  "String:%",
+  "String:&",
+  "String:\\'",
+  "String:(",
+  "String:)",
+  "String:*",
+  "String:+",
+  "String:,",
+  "String:-",
+  "String:.",
+  "String:/",
+  "String:0",
+  "String:1",
+  "String:2",
+  "String:3",
+  "String:4",
+  "String:5",
+  "String:6",
+  "String:7",
+  "String:8",
+  "String:9",
+  "String::",
+  "String:;",
+  "String:<",
+  "String:=",
+  "String:>",
+  "String:?",
+  "String:@",
+  "String:A",
+  "String:B",
+  "String:C",
+  "String:D",
+  "String:E",
+  "String:F",
+  "String:G",
+  "String:H",
+  "String:I",
+  "String:J",
+  "String:K",
+  "String:L",
+  "String:M",
+  "String:N",
+  "String:O",
+  "String:P",
+  "String:Q",
+  "String:R",
+  "String:S",
+  "String:T",
+  "String:U",
+  "String:V",
+  "String:W",
+  "String:X",
+  "String:Y",
+  "String:Z",
+  "String:[",
+  "String:\\\\",
+  "String:]",
+  "String:^",
+  "String:_",
+  "String:`",
+  "String:a",
+  "String:b",
+  "String:c",
+  "String:d",
+  "String:e",
+  "String:f",
+  "String:g",
+  "String:h",
+  "String:i",
+  "String:j",
+  "String:k",
+  "String:l",
+  "String:m",
+  "String:n",
+  "String:o",
+  "String:p",
+  "String:q",
+  "String:r",
+  "String:s",
+  "String:t",
+  "String:u",
+  "String:v",
+  "String:w",
+  "String:x",
+  "String:y",
+  "String:z",
+  "String:{",
+  "String:|",
+  "String:}",
+  "String:~",
+  "String:\\x7f",
+  "String:\\x80",
+  "String:\\x81",
+  "String:\\x82",
+  "String:\\x83",
+  "String:\\x84",
+  "String:\\x85",
+  "String:\\x86",
+  "String:\\x87",
+  "String:\\x88",
+  "String:\\x89",
+  "String:\\x8a",
+  "String:\\x8b",
+  "String:\\x8c",
+  "String:\\x8d",
+  "String:\\x8e",
+  "String:\\x8f",
+  "String:\\x90",
+  "String:\\x91",
+  "String:\\x92",
+  "String:\\x93",
+  "String:\\x94",
+  "String:\\x95",
+  "String:\\x96",
+  "String:\\x97",
+  "String:\\x98",
+  "String:\\x99",
+  "String:\\x9a",
+  "String:\\x9b",
+  "String:\\x9c",
+  "String:\\x9d",
+  "String:\\x9e",
+  "String:\\x9f",
+  "String:\\xa0",
+  "String:\\xa1",
+  "String:\\xa2",
+  "String:\\xa3",
+  "String:\\xa4",
+  "String:\\xa5",
+  "String:\\xa6",
+  "String:\\xa7",
+  "String:\\xa8",
+  "String:\\xa9",
+  "String:\\xaa",
+  "String:\\xab",
+  "String:\\xac",
+  "String:\\xad",
+  "String:\\xae",
+  "String:\\xaf",
+  "String:\\xb0",
+  "String:\\xb1",
+  "String:\\xb2",
+  "String:\\xb3",
+  "String:\\xb4",
+  "String:\\xb5",
+  "String:\\xb6",
+  "String:\\xb7",
+  "String:\\xb8",
+  "String:\\xb9",
+  "String:\\xba",
+  "String:\\xbb",
+  "String:\\xbc",
+  "String:\\xbd",
+  "String:\\xbe",
+  "String:\\xbf",
+  "String:\\xc0",
+  "String:\\xc1",
+  "String:\\xc2",
+  "String:\\xc3",
+  "String:\\xc4",
+  "String:\\xc5",
+  "String:\\xc6",
+  "String:\\xc7",
+  "String:\\xc8",
+  "String:\\xc9",
+  "String:\\xca",
+  "String:\\xcb",
+  "String:\\xcc",
+  "String:\\xcd",
+  "String:\\xce",
+  "String:\\xcf",
+  "String:\\xd0",
+  "String:\\xd1",
+  "String:\\xd2",
+  "String:\\xd3",
+  "String:\\xd4",
+  "String:\\xd5",
+  "String:\\xd6",
+  "String:\\xd7",
+  "String:\\xd8",
+  "String:\\xd9",
+  "String:\\xda",
+  "String:\\xdb",
+  "String:\\xdc",
+  "String:\\xdd",
+  "String:\\xde",
+  "String:\\xdf",
+  "String:\\xe0",
+  "String:\\xe1",
+  "String:\\xe2",
+  "String:\\xe3",
+  "String:\\xe4",
+  "String:\\xe5",
+  "String:\\xe6",
+  "String:\\xe7",
+  "String:\\xe8",
+  "String:\\xe9",
+  "String:\\xea",
+  "String:\\xeb",
+  "String:\\xec",
+  "String:\\xed",
+  "String:\\xee",
+  "String:\\xef",
+  "String:\\xf0",
+  "String:\\xf1",
+  "String:\\xf2",
+  "String:\\xf3",
+  "String:\\xf4",
+  "String:\\xf5",
+  "String:\\xf6",
+  "String:\\xf7",
+  "String:\\xf8",
+  "String:\\xf9",
+  "String:\\xfa",
+  "String:\\xfb",
+  "String:\\xfc",
+  "String:\\xfd",
+  "String:\\xfe",
+  "String:\\xff",
+  "String:add",
+  "String:AggregateError",
+  "String:alphabet",
+  "String:always",
+  "String:anonymous",
+  "String:apply",
+  "String:Arguments",
+  "String:arguments",
+  "String:[object Arguments]",
+  "String:Array",
+  "String:[object Array]",
+  "String:ArrayBuffer",
+  "String:Array Iterator",
+  "String:as",
+  "String:assert",
+  "String:async",
+  "String:Atomics.Condition",
+  "String:Atomics.Mutex",
+  "String:auto",
+  "String:BigInt64Array",
+  "String:BigInt",
+  "String:bigint",
+  "String:BigUint64Array",
+  "String:bind",
+  "String:blank",
+  "String:Boolean",
+  "String:boolean",
+  "String:[object Boolean]",
+  "String:bound ",
+  "String:buffer",
+  "String:byteLength",
+  "String:byteOffset",
+  "String:calendar",
+  "String:calendarId",
+  "String:calendarName",
+  "String:callee",
+  "String:caller",
+  "String:cause",
+  "String:character",
+  "String:code",
+  "String:column",
+  "String:CompileError",
+  "String:<computed>",
+  "String:conjunction",
+  "String:console",
+  "String:constrain",
+  "String:construct",
+  "String:current",
+  "String:Date",
+  "String:[object Date]",
+  "String:dateAdd",
+  "String:dateFromFields",
+  "String:dateUntil",
+  "String:day",
+  "String:dayOfWeek",
+  "String:dayOfYear",
+  "String:days",
+  "String:daysInMonth",
+  "String:daysInWeek",
+  "String:daysInYear",
+  "String:default",
+  "String:defer",
+  "String:Deferred Module",
+  "String:defineProperty",
+  "String:deleteProperty",
+  "String:detached",
+  "String:direction",
+  "String:disambiguation",
+  "String:disjunction",
+  "String:disposed",
+  "String:done",
+  "String:.brand",
+  "String:.catch",
+  "String:.default",
+  "String:.for",
+  "String:.generator_object",
+  "String:.home_object",
+  "String:.new.target",
+  "String:.repl_result",
+  "String:.result",
+  "String:.static_home_object",
+  "String:.switch_tag",
+  "String:.this_function",
+  "String:dotAll",
+  "String:element",
+  "String:epochMilliseconds",
+  "String:epochNanoseconds",
+  "String:era",
+  "String:eraYear",
+  "String:Error",
+  "String:error",
+  "String:[object Error]",
+  "String:errors",
+  "String:eval",
+  "String:EvalError",
+  "String:exception",
+  "String:exec",
+  "String:false",
+  "String:fields",
+  "String:FinalizationRegistry",
+  "String:flags",
+  "String:Float16Array",
+  "String:Float32Array",
+  "String:Float64Array",
+  "String:fractionalSecondDigits",
+  "String:from",
+  "String:function () { [native code] }",
+  "String:Function.prototype.apply",
+  "String:Function.prototype.call",
+  "String:Function",
+  "String:function",
+  "String:[object Function]",
+  "String:Generator",
+  "String:get ",
+  "String:get",
+  "String:getOffsetNanosecondsFor",
+  "String:getOwnPropertyDescriptor",
+  "String:getPossibleInstantsFor",
+  "String:getPrototypeOf",
+  "String:getTimeZoneTransition",
+  "String:global",
+  "String:globalThis",
+  "String:groups",
+  "String:growable",
+  "String:has",
+  "String:hasIndices",
+  "String:hour",
+  "String:hours",
+  "String:hoursInDay",
+  "String:id",
+  "String:ignoreCase",
+  "String:illegal access",
+  "String:illegal argument",
+  "String:immutable",
+  "String:index",
+  "String:indices",
+  "String:Infinity",
+  "String:infinity",
+  "String:inLeapYear",
+  "String:input",
+  "String:<instance_members_initializer>",
+  "String:Int16Array",
+  "String:Int32Array",
+  "String:Int8Array",
+  "String:isExtensible",
+  "String:iso8601",
+  "String:isoDay",
+  "String:isoHour",
+  "String:isoMicrosecond",
+  "String:isoMillisecond",
+  "String:isoMinute",
+  "String:isoMonth",
+  "String:isoNanosecond",
+  "String:isoSecond",
+  "String:isoYear",
+  "String:Iterator",
+  "String:jsMemoryEstimate",
+  "String:jsMemoryRange",
+  "String:keys",
+  "String:largestUnit",
+  "String:lastChunkHandling",
+  "String:lastIndex",
+  "String:let",
+  "String:line",
+  "String:linear",
+  "String:LinkError",
+  "String:long",
+  "String:Map",
+  "String:Map Iterator",
+  "String:maxByteLength",
+  "String:medium",
+  "String:mergeFields",
+  "String:message",
+  "String:meta",
+  "String:microsecond",
+  "String:microseconds",
+  "String:millisecond",
+  "String:milliseconds",
+  "String:-Infinity",
+  "String:minute",
+  "String:minutes",
+  "String:Module",
+  "String:month",
+  "String:monthCode",
+  "String:monthDayFromFields",
+  "String:months",
+  "String:monthsInYear",
+  "String:multiline",
+  "String:NaN",
+  "String:nanosecond",
+  "String:nanoseconds",
+  "String:narrow",
+  "String:native",
+  "String:NFC",
+  "String:NFD",
+  "String:NFKC",
+  "String:NFKD",
+  "String:not-equal",
+  "String:null",
+  "String:[object Null]",
+  "String:Number",
+  "String:number",
+  "String:[object Number]",
+  "String:Object.prototype",
+  "String:Object",
+  "String:object",
+  "String:[object Object]",
+  "String:offset",
+  "String:offsetNanoseconds",
+  "String:ok",
+  "String:other",
+  "String:overflow",
+  "String:ownKeys",
+  "String:percent",
+  "String:plainDate",
+  "String:plainTime",
+  "String:position",
+  "String:preventExtensions",
+  "String:#constructor",
+  "String:Promise",
+  "String:promise",
+  "String:__proto__",
+  "String:proxy",
+  "String:Proxy",
+  "String:(?:)",
+  "String:RangeError",
+  "String:rawJSON",
+  "String:raw",
+  "String:read",
+  "String:ReferenceError",
+  "String:Reflect.get",
+  "String:Reflect.has",
+  "String:RegExp",
+  "String:[object RegExp]",
+  "String:reject",
+  "String:relativeTo",
+  "String:resizable",
+  "String:ResizableArrayBuffer",
+  "String:return",
+  "String:revoke",
+  "String:roundingIncrement",
+  "String:roundingMode",
+  "String:RuntimeError",
+  "String:Script",
+  "String:script",
+  "String:second",
+  "String:seconds",
+  "String:sentence",
+  "String:set ",
+  "String:Set",
+  "String:set",
+  "String:Set Iterator",
+  "String:setPrototypeOf",
+  "String:ShadowRealm",
+  "String:SharedArray",
+  "String:SharedArrayBuffer",
+  "String:SharedStruct",
+  "String:short",
+  "String:sign",
+  "String:size",
+  "String:smallestUnit",
+  "String:source",
+  "String:sourceText",
+  "String:stack",
+  "String:stackTraceLimit",
+  "String:<static_initializer>",
+  "String:sticky",
+  "String:String",
+  "String:string",
+  "String:[object String]",
+  "String:suppressed",
+  "String:SuppressedError",
+  "String:SuspendError",
+  "String:Symbol.iterator",
+  "String:Symbol.matchAll",
+  "String:Symbol.replace",
+  "String:[Symbol.species]",
+  "String:Symbol.species",
+  "String:Symbol.split",
+  "String:Symbol",
+  "String:symbol",
+  "String:SyntaxError",
+  "String:target",
+  "String:this",
+  "String:throw",
+  "String:timed-out",
+  "String:timeZone",
+  "String:timeZoneId",
+  "String:timeZoneName",
+  "String:toJSON",
+  "String:toString",
+  "String:total",
+  "String:true",
+  "String:get TypedArray.prototype.length",
+  "String:TypeError",
+  "String:Uint16Array",
+  "String:Uint32Array",
+  "String:Uint8Array",
+  "String:Uint8ClampedArray",
+  "String:undefined",
+  "String:[object Undefined]",
+  "String:unicode",
+  "String:unicodeSets",
+  "String:unit",
+  "String:URIError",
+  "String:UTC",
+  "String:WeakMap",
+  "String:WeakRef",
+  "String:WeakSet",
+  "String:WebAssembly.Exception",
+  "String:WebAssembly.Module",
+  "String:week",
+  "String:weekOfYear",
+  "String:weeks",
+  "String:with",
+  "String:word",
+  "String:written",
+  "String:year",
+  "String:yearMonthFromFields",
+  "String:yearOfWeek",
+  "String:years",
+  "Symbol:not_mapped_symbol",
+  "Symbol:uninitialized_symbol",
+  "Symbol:megamorphic_symbol",
+  "Symbol:elements_transition_symbol",
+  "Symbol:mega_dom_symbol",
+  "Symbol:array_buffer_wasm_memory_symbol",
+  "Symbol:call_site_info_symbol",
+  "Symbol:class_fields_symbol",
+  "Symbol:class_positions_symbol",
+  "Symbol:detached_symbol",
+  "Symbol:error_end_pos_symbol",
+  "Symbol:error_message_symbol",
+  "Symbol:error_script_symbol",
+  "Symbol:error_stack_symbol",
+  "Symbol:error_start_pos_symbol",
+  "Symbol:frozen_symbol",
+  "Symbol:interpreter_trampoline_symbol",
+  "Symbol:native_context_index_symbol",
+  "Symbol:nonextensible_symbol",
+  "Symbol:promise_debug_message_symbol",
+  "Symbol:promise_forwarding_handler_symbol",
+  "Symbol:promise_handled_by_symbol",
+  "Symbol:promise_awaited_by_symbol",
+  "Symbol:regexp_result_names_symbol",
+  "Symbol:regexp_result_regexp_input_symbol",
+  "Symbol:regexp_result_regexp_last_index_symbol",
+  "Symbol:sealed_symbol",
+  "Symbol:shared_struct_map_elements_template_symbol",
+  "Symbol:shared_struct_map_registry_key_symbol",
+  "Symbol:strict_function_transition_symbol",
+  "Symbol:template_literal_function_literal_id_symbol",
+  "Symbol:template_literal_slot_id_symbol",
+  "Symbol:wasm_asm_single_function_symbol",
+  "Symbol:wasm_cross_instance_call_symbol",
+  "Symbol:wasm_exception_tag_symbol",
+  "Symbol:wasm_exception_values_symbol",
+  "Symbol:wasm_uncatchable_symbol",
+  "Symbol:wasm_debug_proxy_cache_symbol",
+  "Symbol:wasm_debug_proxy_names_symbol",
+  "Symbol:async_iterator_symbol",
+  "Symbol:intl_fallback_symbol",
+  "Symbol:match_symbol",
+  "Symbol:search_symbol",
+  "Symbol:unscopables_symbol",
+  "Symbol:dispose_symbol",
+  "Symbol:async_dispose_symbol",
+  "Symbol:has_instance_symbol",
+  "Symbol:to_string_tag_symbol",
+  "PromiseFulfillReactionJobTaskMap",
+  "PromiseRejectReactionJobTaskMap",
+  "CallableTaskMap",
+  "CallbackTaskMap",
+  "PromiseResolveThenableJobTaskMap",
+  "AccessCheckInfoMap",
+  "AccessorPairMap",
+  "AliasedArgumentsEntryMap",
+  "AllocationMementoMap",
+  "ArrayBoilerplateDescriptionMap",
+  "AsmWasmDataMap",
+  "AsyncGeneratorRequestMap",
+  "BreakPointMap",
+  "BreakPointInfoMap",
+  "BytecodeWrapperMap",
+  "CallSiteInfoMap",
+  "ClassBoilerplateMap",
+  "ClassPositionsMap",
+  "CodeWrapperMap",
+  "DebugInfoMap",
+  "EnumCacheMap",
+  "ErrorStackDataMap",
+  "FunctionTemplateRareDataMap",
+  "ModuleRequestMap",
+  "PromiseCapabilityMap",
+  "PromiseReactionMap",
+  "PropertyDescriptorObjectMap",
+  "PrototypeInfoMap",
+  "PrototypeSharedClosureInfoMap",
+  "RegExpBoilerplateDescriptionMap",
+  "RegExpDataWrapperMap",
+  "ScriptMap",
+  "ScriptOrModuleMap",
+  "SourceTextModuleInfoEntryMap",
+  "StackFrameInfoMap",
+  "StackTraceInfoMap",
+  "TemplateObjectDescriptionMap",
+  "Tuple2Map",
+  "WasmExceptionTagMap",
+  "__torque_map_0__",
+  "__torque_map_1__",
+  "__torque_map_2__",
+  "__torque_map_3__",
+  "__torque_map_4__",
+  "__torque_map_5__",
+  "__torque_map_6__",
+  "__torque_map_7__",
+  "__torque_map_8__",
+  "__torque_map_9__",
+  "__torque_map_10__",
+  "__torque_map_11__",
+  "__torque_map_12__",
+  "__torque_map_13__",
+  "__torque_map_14__",
+  "__torque_map_15__",
+  "__torque_map_16__",
+  "__torque_map_17__",
+  "__torque_map_18__",
+  "__torque_map_19__",
+  "__torque_map_20__",
+  "__torque_map_21__",
+  "__torque_map_22__",
+  "__torque_map_23__",
+  "__torque_map_24__",
+  "__torque_map_25__",
+  "__torque_map_26__",
+  "__torque_map_27__",
+  "__torque_map_28__",
+  "__torque_map_29__",
+  "__torque_map_30__",
+  "__torque_map_31__",
+  "AllocationSite",
+  "AllocationSite",
+  "String:constructor",
+  "String:next",
+  "String:resolve",
+  "String:then",
+  "String:valueOf",
+  "Symbol:iterator_symbol",
+  "Symbol:match_all_symbol",
+  "Symbol:replace_symbol",
+  "Symbol:species_symbol",
+  "Symbol:split_symbol",
+  "Symbol:to_primitive_symbol",
+  "Symbol:is_concat_spreadable_symbol",
+  "LoadHandler",
+  "LoadHandler",
+  "LoadHandler",
+  "StoreHandler",
+  "StoreHandler",
+  "StoreHandler",
+  "StoreHandler",
+  "ExternalMap",
+  "JSMessageObjectMap",
+  "CppHeapExternalMap",
+  "EmptyScript",
+  "NoElementsProtector",
+  "MegaDOMProtector",
+  "NoProfilingProtector",
+  "NoUndetectableObjectsProtector",
+  "IsConcatSpreadableProtector",
+  "ArraySpeciesProtector",
+  "TypedArraySpeciesProtector",
+  "NoDateTimeConfigurationChangeProtector",
+  "PromiseSpeciesProtector",
+  "RegExpSpeciesProtector",
+  "StringLengthProtector",
+  "ArrayIteratorProtector",
+  "ArrayBufferDetachingProtector",
+  "PromiseHookProtector",
+  "PromiseResolveProtector",
+  "MapIteratorProtector",
+  "PromiseThenProtector",
+  "SetIteratorProtector",
+  "StringIteratorProtector",
+  "StringWrapperToPrimitiveProtector",
+  "NumberStringNotRegexpLikeProtector",
+  "StringSplitCache",
+  "RegExpMultipleCache",
+  "RegExpMatchGlobalAtomCache",
+  "BuiltinsConstantsTable",
+  "SourceTextModuleExecuteAsyncModuleFulfilledSFI",
+  "SourceTextModuleExecuteAsyncModuleRejectedSFI",
+  "AsyncDisposableStackOnFulfilledSharedFun",
+  "AsyncDisposableStackOnRejectedSharedFun",
+  "AsyncDisposeFromSyncDisposeSharedFun",
+  "EmptyTrustedByteArray",
+  "EmptyTrustedFixedArray",
+  "EmptyTrustedWeakFixedArray",
+  "EmptyProtectedFixedArray",
+  "EmptyProtectedWeakFixedArray",
+  "SmiStringCache",
+  "DoubleStringCache",
+  "PublicSymbolTable",
+  "ApiSymbolTable",
+  "ApiPrivateSymbolTable",
+  "ScriptList",
+  "MaterializedObjects",
+  "DetachedContexts",
+  "FeedbackVectorsForProfilingTools",
+  "SerializedObjects",
+  "SerializedGlobalProxySizes",
+  "MessageListeners",
+  "CurrentMicrotask",
+  "WeakRefsKeepDuringJob",
+  "FunctionsMarkedForManualOptimization",
+  "BasicBlockProfilingData",
+  "SharedWasmMemories",
+  "DebugLocalsBlockListCache",
+  "JSToWasmWrappers",
+  "WasmCanonicalRtts",
+  "ErrorStackGetterSharedFun",
+  "ErrorStackSetterSharedFun",
+  "LastScriptId",
+  "LastDebuggingId",
+  "LastStackTraceId",
+  "NextTemplateSerialNumber",
+  "ConstructStubCreateDeoptPCOffset",
+  "ConstructStubInvokeDeoptPCOffset",
+  "DeoptPCOffsetAfterAdaptShadowStack",
+  "InterpreterEntryReturnPCOffset"
+ ],
+ "roots_shift": 0,
+ "runtime_names": [
+  "DebugBreakOnBytecode",
+  "LoadLookupSlotForCall",
+  "ArrayIncludes_Slow",
+  "ArrayIndexOf",
+  "ArrayIsArray",
+  "ArraySpeciesConstructor",
+  "GrowArrayElements",
+  "IsArray",
+  "NewArray",
+  "NormalizeElements",
+  "TransitionElementsKind",
+  "TransitionElementsKindWithKind",
+  "AtomicsLoad64",
+  "AtomicsStore64",
+  "AtomicsAdd",
+  "AtomicsAnd",
+  "AtomicsCompareExchange",
+  "AtomicsExchange",
+  "AtomicsNumWaitersForTesting",
+  "AtomicsNumUnresolvedAsyncPromisesForTesting",
+  "AtomicsOr",
+  "AtomicsSub",
+  "AtomicsXor",
+  "SetAllowAtomicsWait",
+  "AtomicsLoadSharedStructOrArray",
+  "AtomicsStoreSharedStructOrArray",
+  "AtomicsExchangeSharedStructOrArray",
+  "AtomicsCompareExchangeSharedStructOrArray",
+  "AtomicsSynchronizationPrimitiveNumWaitersForTesting",
+  "BigIntCompareToNumber",
+  "BigIntCompareToString",
+  "BigIntEqualToBigInt",
+  "BigIntEqualToNumber",
+  "BigIntEqualToString",
+  "BigIntExponentiate",
+  "BigIntMaxLengthBits",
+  "BigIntToNumber",
+  "BigIntUnaryOp",
+  "ToBigInt",
+  "ToBigIntConvertNumber",
+  "ThrowConstructorNonCallableError",
+  "ThrowNotSuperConstructor",
+  "ThrowStaticPrototypeError",
+  "ThrowSuperAlreadyCalledError",
+  "ThrowSuperNotCalled",
+  "ThrowUnsupportedSuperError",
+  "DefineClass",
+  "LoadFromSuper",
+  "LoadKeyedFromSuper",
+  "StoreKeyedToSuper",
+  "StoreToSuper",
+  "MapGrow",
+  "MapShrink",
+  "OrderedHashSetGrow",
+  "SetGrow",
+  "SetShrink",
+  "OrderedHashSetShrink",
+  "TheHole",
+  "WeakCollectionDelete",
+  "WeakCollectionSet",
+  "OrderedHashMapGrow",
+  "CompileOptimizedOSR",
+  "CompileOptimizedOSRFromMaglev",
+  "CompileOptimizedOSRFromMaglevInlined",
+  "LogOrTraceOptimizedOSREntry",
+  "CompileLazy",
+  "CompileBaseline",
+  "InstallBaselineCode",
+  "InstallSFICode",
+  "InstantiateAsmJs",
+  "NotifyDeoptimized",
+  "ObserveNode",
+  "ResolvePossiblyDirectEval",
+  "VerifyType",
+  "CheckTurboshaftTypeOf",
+  "MaybePatchBinaryBaselineCode",
+  "FunctionLogNextExecution",
+  "OptimizeMaglevEager",
+  "StartMaglevOptimizeJob",
+  "OptimizeTurbofanEager",
+  "StartTurbofanOptimizeJob",
+  "MarkLazyDeoptimized",
+  "DateCurrentTime",
+  "ClearStepping",
+  "CollectGarbage",
+  "DebugAsyncFunctionSuspended",
+  "DebugBreakAtEntry",
+  "DebugCollectCoverage",
+  "DebugGetLoadedScriptIds",
+  "DebugOnFunctionCall",
+  "DebugPrepareStepInSuspendedGenerator",
+  "DebugPromiseThen",
+  "DebugToggleBlockCoverage",
+  "DebugTogglePreciseCoverage",
+  "FunctionGetInferredName",
+  "GetBreakLocations",
+  "GetGeneratorScopeCount",
+  "GetGeneratorScopeDetails",
+  "HandleDebuggerStatement",
+  "IsBreakOnException",
+  "IterableForEach",
+  "LiveEditPatchScript",
+  "ProfileCreateSnapshotDataBlob",
+  "ScheduleBreak",
+  "ScriptLocationFromLine2",
+  "SetGeneratorScopeVariableValue",
+  "IncBlockCounter",
+  "ForInEnumerate",
+  "ForInHasProperty",
+  "Call",
+  "FunctionGetScriptSource",
+  "FunctionGetScriptId",
+  "FunctionGetScriptSourcePosition",
+  "FunctionGetSourceCode",
+  "FunctionIsAPIFunction",
+  "AsyncFunctionAwait",
+  "AsyncFunctionEnter",
+  "AsyncFunctionReject",
+  "AsyncFunctionResolve",
+  "AsyncGeneratorAwait",
+  "AsyncGeneratorReject",
+  "AsyncGeneratorResolve",
+  "AsyncGeneratorYieldWithAwait",
+  "CreateJSGeneratorObject",
+  "GeneratorClose",
+  "GeneratorGetFunction",
+  "GeneratorGetResumeMode",
+  "ElementsTransitionAndStoreIC_Miss",
+  "KeyedLoadIC_Miss",
+  "KeyedStoreIC_Miss",
+  "DefineKeyedOwnIC_Miss",
+  "StoreInArrayLiteralIC_Miss",
+  "DefineNamedOwnIC_Slow",
+  "KeyedStoreIC_Slow",
+  "DefineKeyedOwnIC_Slow",
+  "LoadElementWithInterceptor",
+  "LoadGlobalIC_Miss",
+  "LoadGlobalIC_Slow",
+  "LoadIC_Miss",
+  "LoadIC_Miss_FromBaseline",
+  "PatchLoadICUninitializedBaseline",
+  "GetStringLengthAndUpdateFeedback",
+  "LoadNoFeedbackIC_Miss",
+  "LoadWithReceiverIC_Miss",
+  "LoadWithReceiverNoFeedbackIC_Miss",
+  "LoadPropertyPastInterceptor",
+  "StoreCallbackProperty",
+  "StoreGlobalIC_Miss",
+  "StoreGlobalICNoFeedback_Miss",
+  "StoreGlobalIC_Slow",
+  "StoreIC_Miss",
+  "DefineNamedOwnIC_Miss",
+  "StoreInArrayLiteralIC_Slow",
+  "StorePropertyPastInterceptor",
+  "CloneObjectIC_Slow",
+  "CloneObjectIC_Miss",
+  "KeyedHasIC_Miss",
+  "HasElementWithInterceptor",
+  "ObjectAssignTryFastcase",
+  "Throw",
+  "ThrowTargetNonFunction",
+  "ThrowCalledNonCallable",
+  "ThrowConstructedNonConstructable",
+  "ThrowConstructorReturnedNonObject",
+  "ThrowInvalidStringLength",
+  "ThrowInvalidTypedArrayAlignment",
+  "ThrowIteratorError",
+  "ThrowSpreadArgError",
+  "ThrowIteratorResultNotAnObject",
+  "ThrowNoAccess",
+  "ThrowNotConstructor",
+  "ThrowPatternAssignmentNonCoercible",
+  "ThrowRangeError",
+  "ThrowReferenceError",
+  "ThrowAccessedUninitializedVariable",
+  "ThrowStackOverflow",
+  "ThrowSymbolAsyncIteratorInvalid",
+  "ThrowSymbolIteratorInvalid",
+  "ThrowThrowMethodMissing",
+  "ThrowTypeError",
+  "ThrowTypeErrorIfStrict",
+  "ReThrow",
+  "ReThrowWithMessage",
+  "AccessCheck",
+  "AllocateByteArray",
+  "AllocateInYoungGeneration",
+  "AllocateInOldGeneration",
+  "AllocateInSharedHeap",
+  "AllowDynamicFunction",
+  "CreateAsyncFromSyncIterator",
+  "CreateListFromArrayLike",
+  "DoubleToStringWithRadix",
+  "FatalProcessOutOfMemoryInAllocateRaw",
+  "FatalProcessOutOfMemoryInvalidArrayLength",
+  "FatalInvalidSize",
+  "GetAndResetRuntimeCallStats",
+  "GetAndResetTurboProfilingData",
+  "GetTemplateObject",
+  "IncrementUseCounter",
+  "InvalidateStringWrapperToPrimitiveProtector",
+  "BytecodeBudgetInterrupt_Ignition",
+  "BytecodeBudgetInterruptWithStackCheck_Ignition",
+  "BytecodeBudgetInterrupt_Sparkplug",
+  "BytecodeBudgetInterruptWithStackCheck_Sparkplug",
+  "BytecodeBudgetInterrupt_Maglev",
+  "BytecodeBudgetInterruptWithStackCheck_Maglev",
+  "NotifyContextCellStateWillChange",
+  "NewError",
+  "NewReferenceError",
+  "NewTypeError",
+  "OrdinaryHasInstance",
+  "PropagateException",
+  "ReportMessageFromMicrotask",
+  "RunMicrotaskCallback",
+  "PerformMicrotaskCheckpoint",
+  "SharedValueBarrierSlow",
+  "StackGuard",
+  "HandleNoHeapWritesInterrupts",
+  "StackGuardWithGap",
+  "TerminateExecution",
+  "Typeof",
+  "UnwindAndFindExceptionHandler",
+  "AddLhsIsStringConstantInternalize",
+  "AddRhsIsStringConstantInternalize",
+  "FormatList",
+  "FormatListToParts",
+  "StringToLowerCaseIntl",
+  "StringToLocaleLowerCase",
+  "StringToUpperCaseIntl",
+  "CreateArrayLiteral",
+  "CreateObjectLiteral",
+  "SetPrototypeProperties",
+  "CreateRegExpLiteral",
+  "DynamicImportCall",
+  "GetImportMetaObject",
+  "GetModuleNamespace",
+  "GetModuleNamespaceExport",
+  "ArrayBufferMaxByteLength",
+  "IsSmi",
+  "MaxSmi",
+  "NumberToStringSlow",
+  "Float64ToStringSlow",
+  "StringParseFloat",
+  "StringParseInt",
+  "StringToNumber",
+  "AddAsyncDisposableValue",
+  "AddDictionaryProperty",
+  "AddDisposableValue",
+  "AddPrivateBrand",
+  "AllocateHeapNumber",
+  "CompleteInobjectSlackTrackingForMap",
+  "CopyDataProperties",
+  "CopyDataPropertiesWithExcludedPropertiesOnStack",
+  "CreateDataProperty",
+  "CreateIterResultObject",
+  "CreatePrivateAccessors",
+  "DefineAccessorPropertyUnchecked",
+  "DefineKeyedOwnPropertyInLiteral",
+  "DefineGetterPropertyUnchecked",
+  "DefineSetterPropertyUnchecked",
+  "DeleteProperty",
+  "DisposeDisposableStack",
+  "GetDerivedMap",
+  "GetFunctionName",
+  "GetOwnPropertyDescriptorObject",
+  "GetOwnPropertyKeys",
+  "GetPrivateMember",
+  "GetProperty",
+  "HandleExceptionsInDisposeDisposableStack",
+  "HasFastPackedElements",
+  "HasInPrototypeChain",
+  "HasProperty",
+  "InitializeDisposableStack",
+  "InternalSetPrototype",
+  "IsJSReceiver",
+  "JSReceiverPreventExtensionsDontThrow",
+  "JSReceiverPreventExtensionsThrow",
+  "JSReceiverGetPrototypeOf",
+  "JSReceiverSetPrototypeOfDontThrow",
+  "JSReceiverSetPrototypeOfThrow",
+  "LoadPrivateGetter",
+  "LoadPrivateSetter",
+  "NewObject",
+  "ObjectCreate",
+  "ObjectEntries",
+  "ObjectEntriesSkipFastPath",
+  "ObjectGetOwnPropertyNames",
+  "ObjectGetOwnPropertyNamesTryFast",
+  "ObjectHasOwnProperty",
+  "HasOwnConstDataProperty",
+  "ObjectIsExtensible",
+  "ObjectKeys",
+  "ObjectValues",
+  "ObjectValuesSkipFastPath",
+  "OptimizeObjectForAddingMultipleProperties",
+  "SetDataProperties",
+  "SetFunctionName",
+  "SetKeyedProperty",
+  "DefineObjectOwnProperty",
+  "SetNamedProperty",
+  "SetOwnPropertyIgnoreAttributes",
+  "ShrinkNameDictionary",
+  "ShrinkSwissNameDictionary",
+  "ToFastProperties",
+  "ToLength",
+  "ToName",
+  "ToNumber",
+  "ToNumeric",
+  "ToObject",
+  "ToString",
+  "TryMigrateInstance",
+  "TryMigrateInstanceAndMarkMapAsMigrationTarget",
+  "SetPrivateMember",
+  "SwissTableAdd",
+  "SwissTableAllocate",
+  "SwissTableDelete",
+  "SwissTableDetailsAt",
+  "SwissTableElementsCount",
+  "SwissTableEquals",
+  "SwissTableFindEntry",
+  "SwissTableUpdate",
+  "SwissTableValueAt",
+  "SwissTableKeyAt",
+  "Add",
+  "Equal",
+  "GreaterThan",
+  "GreaterThanOrEqual",
+  "LessThan",
+  "LessThanOrEqual",
+  "NotEqual",
+  "StrictEqual",
+  "StrictNotEqual",
+  "ReferenceEqual",
+  "EnqueueMicrotask",
+  "PromiseHookAfter",
+  "PromiseHookBefore",
+  "PromiseHookInit",
+  "PromiseRejectEventFromStack",
+  "PromiseRevokeReject",
+  "RejectPromise",
+  "ResolvePromise",
+  "ConstructSuppressedError",
+  "ConstructAggregateErrorHelper",
+  "ConstructInternalAggregateErrorHelper",
+  "CheckProxyGetSetTrapResult",
+  "CheckProxyHasTrapResult",
+  "CheckProxyDeleteTrapResult",
+  "GetPropertyWithReceiver",
+  "IsJSProxy",
+  "JSProxyGetHandler",
+  "JSProxyGetTarget",
+  "SetPropertyWithReceiver",
+  "RegExpBuildIndices",
+  "RegExpGrowRegExpMatchInfo",
+  "RegExpExecMultiple",
+  "RegExpInitializeAndCompile",
+  "RegExpMatchGlobalAtom",
+  "RegExpReplaceRT",
+  "RegExpSplit",
+  "RegExpStringFromFlags",
+  "StringReplaceNonGlobalRegExpWithFunction",
+  "StringSplit",
+  "RegExpExec",
+  "RegExpExperimentalOneshotExec",
+  "ThrowConstAssignError",
+  "ThrowUsingAssignError",
+  "ThrowAwaitUsingAssignError",
+  "DeclareEvalFunction",
+  "DeclareEvalVar",
+  "DeclareGlobals",
+  "DeclareModuleExports",
+  "DeleteLookupSlot",
+  "LoadLookupSlot",
+  "LoadLookupSlotInsideTypeof",
+  "LoadLookupSlotForCall_Baseline",
+  "NewClosure",
+  "NewClosure_Tenured",
+  "NewFunctionContext",
+  "NewRestParameter",
+  "NewSloppyArguments",
+  "NewStrictArguments",
+  "PushBlockContext",
+  "PushCatchContext",
+  "PushWithContext",
+  "StoreGlobalNoHoleCheckForReplLetOrConst",
+  "StoreLookupSlot_Sloppy",
+  "StoreLookupSlot_SloppyHoisting",
+  "StoreLookupSlot_Strict",
+  "ShadowRealmWrappedFunctionCreate",
+  "ShadowRealmImportValue",
+  "ShadowRealmThrow",
+  "FlattenString",
+  "GetSubstitution",
+  "InternalizeString",
+  "StringAdd",
+  "StringAdd_LhsIsStringConstant_Internalize",
+  "StringAdd_RhsIsStringConstant_Internalize",
+  "StringBuilderConcat",
+  "StringCharCodeAt",
+  "StringCodePointAt",
+  "StringCompare",
+  "StringEqual",
+  "StringEscapeQuotes",
+  "StringGreaterThan",
+  "StringGreaterThanOrEqual",
+  "StringIsWellFormed",
+  "StringLastIndexOf",
+  "StringLessThan",
+  "StringLessThanOrEqual",
+  "StringMaxLength",
+  "StringReplaceOneCharWithString",
+  "StringSubstring",
+  "StringToArray",
+  "StringToWellFormed",
+  "CreatePrivateNameSymbol",
+  "CreatePrivateBrandSymbol",
+  "CreatePrivateSymbol",
+  "SymbolDescriptiveString",
+  "SymbolIsPrivate",
+  "Abort",
+  "AbortCSADcheck",
+  "AbortJS",
+  "ActiveTierIsIgnition",
+  "ActiveTierIsSparkplug",
+  "ActiveTierIsMaglev",
+  "ActiveTierIsTurbofan",
+  "ArrayBufferDetachForceWasm",
+  "ArrayIteratorProtector",
+  "ArraySpeciesProtector",
+  "BaselineOsr",
+  "BenchMaglev",
+  "BenchTurbofan",
+  "VerifyGetJSBuiltinState",
+  "ClearFunctionFeedback",
+  "ClearMegamorphicStubCache",
+  "CompleteInobjectSlackTracking",
+  "ConstructConsString",
+  "ConstructDouble",
+  "ConstructInternalizedString",
+  "ConstructSlicedString",
+  "ConstructThinString",
+  "CurrentFrameIsTurbofan",
+  "DebugPrint",
+  "DebugPrintCppHeapPointerTable",
+  "DebugPrintCppHeapPointerTableFilterTag",
+  "DebugPrintExternalPointerTable",
+  "DebugPrintExternalPointerTableFilterTag",
+  "DebugPrintGeneric",
+  "DebugPrintFloat",
+  "DebugPrintPtr",
+  "DebugPrintWord",
+  "DebugTrace",
+  "DebugTraceMinimal",
+  "DeoptimizeFunction",
+  "DisableOptimizationFinalization",
+  "DisallowCodegenFromStrings",
+  "DisassembleFunction",
+  "EnableCodeLoggingForTesting",
+  "EnsureFeedbackVectorForFunction",
+  "FinalizeOptimization",
+  "ForceFlush",
+  "MajorGCForCompilerTesting",
+  "GetAbstractModuleSource",
+  "GetBytecode",
+  "GetCallable",
+  "GetFeedback",
+  "GetFunctionForCurrentFrame",
+  "GetInitializerFunction",
+  "GetOptimizationStatus",
+  "GetUndetectable",
+  "GetWeakCollectionSize",
+  "GlobalPrint",
+  "HasCowElements",
+  "HasDictionaryElements",
+  "HasDoubleElements",
+  "HasElementsInALargeObjectSpace",
+  "HasFastElements",
+  "HasFastProperties",
+  "HasFixedBigInt64Elements",
+  "HasFixedBigUint64Elements",
+  "HasFixedFloat16Elements",
+  "HasFixedFloat32Elements",
+  "HasFixedFloat64Elements",
+  "HasFixedInt16Elements",
+  "HasFixedInt32Elements",
+  "HasFixedInt8Elements",
+  "HasFixedUint16Elements",
+  "HasFixedUint32Elements",
+  "HasFixedUint8ClampedElements",
+  "HasFixedUint8Elements",
+  "HasHoleyElements",
+  "HasObjectElements",
+  "HasPackedElements",
+  "HasSloppyArgumentsElements",
+  "HasSmiElements",
+  "HasSmiOrObjectElements",
+  "HaveSameMap",
+  "HeapObjectVerify",
+  "ICsAreEnabled",
+  "InLargeObjectSpace",
+  "InstallBytecode",
+  "InYoungGeneration",
+  "Is64Bit",
+  "IsAtomicsWaitAllowed",
+  "IsBeingInterpreted",
+  "IsConcatSpreadableProtector",
+  "IsConcurrentRecompilationSupported",
+  "IsDictPropertyConstTrackingEnabled",
+  "IsEfficiencyModeEnabled",
+  "IsInPlaceInternalizableString",
+  "IsInternalizedString",
+  "StringToCString",
+  "StringUtf8Value",
+  "IsUndefinedDoubleEnabled",
+  "IsMaglevEnabled",
+  "IsSameHeapObject",
+  "IsSharedString",
+  "IsInWritableSharedSpace",
+  "IsSparkplugEnabled",
+  "IsTurbofanEnabled",
+  "IsWasmTieringPredictable",
+  "MapIteratorProtector",
+  "NeverOptimizeFunction",
+  "NewRegExpWithBacktrackLimit",
+  "NoElementsProtector",
+  "NotifyContextDisposed",
+  "SetPriorityBestEffort",
+  "SetPriorityUserVisible",
+  "SetPriorityUserBlocking",
+  "OptimizeMaglevOnNextCall",
+  "OptimizeFunctionOnNextCall",
+  "OptimizeOsr",
+  "PrepareFunctionForOptimization",
+  "PretenureAllocationSite",
+  "PrintWithNameForAssert",
+  "PromiseSpeciesProtector",
+  "RegExpSpeciesProtector",
+  "RegexpHasBytecode",
+  "RegexpHasNativeCode",
+  "RegexpIsUnmodified",
+  "RegexpTypeTag",
+  "RunningInSimulator",
+  "RuntimeEvaluateREPL",
+  "ScheduleGCInStackCheck",
+  "SerializeDeserializeNow",
+  "SetAllocationTimeout",
+  "SetBatterySaverMode",
+  "SetForceSlowPath",
+  "SetIteratorProtector",
+  "SharedGC",
+  "ShareObject",
+  "SimulateNewspaceFull",
+  "StringIsFlat",
+  "StringIteratorProtector",
+  "StringWrapperToPrimitiveProtector",
+  "SystemBreak",
+  "TakeHeapSnapshot",
+  "TraceEnter",
+  "TraceExit",
+  "TurbofanStaticAssert",
+  "TypedArraySpeciesProtector",
+  "WaitForBackgroundOptimization",
+  "DeoptimizeNow",
+  "LeakHole",
+  "GetHoleNaNLower",
+  "GetHoleNaNUpper",
+  "GetHoleNaN",
+  "GetUndefinedNaN",
+  "ArrayBufferDetach",
+  "ArrayBufferSetDetachKey",
+  "GrowableSharedArrayBufferByteLength",
+  "TypedArrayCopyElements",
+  "TypedArrayGetBuffer",
+  "TypedArraySet",
+  "TypedArraySortFast",
+  "WasmRunInterpreter",
+  "ThrowWasmJSPISuspendError",
+  "ThrowWasmFXSuspendError",
+  "ThrowWasmError",
+  "TrapHandlerThrowWasmError",
+  "ThrowWasmStackOverflow",
+  "WasmI32AtomicWait",
+  "WasmI64AtomicWait",
+  "WasmMemoryGrow",
+  "WasmStackGuard",
+  "WasmStackGuardLoop",
+  "WasmThrow",
+  "WasmReThrow",
+  "WasmThrowJSTypeError",
+  "WasmThrowTypeError",
+  "WasmThrowRangeError",
+  "WasmThrowDataViewTypeError",
+  "WasmThrowDataViewDetachedError",
+  "WasmRefFunc",
+  "WasmInternalFunctionCreateExternal",
+  "WasmFunctionTableGet",
+  "WasmFunctionTableSet",
+  "WasmTableInit",
+  "WasmTableCopy",
+  "WasmTableGrow",
+  "WasmTableFill",
+  "WasmJSToWasmObject",
+  "WasmGenericJSToWasmObject",
+  "WasmGenericWasmToJSObject",
+  "WasmCompileLazy",
+  "WasmAllocateFeedbackVector",
+  "WasmLiftoffDeoptFinish",
+  "TierUpJSToWasmWrapper",
+  "IsWasmExternalFunction",
+  "TierUpWasmToJSWrapper",
+  "WasmTriggerTierUp",
+  "WasmDebugBreak",
+  "WasmAllocateDescriptorStruct",
+  "WasmArrayCopy",
+  "WasmArrayNewSegment",
+  "WasmArrayInitSegment",
+  "WasmAllocateSuspender",
+  "WasmAllocateContinuation",
+  "WasmAllocateEmptyContinuation",
+  "WasmAllocateBoundContinuation",
+  "ClearWasmSuspenderResumeField",
+  "WasmCastToSpecialPrimitiveArray",
+  "WasmStringNewSegmentWtf8",
+  "WasmStringNewWtf8",
+  "WasmStringNewWtf8Array",
+  "WasmStringNewWtf16",
+  "WasmStringNewWtf16Array",
+  "WasmStringConst",
+  "WasmStringMeasureUtf8",
+  "WasmStringMeasureWtf8",
+  "WasmStringEncodeWtf8",
+  "WasmStringEncodeWtf16",
+  "WasmStringEncodeWtf8Array",
+  "WasmStringToUtf8Array",
+  "WasmStringAsWtf8",
+  "WasmStringViewWtf8Encode",
+  "WasmStringViewWtf8Slice",
+  "WasmStringFromCodePoint",
+  "WasmStringHash",
+  "WasmSubstring",
+  "WasmConfigureAllPrototypes",
+  "WasmConfigureAllPrototypesOpt",
+  "DebugCollectWasmCoverage",
+  "WasmTypeAssertionFailed",
+  "BuildRefTypeBitfield",
+  "CheckIsOnCentralStack",
+  "CountUnoptimizedWasmToJSWrapper",
+  "DisallowWasmCodegen",
+  "EstimateCurrentMemoryConsumption",
+  "FlushLiftoffCode",
+  "FreezeWasmLazyCompilation",
+  "GenerateWasmCompilationHints",
+  "GetWasmExceptionTagId",
+  "GetWasmExceptionValues",
+  "GetWasmRecoveredTrapCount",
+  "HasUnoptimizedJSToJSWrapper",
+  "HasUnoptimizedWasmToJSWrapper",
+  "IsAsmWasmCode",
+  "IsLiftoffFunction",
+  "IsTurboFanFunction",
+  "IsUncompiledWasmFunction",
+  "IsWasmCode",
+  "IsWasmDebugFunction",
+  "IsWasmPartialOOBWriteNoop",
+  "IsWasmTrapHandlerEnabled",
+  "SetWasmCompileControls",
+  "SetWasmInstantiateControls",
+  "WasmArray",
+  "WasmCompiledExportWrappersCount",
+  "WasmDeoptsExecutedCount",
+  "WasmDeoptsExecutedForFunction",
+  "WasmEnterDebugging",
+  "WasmGetNumberOfInstances",
+  "WasmLeaveDebugging",
+  "WasmNumCodeSpaces",
+  "WasmStruct",
+  "WasmSwitchToTheCentralStackCount",
+  "WasmTierUpFunction",
+  "WasmTraceEnter",
+  "WasmTraceExit",
+  "WasmTraceMemory",
+  "WasmTriggerCodeGC",
+  "WasmTraceGlobal",
+  "WasmTriggerTierUpForTesting",
+  "JSFinalizationRegistryRegisterWeakCellWithUnregisterToken",
+  "JSWeakRefAddToKeptObjects"
+ ],
+ "scope_info": {
+  "flags_smi": false,
+  "function_variable_bits": [
+   12,
+   13
+  ],
+  "has_inferred_bit": 14,
+  "max_inlined_names": 75,
+  "position_info_early": true,
+  "receiver_bits": [
+   7,
+   8
+  ],
+  "saved_class_bit": 10
+ },
+ "serialization": {
+  "tags": {
+   "kAllocateJSDispatchEntry": 31,
+   "kApiReference": 18,
+   "kApiWrapperFieldsData": 16,
+   "kAttachedReference": 8,
+   "kBackref": 4,
+   "kClearedWeakReference": 23,
+   "kEmbedderFieldsData": 15,
+   "kExternalReference": 19,
+   "kFixedRawData": 96,
+   "kFixedRepeatRoot": 128,
+   "kHotObject": 144,
+   "kIndirectPointerPrefix": 29,
+   "kInitializeSelfIndirectPointer": 30,
+   "kJSDispatchEntry": 32,
+   "kNewContextfulMetaMap": 28,
+   "kNewContextlessMetaMap": 27,
+   "kNewObject": 0,
+   "kNop": 10,
+   "kOffHeapBackingStore": 13,
+   "kOffHeapResizableBackingStore": 14,
+   "kProtectedPointerPrefix": 33,
+   "kReadOnlyHeapRef": 5,
+   "kRegisterPendingForwardRef": 25,
+   "kResolvePendingForwardRef": 26,
+   "kRootArray": 7,
+   "kRootArrayConstants": 64,
+   "kSandboxedApiReference": 20,
+   "kSandboxedExternalReference": 21,
+   "kSandboxedRawExternalReference": 22,
+   "kSharedHeapObjectCache": 9,
+   "kStartupObjectCache": 6,
+   "kSynchronize": 11,
+   "kVariableRawData": 17,
+   "kVariableRepeatRoot": 12,
+   "kWeakPrefix": 24
+  }
+ },
+ "shared_function_info": {
+  "fields": {
+   "age": 68,
+   "expected_nof_properties": 54,
+   "feedback_slot": 70,
+   "flags": 56,
+   "flags2": 55,
+   "formal_parameter_count": 50,
+   "function_literal_id": 60,
+   "function_token_offset": 52,
+   "length": 48,
+   "name_or_scope_info": 24,
+   "outer_scope_info_or_feedback_metadata": 32,
+   "script": 40,
+   "trusted_function_data": 8,
+   "unique_id": 64,
+   "untrusted_function_data": 16
+  },
+  "header_size": 72
+ },
+ "source_tag": "v26.10.0",
+ "tagged_size": 8,
+ "v8": "14.6.202.34"
+}

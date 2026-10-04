@@ -1,0 +1,21 @@
+# 行尾统一 LF（.sh 尤其不能被 Windows 检出成 CRLF —— 带 CRLF 的 shebang 跑不起来）
+* text=auto
+*.sh text eol=lf
+
+# ── GitHub linguist ─────────────────────────────────────────────────────────
+# jscd 是 Rust 项目。测试输入（tests/fixtures 里的 .js）、辅助脚本
+# （scripts/*.js|py|sh）和生成的版本表都是"数据 / 工具"，不参与语言统计，
+# 语言条只显示 Rust。注意 linguist-detectable 只影响统计口径，不影响
+# GitHub 上的语法高亮或文件浏览。
+*.js    linguist-detectable=false
+*.jsc   binary linguist-detectable=false
+*.py    linguist-detectable=false
+*.sh    linguist-detectable=false
+*.json  linguist-detectable=false
+*.toml  linguist-detectable=false
+*.yml   linguist-detectable=false
+*.md    linguist-documentation
+
+# 生成物（scripts/codegen.py 产出）：折叠 diff、不入统计
+tables/**           linguist-generated
+src/tables_embed.rs linguist-generated

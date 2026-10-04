@@ -1769,7 +1769,7 @@
   "reg_file_start": -7
  },
  "hash": {
-  "algorithm": "right_fold"
+  "algorithm": "left_fold"
  },
  "header": {
   "checksum": 24,

@@ -25,7 +25,6 @@ mod fallback_slots {
     /// SFI：function_data / name_or_scope_info / script
     pub const SFI_FUNCTION_DATA: usize = 1;
     pub const SFI_NAME: usize = 2;
-    pub const SFI_SCRIPT: usize = 4;
     /// BCA：constant_pool / handler_table / source_position_table
     pub const BCA_CONSTANT_POOL: usize = 2;
     pub const BCA_HANDLER_TABLE: usize = 3;
@@ -67,15 +66,6 @@ impl<'a> Disassembler<'a> {
             .as_ref()
             .and_then(|s| s.slot(ts, "name_or_scope_info"))
             .unwrap_or(fallback_slots::SFI_NAME)
-    }
-
-    fn sfi_script_slot(&self) -> usize {
-        let ts = self.layout.tagged_size;
-        self.table
-            .shared_function_info
-            .as_ref()
-            .and_then(|s| s.slot_any(ts, &["script", "script_or_debug_info"]))
-            .unwrap_or(fallback_slots::SFI_SCRIPT)
     }
 
     fn bca_slot(&self, names: &[&str], fallback: usize) -> usize {
@@ -155,6 +145,29 @@ impl<'a> Disassembler<'a> {
                 "[sfi] id={id} name_slot={} slots={out:?}",
                 self.sfi_name_slot()
             );
+            if let Some(SlotValue::Ref(Ref::Object(sid))) = self.cache.slot_at(id, self.sfi_name_slot())
+            {
+                let sid = *sid;
+                if self.cache.obj(sid).ty.is(self.table, "ScopeInfo") {
+                    let ts = self.layout.tagged_size;
+                    let raw: Vec<String> = (0..6)
+                        .map(|k| {
+                            self.cache
+                                .raw_at(sid, k * ts, 8)
+                                .map(|d| {
+                                    let v = u64::from_le_bytes(d.try_into().unwrap());
+                                    format!("{v:#x}")
+                                })
+                                .unwrap_or_else(|| "-".into())
+                        })
+                        .collect();
+                    eprintln!(
+                        "[sfi]   scope id={sid} byte_size={} array_len={} ts={ts} words={raw:?}",
+                        self.cache.obj(sid).byte_size,
+                        self.cache.array_len(sid)
+                    );
+                }
+            }
         }
         let Some(SlotValue::Ref(r)) = self.cache.slot_at(id, self.sfi_name_slot()) else {
             return String::new();
@@ -225,13 +238,60 @@ impl<'a> Disassembler<'a> {
         }
     }
 
+    /// ScopeInfo 数值域的**起点**（Flags 在哪个槽）随版本变：
+    ///   ≤8.4：头两格是 map+length → Flags 槽 2；
+    ///   9.x+：Flags 槽 1 —— 但 **9.0（node16.0–16.3）例外**：实测它的 ScopeInfo 比 9.1+
+    ///   多一格（16.3 的槽 1 是个无关的小整数、槽 2 才是 flags=0x3044；16.5 槽 1 就是 flags），
+    ///   于是按槽 1 读会把函数名全丢（产物里函数叫 `_anon_4`、形参个数也多一个）。
+    /// 与其按版本硬编码，不如按**结果**挑：哪个起点能让"名字槽真的指向字符串"就用哪个。
     fn scope_name_slots(&self, id: ObjId) -> (Option<usize>, Option<usize>) {
+        let legacy = self.table.v8.starts_with('8')
+            || self.table.v8.starts_with('7')
+            || self.table.v8.starts_with('6');
+        let primary = if legacy { 2 } else { 1 };
+        let mut best = (None, None);
+        let mut best_score = -1i32;
+        for base in [primary, if primary == 1 { 2 } else { 1 }] {
+            let (n, inf) = self.scope_name_slots_with(id, base);
+            let mut score = 0i32;
+            if n.map(|s| self.slot_looks_like_name(id, s)).unwrap_or(false) {
+                score += 2;
+            }
+            if inf.map(|s| self.slot_looks_like_name(id, s)).unwrap_or(false) {
+                score += 1;
+            }
+            if score > best_score {
+                best_score = score;
+                best = (n, inf);
+            }
+            if score >= 2 {
+                break;   // 已经拿到真名字，不再试另一个起点
+            }
+        }
+        best
+    }
+
+    /// 该槽是不是"名字"：指向字符串对象，或指向 `String:` 名字根。
+    fn slot_looks_like_name(&self, id: ObjId, slot: usize) -> bool {
+        match self.cache.slot_at(id, slot) {
+            Some(SlotValue::Ref(Ref::Object(o))) => self.cache.obj(*o).ty.is_string(self.table),
+            Some(SlotValue::Ref(Ref::Root(r))) => self
+                .table
+                .root_name(*r)
+                .map(|n| n.starts_with("String:"))
+                .unwrap_or(false),
+            _ => false,
+        }
+    }
+
+    fn scope_name_slots_with(&self, id: ObjId, base: usize) -> (Option<usize>, Option<usize>) {
         let ts = self.layout.tagged_size;
         let cfg = self.table.scope_info.clone().unwrap_or(crate::tables::ScopeInfoLayout {
             flags_smi: true,
             position_info_early: false,
             max_inlined_names: 75,
             saved_class_bit: 10,
+            has_outer_bit: None,
             function_variable_bits: [12, 13],
             receiver_bits: [7, 8],
             has_inferred_bit: 14,
@@ -248,10 +308,7 @@ impl<'a> Disassembler<'a> {
         //         ParameterCount 槽 3、ContextLocalCount 槽 4，变量区从**槽 5** 起
         //         （实测 node14：槽 5 正是函数名 `String:target` 的根引用）。
         //   9.x+ ：Flags 在槽 1（本代码长期验证过的路径）。
-        let legacy = self.table.v8.starts_with('8')
-            || self.table.v8.starts_with('7')
-            || self.table.v8.starts_with('6');
-        let base = if legacy { 2 } else { 1 };
+        let legacy = base == 2;
         // 数值域的存储形态随版本变：7.8 及更早是 **Smi**（`set(kFlags, Smi::FromInt(v))`），
         // 8.x 是裸 int32，9.x–12.x 又是 Smi，13.x 裸 int32 —— 有版本表就听表的
         // （flags_smi），没有表（6.x 之前）再退回"老族=裸 int32"的老经验。
@@ -709,10 +766,6 @@ impl<'a> Disassembler<'a> {
         self.table.parameter_count.map(|c| c.direct).unwrap_or(false)
     }
 
-    /// FixedArray 元素（按字节偏移取值；length 槽在 offset=ts，元素 i 在 (2+i)*ts）。
-    fn array_elem(&self, id: ObjId, index: usize) -> Option<Elem<'a>> {
-        self.cache.array_elem(id, index)
-    }
 
     /// FixedArray 元素数。
     pub fn fixed_array_len(&self, id: ObjId) -> usize {
@@ -766,7 +819,7 @@ impl<'a> Disassembler<'a> {
                     "ObjectBoilerplateDescription" => "<ObjectBoilerplateDescription>".into(),
                     "ArrayBoilerplateDescription" => "<ArrayBoilerplateDescription>".into(),
                     "ByteArray" | "EmptyByteArray" => "<ByteArray>".into(),
-                    "BigInt" => self
+                    t if t.contains("BigInt") => self
                         .bigint_value(*id)
                         .map(|v| format!("<BigInt {v}>"))
                         .unwrap_or_else(|| "<BigInt>".into()),
@@ -809,67 +862,55 @@ impl<'a> Disassembler<'a> {
     }
 
     pub fn string_value(&self, id: ObjId) -> Option<String> {
-        let obj = self.cache.obj(id);
-        // 字符串布局：
-        //   @0 map | @8 hash_field | @12 length | chars
-        // 长度的**形态**随版本变：≤6.x 是 Smi（占一个 tagged 槽，字符区在 12+ts = 20），
-        // 7.x 起是 int32（字符区在 16）。按 6.x 读成 int32 时长度恒为 0（Smi 的低半字为 0），
-        // 于是所有字符串都变成空串 —— node8 的 SFI 名、全局名全丢。
-        let len_off = self.table.string_length_offset.unwrap_or(12);
-        let length = if self.table.string_length_smi {
-            let ts = self.layout.tagged_size;
-            let d = self.cache.raw_at(id, len_off, ts)?;
-            if ts == 8 {
-                (read_u64(d) >> 32) as u32 as usize
-            } else {
-                let raw = u32::from_le_bytes(d.try_into().ok()?);
-                ((raw as i32) >> 1) as usize
-            }
-        } else {
-            self.cache
-                .raw_at(id, len_off, 4)
-                .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?
-        };
-        let is_one_byte = match obj.ty {
-            crate::serializer::Ty::Str(crate::serializer::StrKind::OneByte) => true,
-            crate::serializer::Ty::Str(crate::serializer::StrKind::TwoByte) => false,
-            _ => obj.ty.name(self.table).contains("OneByte"),
-        };
-        let chars_off = self.table.string_chars_offset.unwrap_or(16);
-        let d = self.cache.raw_at(id, chars_off, length)?;
-        if is_one_byte {
-            Some(String::from_utf8_lossy(d).into_owned())
-        } else {
-            let u16s: Vec<u16> = d
-                .chunks(2)
-                .map(|c| u16::from_le_bytes([c[0], *c.get(1).unwrap_or(&0)]))
-                .collect();
-            Some(String::from_utf16_lossy(&u16s))
-        }
+        decode_string(self.cache, self.table, id)
     }
 
-    fn bigint_value(&self, id: ObjId) -> Option<String> {
-        // BigInt：map + length(Smi) + 数字（64 位块，补码）
+    pub fn bigint_value(&self, id: ObjId) -> Option<String> {
+        // BigInt 布局（V8 `objects/bigint.{h,cc}` 核对）：
+        //   bit_field 是 int32（低 4 字节）：bit0 = 符号（`sign()==true` 表示负），
+        //   长度从 bit1 起（digit **个数**）；digit 从偏移 2*ts 起，每位 ts 字节
+        //   （`digit_t = uintptr_t`，压缩构建 4 字节 / 非压缩 8 字节），
+        //   **digit 存绝对值**（`FromInt64` 里先取 absolute 再 set_64_bits）。
+        //   负债就是"绝对值 + 符号位"，不是补码。
         let ts = self.layout.tagged_size;
-        let len = self
-            .cache
-            .raw_at(id, ts, ts)
-            .map(|d| read_u64(d) >> 32)? as usize;
+        let bf = self.cache.raw_at(id, ts, ts.min(8))?;
+        let bf = u32::from_le_bytes(bf[..4].try_into().ok()?);
+        let negative = bf & 1 == 1;
+        let len = (bf >> 1) as usize;
         if len == 0 {
             return Some("0".into());
         }
-        let bytes = self.cache.raw_at(id, 2 * ts, len * 8)?;
-        let mut v: i128 = 0;
-        for (i, chunk) in bytes.chunks(8).enumerate() {
-            let word = u64::from_le_bytes(chunk.try_into().ok()?);
-            v |= (word as i128) << (64 * i);
+        let bytes = self.cache.raw_at(id, 2 * ts, len * ts)?;
+        let mut words: Vec<u64> = Vec::with_capacity(len);
+        for chunk in bytes.chunks(ts) {
+            words.push(match chunk.len() {
+                4 => u32::from_le_bytes(chunk.try_into().ok()?) as u64,
+                8 => u64::from_le_bytes(chunk.try_into().ok()?),
+                _ => return None,
+            });
         }
-        // 最高位为符号位
-        let bits = len * 64;
-        if bits < 128 && (v >> (bits - 1)) & 1 == 1 {
-            v -= 1i128 << bits;
+        // 十进制化：反复除以 1e9（不用 i128 —— 256 位的值塞进去会让移位按 128 取模、
+        // 最高位落到符号位上，`-0x761f…n` 这类 4 位 digit 的**正数**会解成负数，
+        // 渲染出 `--5981…n` 这种语法错）。
+        let mut out: Vec<u32> = Vec::new();
+        while words.iter().any(|&w| w != 0) {
+            let mut rem: u128 = 0;
+            for w in words.iter_mut().rev() {
+                let cur = (rem << (8 * ts)) | (*w as u128);
+                *w = (cur / 1_000_000_000u128) as u64;
+                rem = cur % 1_000_000_000u128;
+            }
+            out.push(rem as u32);
         }
-        Some(v.to_string())
+        let mut s = String::new();
+        if negative {
+            s.push('-');
+        }
+        s.push_str(&out.pop().unwrap_or(0).to_string());
+        while let Some(c) = out.pop() {
+            s.push_str(&format!("{c:09}"));
+        }
+        Some(s)
     }
 
     /// 供 CLI 注入源码长度（attached ref 0 的展示）
@@ -882,25 +923,53 @@ impl<'a> Disassembler<'a> {
 
 
 /// Ref → 名字字符串（字符串对象 / 根名字），供反编译与 ScopeInfo 读取复用。
+/// 字符串解码（表驱动布局；`Disassembler::string_value` 与 `name_of_ref` 共用）。
+pub fn decode_string(cache: &CodeCache<'_>, table: &VersionTable, id: ObjId) -> Option<String> {
+    let obj = cache.obj(id);
+    // 字符串布局：
+    //   @0 map | @8 hash_field | @12 length | chars
+    // 长度的**形态**随版本变：≤6.x 是 Smi（占一个 tagged 槽，字符区在 12+ts = 20），
+    // 7.x 起是 int32（字符区在 16）。按 6.x 读成 int32 时长度恒为 0（Smi 的低半字为 0），
+    // 于是所有字符串都变成空串 —— node8 的 SFI 名、全局名全丢。
+    let len_off = table.string_length_offset.unwrap_or(12);
+    let length = if table.string_length_smi {
+        let ts = table.tagged_size as usize;
+        let d = cache.raw_at(id, len_off, ts)?;
+        if ts == 8 {
+            (read_u64(d) >> 32) as u32 as usize
+        } else {
+            let raw = u32::from_le_bytes(d.try_into().ok()?);
+            ((raw as i32) >> 1) as usize
+        }
+    } else {
+        cache
+            .raw_at(id, len_off, 4)
+            .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?
+    };
+    let is_one_byte = match obj.ty {
+        crate::serializer::Ty::Str(crate::serializer::StrKind::OneByte) => true,
+        crate::serializer::Ty::Str(crate::serializer::StrKind::TwoByte) => false,
+        _ => obj.ty.name(table).contains("OneByte"),
+    };
+    let chars_off = table.string_chars_offset.unwrap_or(16);
+    let d = cache.raw_at(id, chars_off, length)?;
+    if is_one_byte {
+        Some(String::from_utf8_lossy(d).into_owned())
+    } else {
+        let u16s: Vec<u16> = d
+            .chunks(2)
+            .map(|c| u16::from_le_bytes([c[0], *c.get(1).unwrap_or(&0)]))
+            .collect();
+        Some(String::from_utf16_lossy(&u16s))
+    }
+}
+
 pub fn name_of_ref(cache: &CodeCache<'_>, table: &VersionTable, r: Ref) -> Option<String> {
     match r {
         Ref::Object(id) => {
             let o = cache.obj(id);
             if o.ty.is_string(table) {
-                // 复用 Disassembler 的字符串解码路径
-                let ts = table.tagged_size as usize;
-                let len = cache.raw_at_ts(id, 12, 4, ts).map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)?;
-                let one_byte = matches!(
-                    o.ty,
-                    crate::serializer::Ty::Str(crate::serializer::StrKind::OneByte)
-                );
-                let d = cache.raw_at_ts(id, 16, if one_byte { len } else { len * 2 }, ts)?;
-                Some(if one_byte {
-                    String::from_utf8_lossy(d).into_owned()
-                } else {
-                    let u16s: Vec<u16> = d.chunks(2).map(|c| u16::from_le_bytes([c[0], *c.get(1).unwrap_or(&0)])).collect();
-                    String::from_utf16_lossy(&u16s)
-                })
+                decode_string(cache, table, id)
             } else {
                 None
             }
@@ -928,26 +997,6 @@ fn read_u64(d: &[u8]) -> u64 {
         v |= (*b as u64) << (8 * i);
     }
     v
-}
-
-/// Smi 解码：无压缩（ts=8）值在高 32 位；压缩（ts=4）值在低 32 位且末位为 1。
-fn decode_smi(group: &[u8]) -> Option<i64> {
-    if group.len() == 8 {
-        let raw = read_u64(group);
-        let v = (raw >> 32) as u32;
-        if v == 0 && raw != 0 {
-            return None;
-        }
-        Some((v as i32) as i64)
-    } else if group.len() == 4 {
-        let raw = u32::from_le_bytes(group.try_into().ok()?);
-        if raw & 1 == 0 {
-            return None;
-        }
-        Some(((raw as i32) >> 1) as i64)
-    } else {
-        None
-    }
 }
 
 fn hex(d: &[u8]) -> String {

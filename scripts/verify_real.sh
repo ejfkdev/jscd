@@ -5,7 +5,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSIONS=(16.20.2 18.20.8 20.20.2 22.12.0 24.12.0)
 FILES=(lib/internal/util/inspect.js lib/net.js lib/internal/util/types.js)
-NODE_SRC=${NODE_SRC:-/Users/e/Documents/github/node}
+# 需要一份 Node 源码仓库（浅克隆即可）：NODE_SRC=/path/to/node scripts/verify_real.sh
+NODE_SRC=${NODE_SRC:-}
+if [ -z "$NODE_SRC" ]; then
+  echo "请指定 Node 源码仓库：NODE_SRC=/path/to/node scripts/verify_real.sh" >&2
+  exit 2
+fi
 mkdir -p workspace/real
 fail=0
 for v in "${VERSIONS[@]}"; do

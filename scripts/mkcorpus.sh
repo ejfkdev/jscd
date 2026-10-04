@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 生成跨 Node 版本语料：workspace/corpus/<node>/<fixture>[-module|-brotli].jsc
-# 依赖 mise（.mise.toml 已钉住版本）。用法: scripts/mkcorpus.sh [node-version...]
+# 依赖 mise（mise.toml 已钉住版本）。用法: scripts/mkcorpus.sh [node-version...]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

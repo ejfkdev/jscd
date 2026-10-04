@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """jscd 版本表生成器：从 Node 源码树按 tag 提取 V8 解析所需数据 → tables/*.json。
 
-数据源：/Users/e/Documents/github/node（浅克隆，需先
+数据源：一份 Node 源码树（浅克隆即可，需先
   git fetch --depth 1 origin tag v16.20.2 ...）
 产出：
   tables/manifest.json     版本索引（90 个 Node↔V8 组合的 version_hash）+ 表别名（去重）
@@ -9,28 +9,230 @@
   src/tables_embed.rs      Rust 内嵌清单（include_str!）
 
 用法:
-  python3 scripts/codegen.py --node /Users/e/Documents/github/node \
+  python3 scripts/codegen.py --node /path/to/node \
       --tag v16.20.2 [--tag v18.20.8 ...]
 """
 import argparse
+import concurrent.futures
+import glob
 import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 
-NODE = None
+NODE = None          # --node：本地 node 克隆（可选，离线用）
+CACHE_DIR = None     # --cache：按 tag 缓存单个源文件（默认 workspace/node-src）
+OFFLINE = False      # --offline：只许用缓存/克隆，绝不联网
+REPO = "nodejs/node"
+
+
+def _http_text(url):
+    """取一个文件；404 返回 None，其它错误抛出（绝不能把网络故障当成"这版没这文件"）。"""
+    req = urllib.request.Request(url, headers={"User-Agent": "jscd-codegen"})
+    with urllib.request.urlopen(req, timeout=45) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def _cache_path(tag, path):
+    if not CACHE_DIR:
+        return None
+    return os.path.join(CACHE_DIR, tag, path)
+
+
+def repo_file(tag, path, in_v8=True):
+    """按需取**单个**文件（不再拉整份 node 源码）。
+
+    顺序：本地缓存 → `--node` 克隆 → raw.githubusercontent（`deps/v8/` 下）。
+    404 会在缓存里落一个 `.404` 哨兵，避免重复请求；传输错误直接抛。
+    """
+    rel = f"deps/v8/{path}" if in_v8 else path
+    cache = _cache_path(tag, path)
+    if cache and os.path.exists(cache):
+        with open(cache, encoding="utf-8") as f:
+            return f.read()
+    if cache and os.path.exists(cache + ".404"):
+        return None
+    git_answered = False
+    for git_dir in (NODE, REPO_DIR):
+        if not git_dir or not os.path.exists(os.path.join(git_dir, ".git")):
+            continue
+        r = subprocess.run(["git", "-C", git_dir, "cat-file", "-e", f"{tag}^{{commit}}"],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            continue          # 本地没有这个 tag，交给下一个源
+        git_answered = True
+        r = subprocess.run(["git", "-C", git_dir, "show", f"{tag}:{rel}"],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            if cache:
+                os.makedirs(os.path.dirname(cache), exist_ok=True)
+                with open(cache, "w", encoding="utf-8") as f:
+                    f.write(r.stdout)
+            return r.stdout
+    if git_answered:
+        # 本地 git 已经能看到这个 tag 了：查不到就是这版没这个文件，
+        # 别再打网络（raw.githubusercontent 在有些网络里是黑洞）。
+        if cache:
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            open(cache + ".404", "w").close()
+        return None
+    if OFFLINE:
+        return None
+    url = f"https://raw.githubusercontent.com/{REPO}/{tag}/{rel}"
+    try:
+        text = _http_text(url)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            if cache:
+                os.makedirs(os.path.dirname(cache), exist_ok=True)
+                open(cache + ".404", "w").close()
+            return None
+        raise
+    if cache:
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+        with open(cache, "w", encoding="utf-8") as f:
+            f.write(text)
+    return text
+
+
+# 一个 tag 需要的全部 V8 源文件（含按版本改名/移动的候选）
+NEEDED_V8_FILES = [
+    "include/v8-version.h",
+    "src/base/functional.h",
+    "src/base/hashing.h",
+    "src/snapshot/code-serializer.h",
+    "src/interpreter/bytecodes.h",
+    "src/interpreter/bytecode-operands.h",
+    "src/interpreter/interpreter-intrinsics.h",
+    "src/snapshot/serializer-deserializer.h",
+    "src/snapshot/serializer-common.h",
+    "src/snapshot/serializer.h",
+    "src/roots/roots.h",
+    "src/roots.h",
+    "src/init/heap-symbols.h",
+    "src/heap-symbols.h",
+    "src/objects/objects-definitions.h",
+    "src/objects-definitions.h",
+    "src/runtime/runtime.h",
+    "src/objects/bytecode-array.tq",
+    "src/objects/code.tq",
+    "src/objects/trusted-object.tq",
+    "src/objects/fixed-array.tq",
+    "src/execution/frame-constants.h",
+    "src/frame-constants.h",
+    "src/objects/shared-function-info.tq",
+    "src/objects/scope-info.tq",
+    "src/objects/bytecode-array-inl.h",
+    "src/common/globals.h",
+]
+
+
+REPO_DIR = None      # --repo-dir：blob 过滤的部分克隆（只按需取文件，不拉全量）
+REPO_URL = "https://github.com/nodejs/node"
+
+
+def _git(args, **kw):
+    return subprocess.run(["git", "-C", REPO_DIR, *args], capture_output=True, text=True, **kw)
+
+
+def ensure_repo():
+    """确保有一个 **blob 过滤**的部分克隆：--depth 1 --filter=blob:none --no-checkout。
+
+    这样只有 commit 与目录树会随 fetch 下来（几 MB），具体文件是 `git cat-file`
+    按需单独取的 —— 不需要整份 node 源码。
+    """
+    global REPO_DIR
+    if REPO_DIR and os.path.exists(os.path.join(REPO_DIR, ".git")):
+        return
+    if OFFLINE:
+        return
+    d = REPO_DIR or os.path.join(os.path.dirname(__file__), "..", "workspace", "node-partial")
+    if not os.path.exists(os.path.join(d, ".git")):
+        os.makedirs(os.path.dirname(d), exist_ok=True)
+        subprocess.run(["git", "clone", "--filter=blob:none", "--no-checkout", "--depth", "1",
+                        "-q", REPO_URL, d], check=True)
+        print(f"partial clone -> {d}", file=sys.stderr)
+    REPO_DIR = d
+
+
+def have_tag(tag):
+    r = _git(["rev-parse", "--verify", "--quiet", f"refs/tags/{tag}"])
+    return r.returncode == 0
+
+
+def prefetch(tag, jobs=16):
+    """把这个 tag 需要的**那些文件**取进缓存（其余源码一概不要）。
+
+    实现：先 fetch 该 tag 的 commit+树（无 blob），再一次 `git cat-file --batch`
+    让它把所有缺失的 blob 合并成一轮网络往返，逐个写进文件缓存。
+    """
+    wanted = [(p, True) for p in NEEDED_V8_FILES] + [("node.gypi", False), ("common.gypi", False)]
+    missing = []
+    for path, in_v8 in wanted:
+        rel = f"deps/v8/{path}" if in_v8 else path
+        cache = _cache_path(tag, path)
+        if cache and (os.path.exists(cache) or os.path.exists(cache + ".404")):
+            continue
+        missing.append((path, rel))
+    ensure_repo()
+    if REPO_DIR and os.path.exists(os.path.join(REPO_DIR, ".git")):
+        if not have_tag(tag):
+            r = _git(["fetch", "--depth", "1", "--filter=blob:none", "-q", "origin",
+                      f"refs/tags/{tag}:refs/tags/{tag}"])
+            if r.returncode != 0:
+                print(f"warn: fetch {tag} failed: {r.stderr.strip()[:120]}", file=sys.stderr)
+        if have_tag(tag) and missing:
+            _batch_fetch(tag, missing)
+    # 还没拿到的（克隆不可用/文件不存在）逐个兜底：缓存 → git → raw HTTP
+    for path, in_v8 in wanted:
+        repo_file(tag, path, in_v8)
+
+
+def _batch_fetch(tag, missing):
+    """一次 cat-file --batch 取多文件：missing blob 会被合并成一轮 fetch。
+
+    输出格式：每个请求回 `<sha> <type> <size>\n<payload>\n`，对象不存在则回
+    `<spec> missing\n`。这里按顺序一一对应地切出来写缓存。
+    """
+    req = ("\n".join(f"{tag}:{rel}" for _, rel in missing) + "\n").encode()
+    r = subprocess.run(["git", "-C", REPO_DIR, "cat-file", "--batch"],
+                       input=req, capture_output=True)
+    if r.returncode != 0:
+        return  # 交给逐个兜底
+    buf = r.stdout
+    i = 0
+    for path, _rel in missing:
+        nl = buf.find(b"\n", i)
+        if nl < 0:
+            break
+        head = buf[i:nl].decode("utf-8", "replace").split()
+        i = nl + 1
+        if len(head) == 2 and head[1] == "missing":
+            cache = _cache_path(tag, path)
+            if cache:
+                os.makedirs(os.path.dirname(cache), exist_ok=True)
+                open(cache + ".404", "w").close()
+            continue
+        if len(head) != 3:
+            break
+        size = int(head[2])
+        payload = buf[i:i + size]
+        i += size + 1  # 结尾还有一个换行
+        cache = _cache_path(tag, path)
+        if cache:
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            with open(cache, "w", encoding="utf-8") as f:
+                f.write(payload.decode("utf-8", "replace"))
 
 
 def git_show(tag, path):
-    """path 相对 deps/v8/（如 src/interpreter/bytecodes.h、include/v8-version.h）。"""
-    r = subprocess.run(["git", "-C", NODE, "show", f"{tag}:deps/v8/{path}"],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        return None
-    return r.stdout
+    """历史入口：等价于取 deps/v8/<path>。"""
+    return repo_file(tag, path, in_v8=True)
 
 
 def parse_v8_version(tag):
@@ -183,7 +385,11 @@ def _acc_use(inner):
     read = bool(uses & {"kRead", "kReadWrite",
                         "kReadAccumulator", "kReadWriteAccumulator",
                         "kReadAccumulatorWriteShortStar", "kWriteShortStar"})
-    write = bool(uses & {"kWriteAccumulator", "kReadWriteAccumulator"})
+    # 老写法 `AccumulatorUse::kWrite/kReadWrite` 也要算写 —— 只认长名时
+    # 老族（≤8.6）整张表把 `Add`/`Call…` 这类标成 "r"，反编译的 acc 活跃性判断失效：
+    # 调用结果被当死值丢掉（实测 node15 的 class_basic 少两行语句、算出来的数不对）。
+    write = bool(uses & {"kWrite", "kReadWrite",
+                         "kWriteAccumulator", "kReadWriteAccumulator"})
     return ("rw" if (read and write) else "r" if read else "w" if write else "")
 
 
@@ -514,7 +720,27 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
 # 11.3 少两格：旧值 36 会把 ALLOCATION_SITE_MAPS_LIST 与 NAME_FOR_PROTECTOR 段
 # 整体后移两位，于是 for-of 的 `.next` 解析成 AllocationSite、保护器字符串全错位
 # —— node20 的 for_of_in / spread_rest / generator 就是这么挂的。
-TORQUE_MAP_COUNT_BY_VERSION = {"11_3": 34}
+# 实测锚点（同 11_3 的做法）：14.x 的 torque map 段比 13.6 少 4 条，按默认 36 会让
+# 之后所有根索引 +4 —— twoclasses 的类 boilerplate 键是 `Root(1027) = String:constructor`，
+# 用 36 时算成 1031；改成 32 后逐条对上（1027 constructor / 1028 next / 1029 resolve /
+# 1030 then / 1031 valueOf），类模板随即能解出 `{ n, i: {"constructor":…, "bump":…} }`。
+# 见 minor_table 处的说明：格式一致就直接复用同一张表。
+# 表别名（格式一致时可直接复用另一张表）：目前**为空**。
+# 试过两条都只是"看起来能解"、经不起满矩阵：
+#   * 6.6 借 6.2：解析不报错，但结构门禁仍判无函数（`JSCD_TABLE` 调试路径会绕过门禁，
+#     早先据此误判为可用）；
+#   * 6.7 借 6.8：arith 侥幸通过，其余 12 个 fixture 照挂。
+# 这两族各自需要真正的格式移植。机制留着，将来有证据时填。
+TABLE_ALIAS: dict[str, str] = {}
+
+TORQUE_MAP_COUNT_BY_VERSION = {
+    "11_3": 34,
+    "10_7": 25,   # node19：实测 delta +11（constructor 根 693，我们 704）
+    "10_8": 25,   # node19
+    "11_8": 34,   # node21：实测 delta +2（735 vs 737）
+    "14_1": 32,   # node25：见下面 14.x 的说明
+    "14_6": 32,   # node26
+}
 TORQUE_MAP_COUNT = 36
 
 
@@ -569,6 +795,23 @@ BUILD_DEFINES = {
     "V8_INTL_SUPPORT": True,            # Node 默认 full-icu
     "V8_ENABLE_WEBASSEMBLY": True,      # Node 默认启用
     "V8_TRACE_IGNITION": False,         # dev-only（8.4 用这个名字包 INTERPRETER_TRACE）
+    # 14.x 起 runtime.h 用 `#ifdef V8_DUMPLING` 包两组条目（PrintDumpedFrame /
+    # DumpExecutionFrame）。Node 不发这个开关 —— 留着会让 364 往后的
+    # Runtime::FunctionId 整体 +1（实测：`ThrowConstAssignError` 真值 364、
+    # 带这两条时算成 365，于是顶层 `DeclareGlobals` 认成 `DeclareEvalVar`，
+    # 整个顶层代码无法摊平）。13.6 及更早没有这段，故只影响 14.x。
+    "V8_DUMPLING": False,
+}
+
+# `IF_<FLAG>(F, ...)` 的取舍：官方 Node 构建的取值。
+# 有证据才写在这里 —— SPARKPLUG_PLUS：node26 二进制里有 MaybePatchBinaryBaselineCode；
+# WASM_RANDOM_FUZZERS / DRUMBRAKE：二进制里查无此名（fuzzer 与 wasm 解释器都不发）。
+IF_FLAGS = {
+    "IF_WASM": True,                    # = V8_ENABLE_WEBASSEMBLY
+    "IF_WASM_DRUMBRAKE": False,
+    "IF_SPARKPLUG_PLUS": True,
+    "IF_V8_WASM_RANDOM_FUZZERS": False,
+    "IF_TSA": True,
 }
 
 
@@ -702,16 +945,19 @@ def extract_runtime_names(text):
                     else:
                         out.append(name)
             elif ident.startswith("IF_"):
-                # IF_WASM(FOR_EACH_INTRINSIC_WASM, F, I) 之类：按开关决定是否展开
-                flag = ident
-                enabled = {
-                    "IF_WASM": BUILD_DEFINES["V8_ENABLE_WEBASSEMBLY"],
-                    "IF_TSA": True,
-                }.get(flag, True)
+                # `IF_WASM(FOR_EACH_INTRINSIC_WASM, F, I)`：整个组按开关取舍；
+                # `IF_SPARKPLUG_PLUS(F, MaybePatchBinaryBaselineCode, 4, 1)`：**直接一条**，
+                # 老写法只认 FOR_EACH_ 开头的参数，会把这类整条漏掉（14.x 的
+                # MaybePatchBinaryBaselineCode 就是这么丢的）。
+                enabled = IF_FLAGS.get(ident, True)
                 if enabled:
                     parts = [p.strip() for p in inner.split(",")]
                     if parts and parts[0].startswith("FOR_EACH_"):
                         expand(parts[0], depth + 1)
+                    elif parts and parts[0] in ("F", "I"):
+                        name = parts[1].strip() if len(parts) > 1 else ""
+                        if name and name[0].isalpha():
+                            out.append(name)
             elif ident.startswith("FOR_EACH_"):
                 expand(ident, depth + 1)
 
@@ -1080,9 +1326,17 @@ def scope_flags_bits_from_chain(text):
 
 
 def extract_hash_fold(tag):
-    """V8 ≥ 12 引入 base::Hasher（左折叠）；此前为变参递归（右折叠）。"""
-    fh = git_show(tag, "src/base/functional.h")
-    if fh and "class Hasher" in fh and "hash_value_unsigned_impl" in fh:
+    """V8 ≥ 12 引入 base::Hasher（左折叠）；此前为变参递归（右折叠）。
+
+    Hasher 的位置换过：早期在 `src/base/functional.h`，后来拆到 `src/base/hashing.h`。
+    两处都没有时按大版本号兜底（≥12 一律左折叠）——比"猜错折叠方式"安全。
+    """
+    for path in ("src/base/functional.h", "src/base/hashing.h"):
+        fh = git_show(tag, path)
+        if fh and "class Hasher" in fh and "hash_value_unsigned_impl" in fh:
+            return "left_fold"
+    vv = parse_v8_version(tag)
+    if vv and vv[0] >= 12:
         return "left_fold"
     return "right_fold"
 
@@ -1093,12 +1347,8 @@ def extract_tagged_size(tag):
     code cache 与平台绑定；Node 官方构建：linux/win x64 开压缩(4)，macOS 不开(8)。
     这里从 node 的 common.gypi 读默认值并按平台覆写。
     """
-    r = subprocess.run(["git", "-C", NODE, "show", f"{tag}:node.gypi"],
-                       capture_output=True, text=True)
-    gypi = r.stdout if r.returncode == 0 else ""
-    r2 = subprocess.run(["git", "-C", NODE, "show", f"{tag}:common.gypi"],
-                        capture_output=True, text=True)
-    gypi += r2.stdout if r2.returncode == 0 else ""
+    gypi = repo_file(tag, "node.gypi", in_v8=False) or ""
+    gypi += repo_file(tag, "common.gypi", in_v8=False) or ""
     enabled = re.search(r"'v8_enable_pointer_compression':\s*(\d)", gypi)
     # Node 官方默认只在 linux x64 / win x64 开；macOS/arm64 均不开
     return 4 if (enabled and enabled.group(1) == "1") else 8
@@ -1139,35 +1389,192 @@ def v8_hash(fold, a, b, c, d):
     return s & 0xFFFFFFFF
 
 
+def _deep_fill(dst, src, path=""):
+    """把 src 里有、dst 里没有（或值为 null）的键补进 dst（递归；list 不合并）。
+
+    **null 视同缺失**：老族的 `scope_info` 常常抽不出来（7.9 的 ScopeInfo 在源码里不是
+    .tq 定义）→ 生成的是 `"scope_info": null`，键在、值是空 —— 只补"缺键"的话
+    donor 的配置永远补不上，反编译于是用默认布局读名字表，变量名全丢
+    （node13 的 closure 里 `n` 成了 `__ctx.ctx4`）。
+    """
+    if not isinstance(dst, dict) or not isinstance(src, dict):
+        return 0
+    n = 0
+    for k, v in src.items():
+        if k not in dst or dst[k] is None:
+            dst[k] = v
+            n += 1
+        elif isinstance(dst[k], dict) and isinstance(v, dict):
+            n += _deep_fill(dst[k], v, f"{path}{k}.")
+    return n
+
+
+def donor_for(minor, donors):
+    """最近的 donor：按 major*100+minor 的距离选。
+
+    老族（≤8）只许借**不高于**自己的表 —— 那些手工字段（string 布局、legacy 标签）
+    是向下兼容的；现代族（≥9）直接借最近的一张（9.0–9.3 借 9.4，而不是隔着代的 8.4：
+    实测借 8.4 会把老的对象布局带进来，"object 3 size mismatch: consumed 40 of 32"）。
+    """
+    if not donors:
+        return None
+    def key(m):
+        a, b = (int(x) for x in m.split("."))
+        return a * 100 + b
+    tgt = key(minor)
+    major = int(minor.split(".")[0])
+    pool = list(donors)
+    # 一律借**最近**的一张（含向上借）：6.6/6.7 该借 6.8、8.1/8.3 该借 8.4；
+    # 早先"只许借更低版本"是因为老族的手工字段被认为向下兼容，实测向上借同样成立，
+    # 而"只往下"会把 6.6 借到 6.2、8.1 借到 7.8，反而更远。
+    pool = list(donors)
+    if False:
+        pass
+    return min(pool, key=lambda m: abs(key(m) - tgt))
+
+
+# V8 14 把操作数种类从"编码形态"改成了"语义名"：`kIdx` 变成 `kConstantPoolIndex`，
+# 另加 kFeedbackSlot/kContextSlot/kCoverageSlot/kAbortReason/kEmbeddedFeedback。
+# 解码器与渲染器共用历史那套名字（大小/可缩放性逐项对齐：见括号里的 size/scalable），
+# 所以这里把新名折叠回去 —— 否则 14.x 的池索引会被当成未知种类，闭包工厂识别不出来。
+OPERAND_TYPE_ALIASES = {
+    "ConstantPoolIndex": "Idx",     # 1/scalable
+    "ContextSlot": "Idx",           # 1/scalable
+    "FeedbackSlot": "Idx",          # 1/scalable
+    "CoverageSlot": "Idx",          # 1/scalable
+    "AbortReason": "Flag8",         # 1/fixed
+    "EmbeddedFeedback": "Flag16",   # 2/fixed
+}
+
+
+def normalize_operand_types(table):
+    """把 14.x 的语义操作数名折叠回历史种类（bytecodes 与 operand_types 一起改）。"""
+    aliases = OPERAND_TYPE_ALIASES
+    table["bytecodes"] = [
+        {**b, "operands": [aliases.get(o, o) for o in b.get("operands", [])]}
+        for b in table["bytecodes"]
+    ]
+    merged = {}
+    for k, v in table["operand_types"].items():
+        merged.setdefault(aliases.get(k, k), v)
+    table["operand_types"] = merged
+    return table
+
+
+def ver_key(version):
+    return tuple(int(x) for x in version.lstrip("v").split("."))
+
+
+def load_index(path, floor=None):
+    """nodejs.org/dist/index.json：每个发布带 version 与 v8。缺文件时自动抓一次。"""
+    if not os.path.exists(path):
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(json.loads(_http_text("https://nodejs.org/dist/index.json")), f)
+    entries = json.load(open(path, encoding="utf-8"))
+    if floor:
+        entries = [e for e in entries if ver_key(e["version"]) >= floor]
+    return entries
+
+
+def tags_for_all(entries, major_floor=None):
+    """每个**不同的 V8 版本**取它最新的那个 Node 发布当 tag。
+
+    表内容取决于 V8 源码，同一个 V8 版本的不同 patch 发布源码可能不同，所以按
+    4 段 V8 版本（13.6.233.17）分组，而不是 major.minor。
+    """
+    newest = {}
+    for e in entries:
+        v8 = e.get("v8")
+        if not v8:
+            continue
+        if major_floor and ver_key(e["version"]) < major_floor:
+            continue
+        cur = newest.get(v8)
+        if cur is None or ver_key(e["version"]) > ver_key(cur):
+            newest[v8] = e["version"]
+    return sorted(set(newest.values()), key=ver_key)
+
+
 def main():
-    global NODE
+    global NODE, CACHE_DIR, OFFLINE
     ap = argparse.ArgumentParser()
-    ap.add_argument("--node", required=True)
-    ap.add_argument("--tag", action="append", required=True,
-                    help="node tag，可多次；建议每 major 取最早/最新")
+    ap.add_argument("--node", default=None,
+                    help="本地 node 克隆（可选；给了就优先用它，离线也能跑）")
+    ap.add_argument("--tag", action="append", default=[],
+                    help="node tag，可多次；不给则用 --all-from")
+    ap.add_argument("--all-from", default=None,
+                    help="从 dist/index.json 取所有 >= 该版本的发布（如 8.0.0），"
+                         "每个不同的 V8 版本挑一个 tag")
     ap.add_argument("--index", default=None,
-                    help="nodejs.org/dist/index.json 缓存文件（用于补全 hash 索引）")
+                    help="nodejs.org/dist/index.json 缓存（缺省 workspace/node-dist-index.json，"
+                         "没有就自动下载一次）")
+    ap.add_argument("--cache", default=None,
+                    help="单文件源码缓存目录（缺省 workspace/node-src）")
+    ap.add_argument("--offline", action="store_true", help="只用缓存/克隆，不联网")
+    ap.add_argument("--repo-dir", default=None,
+                    help="blob 过滤的部分克隆目录（缺省 workspace/node-partial，自动创建）")
+    ap.add_argument("--no-clone", action="store_true",
+                    help="不建部分克隆，直接走 raw.githubusercontent")
+    ap.add_argument("--jobs", type=int, default=16, help="并发取文件数（默认 16）")
+    ap.add_argument("--donors", default=None,
+                    help="已知表的目录（tables/）：新表缺的字段从最近的 donor 借")
+    ap.add_argument("--keep-existing", action="store_true",
+                    help="输出目录里已存在的 v<major>_<minor>.json 直接沿用，不覆盖")
+    ap.add_argument("--ro-maps", default=None,
+                    help="已生成的 ro-map 目录（workspace/ro）：按 V8 minor 收进 tables/ 并内嵌")
+    ap.add_argument("--per-minor", action="store_true",
+                    help="每个 V8 major.minor 只保留最新 patch 的表（其余发布映射到它）")
     ap.add_argument("--out", default=None, help="输出目录（默认仓库根）")
     args = ap.parse_args()
     NODE = args.node
+    OFFLINE = args.offline
     out_root = args.out or os.path.join(os.path.dirname(__file__), "..")
+    CACHE_DIR = args.cache or os.path.join(out_root, "workspace", "node-src")
+    global REPO_DIR
+    if not args.no_clone:
+        REPO_DIR = args.repo_dir or os.path.join(out_root, "workspace", "node-partial")
     tables_dir = os.path.join(out_root, "tables")
     os.makedirs(tables_dir, exist_ok=True)
 
-    index_by_tag = {}
-    if args.index and os.path.exists(args.index):
-        for e in json.load(open(args.index)):
-            index_by_tag.setdefault(e["version"], []).append(e)
+    donors = {}
+    if args.donors:
+        for f in glob.glob(os.path.join(args.donors, "v*.json")):
+            t = json.load(open(f))
+            donors[".".join(t["v8"].split(".")[:2])] = t
+        print(f"donors: {sorted(donors)}", file=sys.stderr)
+
+    index_path = args.index or os.path.join(out_root, "workspace", "node-dist-index.json")
+    floor = ver_key(args.all_from) if args.all_from else None
+    index = load_index(index_path, floor=floor) if (args.all_from or args.index) else []
+    index_by_v8 = {}
+    for e in index:
+        if e.get("v8"):
+            index_by_v8.setdefault(e["v8"], []).append(e)
+
+    tags = list(args.tag)
+    if args.all_from:
+        tags += tags_for_all(index, major_floor=floor)
+        print(f"index: {len(index)} releases >= {args.all_from}, "
+              f"{len(set(e['v8'] for e in index if e.get('v8')))} distinct V8 versions", file=sys.stderr)
+    if not tags:
+        ap.error("需要 --tag 或 --all-from")
+    tags = sorted(set(tags), key=ver_key)
 
     versions = []       # manifest 条目
     table_files = {}    # file -> table dict
     file_of_content = {}  # content-hash -> filename（去重）
 
-    for tag in sorted(args.tag):
+    tables_by_v8 = {}   # V8 版本字符串 -> table dict（manifest 用它精确映射每个发布）
+    fold_of_v8 = {}     # V8 版本字符串 -> hash 折叠方式
+    fname_of_v8 = {}    # V8 版本字符串 -> 表文件名
+    for i, tag in enumerate(tags, 1):
+        prefetch(tag, jobs=args.jobs)
         vv = parse_v8_version(tag)
         if vv is None:
             print(f"skip {tag}: no v8-version.h", file=sys.stderr)
             continue
+        print(f"[{i}/{len(tags)}] {tag} -> V8 {'.'.join(map(str, vv))}", file=sys.stderr)
         maj, minor, build, patch = vv
         key = f"{maj}_{minor}"
 
@@ -1213,7 +1620,11 @@ def main():
             "operand_types": extract_operand_types(src_o),
             "serialization": {
                 "tags": extract_serialization_tags(src_t) if "enum Bytecode" in (src_t or "") else {},
-                "legacy": extract_legacy_tags(src_t),
+                # legacy 段（kSpaceMask/kHotObjectMask 等）只对**真正用老 payload 的 V8 ≤ 8** 有意义。
+                # 9.0–9.3 的源码里这些常量还在（提取器照样能收），但 .jsc 已经是新格式 ——
+                # 留着会让序列化器按老方式解 space 编码的 tag：实测 16.3(9.0) 在 pos=5 把
+                # `new space=7` 读成只读堆 backref，随后 unknown serialization tag 0x0d。
+                "legacy": extract_legacy_tags(src_t) if maj <= 8 else {},
             },
             "roots": extract_roots(
                 src_r,
@@ -1255,6 +1666,22 @@ def main():
             ),
         }
 
+        # 继承：老族有些字段源码里造不出来（string 布局、ScopeInfo 位域、legacy 标签…），
+        # 从最近的已知表借一份；生成出来的值永远优先。
+        if donors:
+            minor = f"{maj}.{minor_}" if False else f"{maj}.{minor}"
+            dm = donor_for(minor, donors)
+            if dm:
+                filled = _deep_fill(table, donors[dm])
+                if filled:
+                    print(f"  inherit {tag}: {filled} keys <- v{dm}", file=sys.stderr)
+
+        # 归一化放在**继承之后**：donor 里可能还带着 14.x 的新名，一起折叠干净。
+        normalize_operand_types(table)
+        # 同理：donor（老族表）会把 legacy 段带回来 —— V8 > 8 一律清掉。
+        if int(table["v8"].split(".")[0]) > 8:
+            table.get("serialization", {}).pop("legacy", None)
+
         content_key = hashlib.sha1(json.dumps(table, sort_keys=True).encode()).hexdigest()
         if content_key not in file_of_content:
             fname = f"v{key}.json"
@@ -1263,9 +1690,12 @@ def main():
             file_of_content[content_key] = fname
             table_files[fname] = table
         fname = file_of_content[content_key]
+        tables_by_v8[table["v8"]] = table
+        fname_of_v8[table["v8"]] = fname
+        fold_of_v8[table["v8"]] = table["hash"]["algorithm"]
 
-        # 该 tag 对应的 Node 版本及其 patch 序列都登记进 hash 索引
-        entries = index_by_tag.get(tag) or [{"version": tag.lstrip("v"), "v8": table["v8"]}]
+        # 没给 index 时，至少把 tag 自己登记进去
+        entries = index_by_v8.get(table["v8"]) or [{"version": tag.lstrip("v"), "v8": table["v8"]}]
         for e in entries:
             e_v8 = e.get("v8") or table["v8"]
             p = [int(x) for x in e_v8.split(".")]
@@ -1273,8 +1703,45 @@ def main():
                 "v8": e_v8,
                 "hash": v8_hash(table["hash"]["algorithm"], *p),
                 "node": e["version"],
-                "table": fname,
+                "table": file_of_content[content_key],
             })
+
+    # index 里每个发布 → 它那个 V8 版本的表（4 段精确匹配；表是按 V8 版本生成的，
+    # 同名表已按内容去重，所以这里给的是"这个发布该用哪张表"）
+    minor_table = {}
+    for fname, t in table_files.items():
+        minor_table.setdefault(".".join(t["v8"].split(".")[:2]), fname)
+    # 格式别名：这些 minor 与另一张表**同格式** —— 实测用那张表能解析、反编译，
+    # 且行为对拍通过（node10.3 的产物用 v6_2、node10.8 的用 v6_8）。与其维护一份会
+    # 逐渐漂移的副本，不如让它们的发布直接指向同一张表。
+    for alias_minor, target_minor in TABLE_ALIAS.items():
+        if target_minor in minor_table:
+            minor_table[alias_minor] = minor_table[target_minor]
+    for e in index:
+        e_v8 = e.get("v8")
+        if not e_v8:
+            continue
+        fname = None
+        mk = ".".join(e_v8.split(".")[:2])
+        if mk in TABLE_ALIAS:
+            fname = minor_table.get(TABLE_ALIAS[mk])
+        if fname is None and e_v8 in tables_by_v8:
+            fname = file_of_content.get(hashlib.sha1(
+                json.dumps(tables_by_v8[e_v8], sort_keys=True).encode()).hexdigest())
+        if fname is None:
+            fname = minor_table.get(".".join(e_v8.split(".")[:2]))
+        if fname is None:
+            print(f"warn: no table for node {e['version']} (V8 {e_v8})", file=sys.stderr)
+            continue
+        fold = fold_of_v8.get(e_v8) or (
+            "left_fold" if int(e_v8.split(".")[0]) >= 12 else "right_fold")
+        p = [int(x) for x in e_v8.split(".")]
+        versions.append({
+            "v8": e_v8,
+            "hash": v8_hash(fold, *p),
+            "node": e["version"],
+            "table": fname,
+        })
 
     # 去重 hash 索引
     seen = set()
@@ -1286,6 +1753,31 @@ def main():
         seen.add(k)
         uniq_versions.append(v)
 
+    if args.per_minor:
+        # 每个 major.minor 只留最新 patch 的表，其余发布都指过去 —— 表是按 V8 家族定的，
+        # 同一 minor 内 patch 之间有差异的情况极少；这样内嵌体积从 90 张降到 36 张。
+        newest = {}
+        for v8 in fname_of_v8:
+            m = ".".join(v8.split(".")[:2])
+            cur = newest.get(m)
+            if cur is None or [int(x) for x in v8.split(".")] > [int(x) for x in cur.split(".")]:
+                newest[m] = v8
+        # 已有的表（人工调过的老族表）原样保留，只在缺的 minor 上新增
+        if args.keep_existing:
+            for m, v8 in newest.items():
+                cur = os.path.join(tables_dir, f"v{m.replace('.', '_')}.json")
+                if os.path.exists(cur):
+                    fname_of_v8[v8] = os.path.basename(cur)
+        keep = {fname_of_v8[v8] for v8 in newest.values()}
+        for v in uniq_versions:
+            m = ".".join(v["v8"].split(".")[:2])
+            m = TABLE_ALIAS.get(m, m)      # 格式别名优先（见 minor_table 处说明）
+            v["table"] = fname_of_v8[newest[m]]
+        dropped = [f for f in table_files if f not in keep]
+        for f in dropped:
+            del table_files[f]
+        print(f"per-minor: {len(keep)} tables kept, {len(dropped)} dropped", file=sys.stderr)
+
     manifest = {
         "schema_version": 1,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -1294,8 +1786,43 @@ def main():
     with open(os.path.join(tables_dir, "manifest.json"), "w") as f:
         json.dump(manifest, f, indent=1, sort_keys=True)
     for fname, table in table_files.items():
-        with open(os.path.join(tables_dir, fname), "w") as f:
+        dest = os.path.join(tables_dir, fname)
+        if args.keep_existing and os.path.exists(dest):
+            continue      # 沿用已有的表（不重写，保持逐字节一致）
+        with open(dest, "w") as f:
             json.dump(table, f, indent=1, sort_keys=True)
+
+    # ro-map 内嵌：每个 V8 minor 收一份（取该 minor 里有 ro-map 的那个 node 发布）。
+    # 只读堆地址（chunk/offset）是**按 V8 版本**编号的，同一 minor 内基本一致；
+    # 内嵌后 Node 22+ 不必再手动 `--ro-map`。
+    ro_files = {}
+    if args.ro_maps:
+        # 键用**精确 V8 版本**：只读堆地址 (chunk/offset) 是按 V8 版本编号的 —— 同一
+        # minor 的不同 patch 都可能不同，错配会静默给出**错误的属性名**（比留占位更糟）。
+        per_minor_pick = {}
+        for e in index:
+            v8 = e.get("v8") or ""
+            if not v8 or v8 in per_minor_pick:
+                continue
+            # 该 V8 版本下的**任意**一个发布有本地 ro-map 就行（不能只看 index 里的第一条：
+            # 第一条常常没生成过 map，那样整条线都退化成占位）
+            cand = os.path.join(args.ro_maps, f"ro-map-{e['version'].lstrip('v')}.json")
+            if not os.path.exists(cand):
+                continue
+            per_minor_pick[v8] = cand
+        seen_ro = {}
+        for v8str, path in sorted(per_minor_pick.items()):
+            text = open(path, encoding="utf-8").read()
+            h = hashlib.sha1(text.encode()).hexdigest()
+            if h in seen_ro:
+                ro_files[v8str] = seen_ro[h]
+                continue
+            fname = f"ro_map_{v8str.replace('.', '_')}.json"
+            seen_ro[h] = fname
+            ro_files[v8str] = fname
+            with open(os.path.join(tables_dir, fname), "w", encoding="utf-8") as f:
+                f.write(text)
+        print(f"ro-maps: {len(ro_files)} V8 versions", file=sys.stderr)
 
     # 生成 Rust 内嵌清单
     lines = ["// 本文件由 scripts/codegen.py 生成，请勿手改。"]
@@ -1306,6 +1833,15 @@ def main():
     lines.append("];")
     with open(os.path.join(out_root, "src", "tables_embed.rs"), "w") as f:
         f.write("\n".join(lines) + "\n")
+    if args.ro_maps:
+        rlines = ["// 本文件由 scripts/codegen.py 生成，请勿手改。",
+                  "pub static RO_MAPS: &[(&str, &str)] = &["]
+        for mk in sorted(ro_files, key=lambda s: tuple(int(x) for x in s.split("."))):
+            rlines.append(
+                f'    ("{mk}", include_str!("../tables/{ro_files[mk]}")),')
+        rlines.append("];")
+        with open(os.path.join(out_root, "src", "ro_embed.rs"), "w") as f:
+            f.write("\n".join(rlines) + "\n")
 
     print(f"tables: {len(table_files)} files, {len(uniq_versions)} hash entries")
 

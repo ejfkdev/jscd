@@ -453,7 +453,7 @@ impl<'a> Walker<'a> {
         // （0x00..0x05 / 0x08..0x0d，见 serializer-common.h 的 UNUSED_BYTE_CODES），
         // 其余标签是扁平值 —— 早先"一律剥离低 3 位"会把 kRootArray(17) 当成 16。
         let b = b_raw;
-        if let Some(_) = &self.legacy {
+        if self.legacy.is_some() {
             if std::env::var("JSCD_DBG_LEGACY").is_ok() {
                 eprintln!("[legacy-ref] pos={} b={b_raw:#04x}", self.pos - 1);
             }
@@ -461,7 +461,7 @@ impl<'a> Walker<'a> {
             let t_backref = self.tag("kBackref")?;
             let n_sp = self.n_spaces();
             if (t_new..t_new + n_sp).contains(&b_raw) {
-                let space = (b_raw - t_new) as u8;
+                let space = b_raw - t_new;
                 let id = self.parse_new_object_space(depth, space)?;
                 // **不能**入 hot 环：V8 8.4 只在 `PutRoot`（根数组分支）与
                 // `PutBackReference` 两处 `hot_objects_.Add`，新对象不入环。
@@ -476,12 +476,12 @@ impl<'a> Walker<'a> {
                     if (t_bs..t_bs + n_sp).contains(&b_raw) {
                         let skip = self.putint()? as usize;
                         self.extra_skip += skip;
-                        return self.legacy_backref((b_raw - t_bs) as u8);
+                        return self.legacy_backref(b_raw - t_bs);
                     }
                 }
             }
             if (t_backref..t_backref + n_sp).contains(&b_raw) {
-                return self.legacy_backref((b_raw - t_backref) as u8);
+                return self.legacy_backref(b_raw - t_backref);
             }
             // 老族专有：chunk 切换 / 对齐 / 延迟内容
             if Some(b_raw) == self.opt_tag("kNextChunk") {
@@ -515,7 +515,7 @@ impl<'a> Walker<'a> {
         // 数值区间内（标签表里两者是相邻的独立值）。按区间判定会把 root 引用
         // 当成"新对象 + 空间 5"（node8 的第一个 payload 就撞上：root 284 → 假对象）。
         let n_new = if self.legacy.is_some() {
-            self.n_spaces() as u8
+            self.n_spaces()
         } else {
             t_backref.saturating_sub(t_new)
         };
@@ -656,7 +656,7 @@ impl<'a> Walker<'a> {
             // 实测（node8/10 全 fixture + 语料）按"只吃流、不进槽账"处理才自洽。
             let bytes = self.putint()? as usize;
             Ok(SlotValue::Skip(bytes))
-        } else if t_fixed_repeat.map_or(false, |t| (t..t + 16).contains(&b)) {
+        } else if t_fixed_repeat.is_some_and(|t| (t..t + 16).contains(&b)) {
             let base = t_fixed_repeat.unwrap();
             // 6.x 的计数从 1 起（`DecodeFixedRepeatCount = bytecode - kFixedRepeatStart`，
             // kFixedRepeatStart = kFixedRepeat - 1），且值是"前一个槽"；
@@ -712,7 +712,7 @@ impl<'a> Walker<'a> {
         let map_space = self.map_space();
         let lo_space = self.lo_space();
         if self.is_six_x() {
-            let bf = self.putint()? as u32;
+            let bf = self.putint()?;
             let space_tag = self.lnum("kSpaceTagSize").unwrap_or(3);
             // V8 写的是 `reference.back_reference()` = **只有** ValueIndex 那一段
             // （`bitfield_ & (ChunkOffsetBits::kMask | ChunkIndexBits::kMask)`），
@@ -1241,7 +1241,7 @@ pub fn parse_with<'a>(
                         // backref 的**编码随版本**：6.x 是一个位域 uint32（空间号在标签里），
                         // 7.8/8.4 才是 (chunk, offset) 两段 —— 早先这里写死两段，
                         // 6.x 的 deferred 段一律解不出（node8 的四个 fixture 就卡在这）。
-                        let space = (b - t_new) as u8;
+                        let space = b - t_new;
                         w.byte()?;
                         let id = match w.legacy_backref(space)? {
                             SlotValue::Ref(Ref::Object(id)) => id,

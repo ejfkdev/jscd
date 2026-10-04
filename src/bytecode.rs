@@ -343,7 +343,7 @@ fn signed(value: &u64, size: usize) -> i32 {
     match size {
         1 => (*value as u8 as i8) as i32,
         2 => (*value as u16 as i16) as i32,
-        4 => (*value as u32 as i32) as i32,
+        4 => *value as u32 as i32,
         _ => *value as i32,
     }
 }

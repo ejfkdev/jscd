@@ -202,6 +202,9 @@ pub struct ScopeInfoLayout {
     pub position_info_early: bool,
     pub max_inlined_names: usize,
     pub saved_class_bit: u32,
+    /// `HasOuterScopeInfo` 的 flag 位（6.x=20、7.8=21、8.x+=22；表未给时按家族推）
+    #[serde(default)]
+    pub has_outer_bit: Option<u32>,
     pub function_variable_bits: [u32; 2],
     pub receiver_bits: [u32; 2],
     pub has_inferred_bit: u32,
@@ -260,11 +263,29 @@ pub struct Identified {
 }
 
 impl Identified {
+    /// 这份 .jsc 的 V8 家族有没有解析表（"识别得出"≠"能反编译"：
+    /// V8 14.6 能被爆破认出来，但表只到 13.6）。
+    pub fn supported(&self) -> bool {
+        table_for(self.v8).is_some()
+    }
+
     pub fn render_text(&self) -> String {
         use std::fmt::Write as _;
         let mut s = String::new();
         let _ = writeln!(s, "node:          {}", self.node);
         let _ = writeln!(s, "v8:            {} ({})", self.v8, self.confidence);
+        let _ = writeln!(
+            s,
+            "supported:     {}",
+            if self.supported() {
+                "yes"
+            } else {
+                crate::bi!(
+                    "no (tables cover Node 8.0.0-26.10.0 / V8 5.8-14.6)",
+                    "否（当前表覆盖 Node 8.0.0-26.10.0 / V8 5.8-14.6）"
+                )
+            }
+        );
         s
     }
 }

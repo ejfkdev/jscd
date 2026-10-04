@@ -107,7 +107,7 @@ impl Header {
         }
         let read_only_checksum = layout
             .read_only_checksum
-            .map(|off| u32_at(off))
+            .map(&u32_at)
             .transpose()?;
         let payload_offset = layout.header_size;
         Ok(Header {
@@ -235,6 +235,7 @@ impl Header {
             node: &'a str,
             v8: &'a str,
             identification: &'a str,
+            supported: bool,
         }
         let out = InfoOut {
             file: file.display().to_string(),
@@ -254,6 +255,7 @@ impl Header {
             node: ident.node,
             v8: ident.v8,
             identification: ident.confidence,
+            supported: ident.supported(),
         };
         serde_json::to_string_pretty(&out).unwrap_or_default()
     }

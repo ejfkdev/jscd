@@ -6,6 +6,7 @@
 //! - `vhash`   Version::Hash() 还原（MurmurHash 变体）与爆破
 //! - `serializer` payload 反序列化（SFI 树/常量池/字节码）
 //! - `bytecode`/`disasm` 表驱动字节码解码与 View8 兼容输出
+//! - `out`  终端输出（断管不 panic）
 
 pub mod args;
 pub mod cli;
@@ -13,6 +14,12 @@ pub mod bytecode;
 pub mod decompile;
 pub mod disasm;
 pub mod header;
+pub mod help;
+pub mod lang;
+pub mod opt;
+pub mod opt_js;
+pub mod out;
+pub mod ro_embed;
 pub mod serializer;
 pub mod tables;
 pub mod vhash;

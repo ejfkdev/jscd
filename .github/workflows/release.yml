@@ -1,0 +1,242 @@
+# 打 tag 即发版：tag 名当版本号（build.rs 用 `git describe --tags --exact-match` 注入，
+# `jscd --version` / `jscd version` 直接打印它），构建六个平台的裸二进制并挂到 Release。
+#
+# 打 tag 用 `scripts/release.sh vX.Y.Z` —— 它会先跑本地门禁，再打一个**带说明**的
+# annotated tag；发版说明优先取 tag 自己的说明（没写就退回 .github/release-body.md），
+# 前置到 GitHub 自动生成的 release notes 之上，见下面的 "Compose release body"。
+#
+# 产物不做二次压缩（不是 zip/gz/tar）—— 直接是各平台的可执行文件本身。
+#
+# UPX：Linux / Windows 四个产物压缩；macOS **不压**（UPX 对 Mach-O 会直接拒绝：
+# "macOS is currently not supported"，写了 --force-macos 压出来的产物也不可信）。
+# 压缩步骤是"尽力而为"：upx 失败/不支持时保留未压缩产物并继续，不让发版挂掉。
+name: release
+
+on:
+  push:
+    tags: ["*"] # 任意 tag（v1.2.3、1.2.3、jscd-1.2.3…都命中，不含 / 的写法）
+  workflow_dispatch: # 手动跑一次演练（版本号会退化成 "dev"）
+
+permissions:
+  contents: write # 创建 Release / 上传资产
+
+jobs:
+  # 发版前的最低门禁：单测。不通过就不构建产物。
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # build.rs 要能 describe 到 tag
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      # build.rs 把 tag 名注入 `jscd --version`；tag 必须与 Cargo.toml 的版本一致，
+      # 否则二进制报的版本和包元数据（crates.io / cargo install）对不上。
+      - name: Tag matches Cargo.toml
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          pkg_ver="$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -1)"
+          echo "tag=${GITHUB_REF_NAME} Cargo.toml=${pkg_ver}"
+          test "${GITHUB_REF_NAME}" = "v${pkg_ver}"
+      - name: cargo test
+        run: cargo test --release
+      # 项目的质量口径是"零告警"：有告警就不发版。
+      - name: cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+      # 端到端冒烟：用固定大版本的 node（同一条 node 线里 V8 minor 不变，保证表的命中稳定）
+      # 把仓库里的 fixture 真编译成 .jsc → 反编译 → 语法门禁 + 整脚本行为对拍。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: cargo build --release
+        run: cargo build --release
+      - name: end-to-end smoke (compile -> decompile -> run)
+        run: scripts/ci_smoke.sh
+
+  build:
+    needs: checks
+    name: ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x64：静态 musl（musl-tools 提供 musl-gcc 作链接器）
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+            asset: linux-amd64
+            ext: ""
+            upx: true
+            apt: musl-tools
+            linker_env: CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER
+            linker: musl-gcc
+          # Linux arm64：交叉编译到 gnu（gcc-aarch64-linux-gnu 当链接器）
+          - os: ubuntu-24.04
+            target: aarch64-unknown-linux-gnu
+            asset: linux-arm64
+            ext: ""
+            upx: true
+            apt: gcc-aarch64-linux-gnu
+            linker_env: CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
+            linker: aarch64-linux-gnu-gcc
+          # macOS arm64：原生构建；UPX 不支持 Mach-O → 不压
+          - os: macos-14
+            target: aarch64-apple-darwin
+            asset: macos-arm64
+            ext: ""
+            upx: false
+            apt: ""
+            linker_env: ""
+            linker: ""
+          # macOS x64：在 arm64 runner 上交叉到 x86_64（Apple SDK 双向可用）；同样不压
+          - os: macos-14
+            target: x86_64-apple-darwin
+            asset: macos-amd64
+            ext: ""
+            upx: false
+            apt: ""
+            linker_env: ""
+            linker: ""
+          # Windows x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset: windows-amd64
+            ext: ".exe"
+            upx: true
+            apt: ""
+            linker_env: ""
+            linker: ""
+          # Windows arm64：在 x64 runner 上交叉。rustc 按 MSVC 目标调 ARM64 的 link.exe，
+          # windows-latest 的 VS 里带 ARM64 构建工具；若某天镜像去掉该组件，
+          # 换成 `runs-on: windows-11-arm` 原生构建即可。
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            asset: windows-arm64
+            ext: ".exe"
+            upx: true
+            apt: ""
+            linker_env: ""
+            linker: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross linker (Linux)
+        if: matrix.os == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.apt }}
+
+      - name: Build
+        shell: bash
+        env:
+          LINKER_ENV: ${{ matrix.linker_env }}
+          LINKER: ${{ matrix.linker }}
+        run: |
+          if [ -n "$LINKER_ENV" ]; then
+            export "$LINKER_ENV=$LINKER"
+          fi
+          cargo build --release --target "${{ matrix.target }}"
+
+      # 版本号 = tag 名（与 build.rs 注入 CLI 的值一致）
+      - name: Collect artifact
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          SRC="target/${{ matrix.target }}/release/jscd${{ matrix.ext }}"
+          OUT="jscd-${VERSION}-${{ matrix.asset }}${{ matrix.ext }}"
+          mkdir -p dist
+          cp "$SRC" "dist/$OUT"
+          echo "OUT=dist/$OUT" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          ls -l "dist/$OUT"
+
+      # UPX：仅 Linux / Windows；失败就保留未压缩产物（不 fail 发版）
+      - name: UPX (Linux)
+        if: matrix.upx && matrix.os == 'ubuntu-24.04'
+        shell: bash
+        run: |
+          sudo apt-get install -y upx-ucl
+          upx --best --lzma "$OUT" || echo "upx 未压缩（保留原产物）"
+
+      - name: UPX (Windows)
+        if: matrix.upx && startsWith(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          choco install upx --no-progress -y
+          upx --best --lzma $env:OUT
+          if ($LASTEXITCODE -ne 0) { Write-Host "upx 未压缩（保留原产物）" }
+          exit 0   # upx 缺席/失败都不算这一步失败
+
+      - name: Show final size
+        shell: bash
+        run: ls -l "$OUT"
+
+      # 发版说明（Release 描述）：
+      #   1) 优先用 **annotated tag 的说明** —— `scripts/release.sh` 打的 tag 自带描述；
+      #   2) 轻量 tag / 没写说明的 tag → 退回仓库模板 .github/release-body.md，
+      #      把 @VERSION@ 换成 tag 名。
+      # 用 `%(contents:subject)` + `%(contents:body)` 而不是 `%(contents)`：本仓库的
+      # tag 是自动签名的（tag.gpgSign=true），`%(contents)` 会把整段 SSH/GPG 签名块
+      # 也带进 Release 描述，而 subject/body 两个 atom 不含签名。
+      # 描述由 action-gh-release 前置到 GitHub 自动生成的 release notes 之上。
+      - name: Compose release body
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          subject=""
+          body=""
+          if [ "$(git cat-file -t "refs/tags/$tag" 2>/dev/null || echo none)" = "tag" ]; then
+            subject="$(git tag -l --format='%(contents:subject)' "$tag" 2>/dev/null || true)"
+            body="$(git tag -l --format='%(contents:body)' "$tag" 2>/dev/null || true)"
+          fi
+          if [ -n "$subject$body" ]; then
+            echo "release body: 取自 annotated tag 的说明（已去掉签名块）"
+            {
+              printf '%s\n' "$subject"
+              if [ -n "$body" ]; then printf '\n%s\n' "$body"; fi
+            } > release-body.md
+          else
+            echo "release body: tag 没有说明，退回 .github/release-body.md 模板"
+            sed "s/@VERSION@/$tag/g" .github/release-body.md > release-body.md
+          fi
+          head -3 release-body.md
+
+      # 直接以裸文件挂到 Release（不经 upload-artifact —— 它一定会打成 zip）。
+      # 多个矩阵任务会同时写同一个 Release：action-gh-release 会先查后建，
+      # 并发窗口极小且上传按资产名独立，实践中稳定。
+      - name: Upload to release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: jscd ${{ github.ref_name }}
+          body_path: release-body.md
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: ${{ env.OUT }}
+
+      # 手动触发时没有 tag、也就没有 Release → 给一份 workflow 产物方便检查。
+      # 这只是演练路径：发版的产物一律走上面的 Release（裸文件）。
+      - name: Upload as workflow artifact (manual dry-run only)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ env.OUT }}
+          compression-level: 0 # 容器仍是 zip（仅手动演练用），但不做额外压缩

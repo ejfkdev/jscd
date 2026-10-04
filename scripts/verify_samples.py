@@ -48,13 +48,19 @@ def run(version, files, quiet=False):
     for src in files:
         jsc = OUT / f'{src.stem}-{version}.jsc'
         dec = OUT / f'{src.stem}-{version}.js'
-        r = mise(version, '--experimental-vm-modules', str(ROOT / 'scripts' / 'mkcorpus.js'), str(src), str(jsc))
+        # `--experimental-vm-modules` 只在 node ≥ 10 存在；node 8 传了会直接
+        # "bad option" 退出（整个版本矩阵变成 408/408 compile-fail）
+        flags = []
+        if int(version.split('.')[0]) >= 10:
+            flags.append('--experimental-vm-modules')
+        r = mise(version, *flags, str(ROOT / 'scripts' / 'mkcorpus.js'), str(src), str(jsc))
         if r.returncode != 0 or not jsc.exists():
             # 编译不了的多半是 ESM 提案语法（`import defer` 之类）或老 node 无模块支持
             stats['compile-fail'] += 1
             failures.append((src.name, 'compile-env', r.stderr.strip().splitlines()[0][:80] if r.stderr.strip() else ''))
             continue
-        cmd = [str(ROOT / 'target' / 'release' / 'jscd'), 'decompile', str(jsc)]
+        # 运行检查要可运行前导；默认输出只给原始代码
+        cmd = [str(ROOT / 'target' / 'release' / 'jscd'), 'decompile', str(jsc), '--runtime']
         if ro.exists():
             cmd += ['--ro-map', str(ro)]
         d = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, timeout=120)
@@ -99,13 +105,27 @@ def run(version, files, quiet=False):
 def main():
     argv = sys.argv[1:]
     limit = None
+    offset = 0
     quiet = '--quiet' in argv
     if '--limit' in argv:
         i = argv.index('--limit')
         limit = int(argv[i + 1])
         argv = argv[:i] + argv[i + 2:]
+    # `--offset N`：跳过前 N 份（配合 --limit 分块扫完整语料，避免只覆盖"前 N 份"）
+    if '--offset' in argv:
+        i = argv.index('--offset')
+        offset = int(argv[i + 1])
+        argv = argv[:i] + argv[i + 2:]
+    # `--samples DIR`：换一份语料（大语料 work/samples-all 也走同一条门禁）
+    samples = SAMPLES
+    if '--samples' in argv:
+        i = argv.index('--samples')
+        samples = ROOT / argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
     versions = [a for a in argv if not a.startswith('--')] or VERSIONS_ALL
-    files = sorted(SAMPLES.glob('*.js'))
+    files = sorted(samples.glob('*.js'))
+    if offset:
+        files = files[offset:]
     if limit:
         files = files[:limit]
     total = collections.Counter()

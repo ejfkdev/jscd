@@ -1,9 +1,15 @@
 # 构建产物
 /target
+/dist/
 
 # 本地测试工作区：语料生成、对拍输出、临时样本，一律不入库
+# （work/ 下是本地语料与几百 MB 的反编译产物，进库的只有 tests/ 里的 fixture）
 /workspace/
-/work/out/
+/work/
+
+# Python 缓存（scripts/ 下的 .pyc 曾被误提交，这里堵住）
+__pycache__/
+*.pyc
 
 # macOS
 .DS_Store
