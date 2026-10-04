@@ -12,6 +12,7 @@
 [![Node 8.0 – 26.10](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.10-green.svg)](#支持的版本)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#支持的版本)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
+[![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
 
 **目录：**[快速上手](#快速上手) · [安装](#安装) · [用法](#用法) · [支持的版本](#支持的版本) ·
 [实现](#实现) · [验证](#验证) · [仓库结构](#仓库结构) · [已知限制](#已知限制) ·
@@ -55,12 +56,51 @@ Node 22+（V8 12.4+）上有些内建属性名存在只读堆里。行为矩阵�
 
 ## 安装
 
-每个 tag 的 Release 里带有 Linux / macOS / Windows 的预编译产物（x64 与 arm64）。从源码装：
+**macOS / Linux —— Homebrew**
 
 ```sh
+brew install ejfkdev/tap/jscd
+```
+
+**Windows —— Scoop**
+
+```powershell
+scoop bucket add ejfkdev https://github.com/ejfkdev/scoop-bucket
+scoop install jscd
+```
+
+不先加 bucket、直接按清单 URL 装也可以：
+
+```powershell
+scoop install https://raw.githubusercontent.com/ejfkdev/scoop-bucket/main/bucket/jscd.json
+```
+
+> `scoop install ejfkdev/scoop-bucket/jscd` **不行**：Scoop 的 `bucket/app` 语法是在**已添加**的
+> bucket 里找，不认 `owner/repo` 路径。
+
+**预编译产物** —— 每个 tag 的 Release 里都是**裸可执行文件**（Linux / macOS / Windows ×
+x64 / arm64；Linux amd64 是静态 musl，Linux 与 Windows 走 UPX 压缩）：
+
+```sh
+curl -fLO https://github.com/ejfkdev/jscd/releases/download/v0.1.0/jscd-v0.1.0-linux-amd64
+chmod +x jscd-v0.1.0-linux-amd64
+./jscd-v0.1.0-linux-amd64 --version
+```
+
+**cargo**（任何有 Rust 1.96+ 的平台）
+
+```sh
+cargo install jscd        # 从 crates.io 源码构建
+cargo binstall jscd       # 或者：直接拉 release 里的可执行文件，不编译（cargo-binstall）
+```
+
+**源码构建**
+
+```sh
+cargo install --git https://github.com/ejfkdev/jscd     # 直接装 main
 git clone https://github.com/ejfkdev/jscd && cd jscd
 cargo build --release        # -> target/release/jscd
-cargo install --path .       # 可选：装进 ~/.cargo/bin
+cargo install --path .       # ……或把这份构建装进 ~/.cargo/bin
 ```
 
 需要 Rust 1.96+（swc 优化器要求较新的 rustc），无系统依赖。
@@ -72,7 +112,9 @@ cargo install --path .       # 可选：装进 ~/.cargo/bin
 `clippy --all-targets -- -D warnings`，以及端到端冒烟 `scripts/ci_smoke.sh` —— fixture 真编译成
 `.jsc` → 反编译 → 语法门禁 + 整脚本行为对拍），再推一个**带说明的 annotated tag**；tag 说明就是
 GitHub Release 的描述。tag 一推即触发 `.github/workflows/release.yml`，在上面那六个平台重建裸
-二进制。
+二进制。之后 `cargo publish` 发到 crates.io（`release.sh` 保证 tag 与 `Cargo.toml` 版本一致）；
+[Homebrew tap](https://github.com/ejfkdev/homebrew-tap) 与
+[Scoop bucket](https://github.com/ejfkdev/scoop-bucket) 每天自动更新时会带上新版本。
 
 </details>
 

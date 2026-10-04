@@ -55,5 +55,7 @@ new entry joins the matrix automatically.
 - `docs/VERSIONS.md` — per-V8-version engineering notes (Chinese), the place to record a new
   version finding.
 - `docs/stream-format.md` — the serialized-payload format notes.
-- Version numbers: `build.rs` injects the git tag as `jscd --version`; releases are cut with
-  `scripts/release.sh vX.Y.Z`, which requires `Cargo.toml` to carry the same version.
+- Version numbers: `build.rs` injects the git tag as `jscd --version` (and falls back to the
+  `Cargo.toml` version when there is no `.git`, e.g. a crates.io install); releases are cut with
+  `scripts/release.sh vX.Y.Z`, which requires `Cargo.toml` to carry the same version. After the CI
+  release finishes, publish the crate with `cargo publish`.

@@ -12,6 +12,7 @@ pure Rust, one binary, no patched V8, no Node runtime, no network.
 [![Node 8.0 – 26.10](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.10-green.svg)](#supported-versions)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#supported-versions)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
+[![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
 
 **Contents:** [Quick start](#quick-start) · [Install](#install) · [Usage](#usage) ·
 [Supported versions](#supported-versions) · [How it works](#how-it-works) ·
@@ -58,13 +59,52 @@ placeholders — never as the wrong name.
 
 ## Install
 
-Prebuilt binaries for Linux, macOS and Windows (x64 and arm64) are attached to each tagged
-release. From source:
+**macOS / Linux — Homebrew**
 
 ```sh
+brew install ejfkdev/tap/jscd
+```
+
+**Windows — Scoop**
+
+```powershell
+scoop bucket add ejfkdev https://github.com/ejfkdev/scoop-bucket
+scoop install jscd
+```
+
+Straight from the manifest URL, without adding the bucket first:
+
+```powershell
+scoop install https://raw.githubusercontent.com/ejfkdev/scoop-bucket/main/bucket/jscd.json
+```
+
+> `scoop install ejfkdev/scoop-bucket/jscd` does **not** work: Scoop resolves `bucket/app`
+> against buckets you have already added, not against an `owner/repo` path.
+
+**Prebuilt binaries** — every tagged release ships bare, ready-to-run executables
+(Linux / macOS / Windows × x64 / arm64; Linux amd64 is a static musl build, Linux and Windows
+are UPX-compressed):
+
+```sh
+curl -fLO https://github.com/ejfkdev/jscd/releases/download/v0.1.0/jscd-v0.1.0-linux-amd64
+chmod +x jscd-v0.1.0-linux-amd64
+./jscd-v0.1.0-linux-amd64 --version
+```
+
+**cargo** (any platform with Rust 1.96+)
+
+```sh
+cargo install jscd        # build from crates.io
+cargo binstall jscd       # or fetch the release binary instead of compiling (cargo-binstall)
+```
+
+**From source**
+
+```sh
+cargo install --git https://github.com/ejfkdev/jscd     # latest main
 git clone https://github.com/ejfkdev/jscd && cd jscd
 cargo build --release        # -> target/release/jscd
-cargo install --path .       # optional: install into ~/.cargo/bin
+cargo install --path .       # ...or install that build into ~/.cargo/bin
 ```
 
 Requires Rust 1.96+ (swc, the JS optimizer, needs a recent rustc). No system dependencies.
@@ -76,7 +116,11 @@ Requires Rust 1.96+ (swc, the JS optimizer, needs a recent rustc). No system dep
 `clippy --all-targets -- -D warnings`, and the end-to-end smoke `scripts/ci_smoke.sh` — fixtures
 compiled to real `.jsc`, decompiled, syntax-gated and run-compared), then pushes an **annotated**
 tag whose message becomes the GitHub Release description. The tag triggers
-`.github/workflows/release.yml`, which rebuilds the six bare binaries listed above.
+`.github/workflows/release.yml`, which rebuilds the six bare binaries listed above. Then
+`cargo publish` to crates.io (`release.sh` keeps the tag and the `Cargo.toml` version in sync); the
+[Homebrew tap](https://github.com/ejfkdev/homebrew-tap) and the
+[Scoop bucket](https://github.com/ejfkdev/scoop-bucket) pick the new release up on their daily
+auto-update run.
 
 </details>
 
