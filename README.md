@@ -61,18 +61,8 @@ $ jscd hello.jsc --runtime > hello.out.js && node hello.out.js
 hello world
 ```
 
-The first bytes are the code-cache magic in little-endian (`cc 05 de c0` = `0xc0de05cc`);
-`jscd info hello.jsc` decodes the whole header (sample in [Usage](#usage)).
-
-The output above is what comes out *after* both optimization layers. `JSCD_NO_OPT=1 jscd hello.jsc`
-shows the raw translation instead — V8's register shuffling, one instruction at a time.
-
-On Node 22+ (V8 12.4+) some built-in property names live in the read-only heap. For the 29 V8
-minors covered by the behavior matrix `jscd` ships a name table (`tables/ro_map_*`) and resolves
-them automatically — **on macOS**, where those tables were extracted: read-only-heap indices are
-platform-specific, so on other systems build your own with `jscd ro-map` and pass `--ro-map`
-(`JSCD_NO_RO_MAP=1` turns the embedded table off). Without a table such names show as `<ro0_…>`
-placeholders — never as the wrong name.
+`jscd info hello.jsc` decodes that header (sample in [Usage](#usage)); `JSCD_NO_OPT=1` prints the
+raw, pre-optimization form instead.
 
 ## Install
 

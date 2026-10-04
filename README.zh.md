@@ -56,16 +56,7 @@ $ jscd hello.jsc --runtime > hello.out.js && node hello.out.js
 hello world
 ```
 
-开头四个字节是小端的 code cache magic（`cc 05 de c0` 即 `0xc0de05cc`）；其余头部字段用
-`jscd info hello.jsc` 能一并解出（样例见[用法](#用法)）。
-
-上面的产物是**两层优化跑完**的样子。想看没优化的原样（V8 真实的寄存器搬运，一条一条），加
-`JSCD_NO_OPT=1`。
-
-Node 22+（V8 12.4+）上有些内建属性名存在只读堆里。行为矩阵覆盖到的 29 个 V8 minor，`jscd` 都
-内置了名表（`tables/ro_map_*`）、自动还原 —— 但**只在 macOS 上**：只读堆的编号跟平台走，换系统
-就得自己建（`jscd ro-map` 生成后 `--ro-map` 传入；`JSCD_NO_RO_MAP=1` 可关掉内嵌表）。
-没有名表时这类名字落成 `<ro0_…>` 占位，绝不会给错名字。
+`jscd info hello.jsc` 能解出上面的头部（样例见[用法](#用法)）；`JSCD_NO_OPT=1` 则可看优化前的原样。
 
 ## 安装
 
