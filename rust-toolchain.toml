@@ -1,0 +1,7 @@
+# 本地与 CI 用同一条工具链：CI 是 dtolnay/rust-toolchain@stable，这里也跟 stable。
+# 起因：v0.1.0 第一次发版时，本机默认工具链停在 1.98.1、CI 是 1.99.0，新 clippy 的
+# needless_borrows_for_generic_args 只在 CI 冒出来，把发版卡在 checks。
+# 注意 Cargo.toml 的 rust-version（MSRV）与这里无关：那是"最低能编译"的门槛。
+[toolchain]
+channel = "stable"
+components = ["clippy"]

@@ -107,7 +107,7 @@ impl Header {
         }
         let read_only_checksum = layout
             .read_only_checksum
-            .map(&u32_at)
+            .map(u32_at)
             .transpose()?;
         let payload_offset = layout.header_size;
         Ok(Header {
