@@ -85,21 +85,7 @@ Straight from the manifest URL, without adding the bucket first:
 scoop install https://raw.githubusercontent.com/ejfkdev/scoop-bucket/main/bucket/jscd.json
 ```
 
-> `scoop install ejfkdev/scoop-bucket/jscd` does **not** work: Scoop resolves `bucket/app`
-> against buckets you have already added, not against an `owner/repo` path.
-
-**Prebuilt binaries** — every tagged release ships bare, ready-to-run executables
-(Linux / macOS / Windows × x64 / arm64; Linux amd64 is a static musl build, Linux and Windows
-are UPX-compressed):
-
-Grab one straight from the release page (no archive, no installer — the file *is* the
-executable):
-
-```sh
-curl -fLO https://github.com/ejfkdev/jscd/releases/download/v0.1.0/jscd-v0.1.0-linux-amd64
-chmod +x jscd-v0.1.0-linux-amd64
-./jscd-v0.1.0-linux-amd64 --version
-```
+**Prebuilt binaries** — [Releases](https://github.com/ejfkdev/jscd/releases/latest).
 
 **cargo** (any platform with Rust 1.96+)
 

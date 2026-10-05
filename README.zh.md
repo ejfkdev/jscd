@@ -79,19 +79,7 @@ scoop install jscd
 scoop install https://raw.githubusercontent.com/ejfkdev/scoop-bucket/main/bucket/jscd.json
 ```
 
-> `scoop install ejfkdev/scoop-bucket/jscd` **不行**：Scoop 的 `bucket/app` 语法是在**已添加**的
-> bucket 里找，不认 `owner/repo` 路径。
-
-**预编译产物** —— 每个 tag 的 Release 里都是**裸可执行文件**（Linux / macOS / Windows ×
-x64 / arm64；Linux amd64 是静态 musl，Linux 与 Windows 走 UPX 压缩）：
-
-从 Release 页直接拿一个（不是压缩包、没有安装器 —— 文件本身就是可执行文件）：
-
-```sh
-curl -fLO https://github.com/ejfkdev/jscd/releases/download/v0.1.0/jscd-v0.1.0-linux-amd64
-chmod +x jscd-v0.1.0-linux-amd64
-./jscd-v0.1.0-linux-amd64 --version
-```
+**预编译产物** —— 见 [Releases](https://github.com/ejfkdev/jscd/releases/latest)。
 
 **cargo**（任何有 Rust 1.96+ 的平台）
 
