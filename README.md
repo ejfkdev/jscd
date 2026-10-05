@@ -717,3 +717,5 @@ MIT — see [LICENSE](LICENSE).
 [bytenode](https://github.com/bytenode/bytenode) for the packaging this tool targets;
 [View8](https://github.com/suleram/View8) for the disassembly format conventions;
 [swc](https://swc.rs) for the AST-level cleanup (a Rust port of terser's copy propagation).
+
+<div align="center"><sub><a href="README.zh.md"> 简体中文</a> · 友情链接 https://linux.do</sub></div>
