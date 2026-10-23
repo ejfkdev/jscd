@@ -353,18 +353,19 @@ https://github.com/ejfkdev/jscd  (MIT license)
 
 用法：jscd ro-map [选项] <探针.jsc>
 
-走一遍探针缓存的只读堆，写出「根索引 -> 属性名」的名表，反编译产物里
-就会是 `a.length` 而不是 `<ro0_1120>`。每个 V8 版本建一张
+走一遍探针缓存的只读堆，写出名表：产物里 `a.length` 不再退化成 `<ro0_1120>`，
+`"0"` 也不会被别的构建的名字顶替。分两段：`entries`（只读堆偏移 -> 名字）
+与 `roots`（根下标 -> 名字，修 `String:` 段在构建间的位移）。每个构建建一张
 （探针构造方法见 docs/VERSIONS.md）。
 
 选项：
   -o, --output <路径>   把名表写到文件（默认 stdout）
-      --json            {"schema","v8","tags","entries":{"0/1120":"length"}}
+      --json            {"schema","v8","tags","entries":{"0/1120":"length"},"roots":{"571":"0"}}
 
 示例：
   jscd ro-map probe.jsc -o names.json    生成一张名表
-  jscd ro-map probe.jsc | head           瞄一眼根 0 的名字
-  jscd ro-map --json probe.jsc | jq '.entries'   只看 entries
+  jscd ro-map probe.jsc | head           瞄一眼名表
+  jscd ro-map --json probe.jsc | jq '.roots'   只看字符串根修正
 
 全局：每个子命令都支持 --json；子命令与全局选项见 `jscd --help`。
 ```

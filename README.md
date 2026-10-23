@@ -367,18 +367,21 @@ https://github.com/ejfkdev/jscd  (MIT license)
 
 Usage: jscd ro-map [OPTIONS] <PROBE.jsc>
 
-Walks a probe cache's read-only heap and writes a name table (root index ->
-property name), so decompiled output says `a.length` instead of `<ro0_1120>`.
-Build one table per V8 version (see docs/VERSIONS.md for the probe recipe).
+Walks a probe cache's read-only heap and writes a name table, so decompiled
+output says `a.length` instead of `<ro0_1120>` and `"0"` instead of the name
+a different build gave that root. Two sections: `entries` (read-only-heap
+offset -> name) and `roots` (root index -> name, for string constants whose
+indices shift between builds). Build one table per build (see
+docs/VERSIONS.md for the probe recipe).
 
 Options:
   -o, --output <path>   write the table to a file (default: stdout)
-      --json            {"schema","v8","tags","entries":{"0/1120":"length"}}
+      --json            {"schema","v8","tags","entries":{"0/1120":"length"},"roots":{"571":"0"}}
 
 Examples:
   jscd ro-map probe.jsc -o names.json    build a name table
-  jscd ro-map probe.jsc | head           peek at root 0's names
-  jscd ro-map --json probe.jsc | jq '.entries'   just the entries
+  jscd ro-map probe.jsc | head           peek at the table
+  jscd ro-map --json probe.jsc | jq '.roots'   just the string-root overrides
 
 Global: --json works on every subcommand; `jscd --help` lists subcommands and options.
 ```
