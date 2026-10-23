@@ -1314,3 +1314,21 @@ Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_c
    `call_once` 产物与 Node 侧**逐行一致**（fixture：`tests/fixtures/jsc/electron19-*`）。
    另：`ro-map` 提取加了"同一 RO 引用被两个名字认领 → 双方都不写"的保护（写错名字比
    占位危险），对既有 29 张表复跑结果**逐条相同**。
+
+**再补：压缩构建的三处"按 tagged 槽记账"错误（本轮收尾）**
+
+- **BytecodeArray 的 BigInt**：`digit_t` 是 `uintptr_t` —— 64 位构建里恒 8 字节，压缩构建也一样。
+  按 tagged size 取 digit 会把大数读成两半（9007199254740993n→1n）；十进制换算的位移
+  也必须按 64 位/digit（原来 `rem << (8*ts)` 在 ts=4 时只移 32 位）。
+- **HandlerTable 的头部**：2 个 tagged 槽（map + 长度）= `2*(ts/4)` 个 i32 词；固定跳 4 词在
+  压缩构建里跳过两词 → handler 表整体错位、try/catch/finally 全部丢失。
+- **`DescriptorArray` 打包头**、**ScopeInfo 的 receiver_info**：见上文。
+
+**Electron 侧的验证数字**（V8 10.2.154.15 的缓存 + 同构建探针名表）：
+36 个行为 fixture 里 **35 个逐用例一致**、5 个整脚本 fixture 全一致；唯一不一致的是
+`string_regex`（`padStart(4, "0")` 的 `"0"` 是**字符串根**）—— 见下。
+
+**已知残留（要点名，别让它悄悄错）**：根列表里 `String:` 那一段也是**逐构建**的。Electron 19
+的 `String:0` 在 571，我们表里 571 是 `String:years` → 输出成 `"years"`（**错名字**，不是占位）。
+Node 各线不受影响（表就是按 Node 构建抓的）。彻底修需要"从同构建探针反推 roots 覆盖"
+（`ro-map` 里加 roots 表）或逐构建 roots 列表，暂未实现。

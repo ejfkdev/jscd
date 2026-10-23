@@ -880,9 +880,13 @@ impl<'a> Disassembler<'a> {
         if len == 0 {
             return Some("0".into());
         }
-        let bytes = self.cache.raw_at(id, 2 * ts, len * ts)?;
+        // `digit_t` 是 **uintptr_t**：64 位构建里恒为 8 字节 —— 压缩构建（ts=4）
+        // 也一样。早先按 tagged size 取 digit，压缩构建把每个 digit 读成两半
+        // （9007199254740993n → 1n、30 位十进制的大数变成 20 位）。
+        const DIGIT: usize = 8;
+        let bytes = self.cache.raw_at(id, 2 * ts, len * DIGIT)?;
         let mut words: Vec<u64> = Vec::with_capacity(len);
-        for chunk in bytes.chunks(ts) {
+        for chunk in bytes.chunks(DIGIT) {
             words.push(match chunk.len() {
                 4 => u32::from_le_bytes(chunk.try_into().ok()?) as u64,
                 8 => u64::from_le_bytes(chunk.try_into().ok()?),
@@ -896,7 +900,7 @@ impl<'a> Disassembler<'a> {
         while words.iter().any(|&w| w != 0) {
             let mut rem: u128 = 0;
             for w in words.iter_mut().rev() {
-                let cur = (rem << (8 * ts)) | (*w as u128);
+                let cur = (rem << 64) | (*w as u128);
                 *w = (cur / 1_000_000_000u128) as u64;
                 rem = cur % 1_000_000_000u128;
             }

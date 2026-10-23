@@ -9164,20 +9164,24 @@ fn read_handler_table<'a>(
     //   6.8/9.x+：值按 int32 紧密排布（一槽两个值）。
     // 判据：数据区偶数位词恒为 0、奇数位不全为 0 → 换成"每槽一个值"的压缩视图，
     // 否则 6.2 的条目会整体错位（start=0、end=4 这种），try/catch 重建不出来。
+    // 头部是 **2 个 tagged 槽**（map + 长度）：按 i32 词计是 `2 * (ts/4)` 个。
+    // 固定跳 4 词在压缩构建（ts=4）里会跳过头 —— 数据区整体错位 2 词，
+    // handler 表读不出来，try/catch/try-finally 全部丢失（Electron 的 finally_return）。
+    let header_words = 2 * (ts / 4).max(1);
     {
-        let data: Vec<i32> = words.iter().skip(4).copied().collect();
+        let data: Vec<i32> = words.iter().skip(header_words).copied().collect();
         let even_all_zero = data.iter().step_by(2).all(|w| *w == 0);
         let odd_any = data.iter().skip(1).step_by(2).any(|w| *w != 0);
         if even_all_zero && odd_any {
             let compact: Vec<i32> = data.iter().skip(1).step_by(2).copied().collect();
-            words.truncate(4);
+            words.truncate(header_words);
             words.extend(compact);
         }
     }
-    let f = |i: usize| -> Option<i32> { words.get(4 + i).copied() };
+    let f = |i: usize| -> Option<i32> { words.get(header_words + i).copied() };
     let mut out = Vec::new();
     // 条目：[start, end, handler, data]（各 1 个 int32，连续排布）
-    let avail = words.len().saturating_sub(4);
+    let avail = words.len().saturating_sub(header_words);
     let mut i = 0usize;
     while i + 4 <= avail {
         let (Some(start), Some(end), Some(handler)) = (f(i), f(i + 1), f(i + 2)) else {
