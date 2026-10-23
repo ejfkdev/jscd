@@ -316,7 +316,17 @@ impl<'a> Disassembler<'a> {
         let has_inferred = (flags >> cfg.has_inferred_bit) & 1 == 1;
         let receiver_var = ((flags >> cfg.receiver_bits[0])
             & ((1 << (cfg.receiver_bits[1] - cfg.receiver_bits[0] + 1)) - 1)) as u32;
-        let has_receiver = matches!(receiver_var, 1 | 2);
+        // `receiver_info` 槽只在 V8 9.x 的 ScopeInfo 里存在（9.4 的 scope-info.tq：
+        // `receiver_info?[flags.receiver_variable == STACK || CONTEXT]`）；10.x 起删掉了
+        // 这个字段，只剩 flag 本身 —— 再 +1 槽会把函数名整体后移一格。
+        let v8_major: u32 = self
+            .table
+            .v8
+            .split('.')
+            .next()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let has_receiver = v8_major == 9 && matches!(receiver_var, 1 | 2);
 
         if std::env::var("JSCD_DBG_SFI").is_ok() {
             eprintln!(
@@ -431,18 +441,10 @@ impl<'a> Disassembler<'a> {
 
     /// 解 8/4 字节 Smi（无压缩：值在高 32 位；压缩：低 32 位带 tag）。
     fn decode_smi_bytes(&self, d: &[u8]) -> Option<i64> {
-        if d.len() == 8 {
-            Some((read_u64(d) >> 32) as u32 as i32 as i64)
-        } else if d.len() == 4 {
-            let raw = u32::from_le_bytes(d.try_into().ok()?);
-            if raw & 1 == 0 {
-                None
-            } else {
-                Some(((raw as i32) >> 1) as i64)
-            }
-        } else {
-            None
-        }
+        // 与 `serializer::decode_smi_bytes` 同一套规则：非压缩 8 字节是 value<<32，
+        // 压缩 4 字节是 value<<1（**偶数**）。这里早先判成了奇数 —— 压缩构建的
+        // flags/param/clc 全解成 None（`flags=0x0`），名字槽整体错位。
+        crate::serializer::decode_smi_bytes(d)
     }
 
     /// 读对象内某个 tagged 槽的 Smi 值（无压缩：高 32 位；压缩：低 32 位带 tag）。

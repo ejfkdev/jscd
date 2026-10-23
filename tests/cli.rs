@@ -228,6 +228,19 @@ fn electron_pointer_compressed_cache_decompiles() {
 }
 
 #[test]
+fn electron_pointer_compressed_names_resolve_with_a_build_ro_map() {
+    // 压缩构建（Electron / Chrome）从只读堆里取名字，且只读堆的坐标是**逐构建**的：
+    // 给一份同构建探针生成的 --ro-map 才能还原真名（issue #1 的延伸）。
+    let jsc = "tests/fixtures/jsc/electron19-call_once.jsc";
+    let ro = "tests/fixtures/jsc/electron19-ro-map.json";
+    let o = jscd(&["--ro-map", ro, jsc]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(!s.contains("<ro0_"), "配了同构建名表就不该有占位：{s}");
+    assert!(s.contains("join"), "属性名应还原：{s}");
+}
+
+#[test]
 fn directory_input_mirrors_tree_into_input_out() {
     let Some(node) = node() else {
         eprintln!("跳过：环境里没有 node");

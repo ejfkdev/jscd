@@ -644,7 +644,21 @@ fn read_scope_with<'a>(
     let has_inferred = (flags >> cfg.has_inferred_bit) & 1 == 1;
     let has_saved = (flags >> cfg.saved_class_bit) & 1 == 1;
     let receiver_var = (flags >> cfg.receiver_bits[0]) & 0b11;
-    let has_receiver = matches!(receiver_var, 1 | 2);
+    // `receiver_info` **只在 V8 9.x 存在**：9.4 的 scope-info.tq 是
+    //   `receiver_info?[flags.receiver_variable == STACK || CONTEXT]: Smi;`
+    // 10.x 起这个字段被删掉了（只剩 flag 本身），字段序列变成
+    //   saved_class_variable_info → function_variable_info → inferred →
+    //   position_info → outer_scope_info。
+    // 早先无条件 `if has_receiver { cursor += ts }`：10.2 里参数名整体后移一格，
+    // 读到的是 `context_local_infos` 的 Raw 块 → 函数名全丢（Electron 的
+    // `target` 因此变成 `_anon_N`）。
+    let v8_major: u32 = table
+        .v8
+        .split('.')
+        .next()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    let has_receiver = v8_major == 9 && matches!(receiver_var, 1 | 2);
     let mut cursor = off + n * ts; // infos[n]
     if has_saved {
         cursor += ts;
@@ -819,6 +833,10 @@ pub struct Decompiler<'a> {
     /// 正在解码字面量的常量池条目。6.x 的对象字面量常量（BoilerplateDescription）与
     /// 顶层脚本的 DeclareGlobals 数组**都是 FixedArray**，只有调用点知道是哪一种。
     lit_ctx: std::cell::Cell<bool>,
+    /// 字面量种类（0 = 无，1 = 对象字面量，2 = 数组字面量）。
+    /// 根索引列表是**逐构建**的（torque 生成的 map 块顺序受编译 flag 影响），
+    /// 所以 boilerplate 的类型不能只信 map 根名 —— 调用点的 opcode 才是可靠依据。
+    lit_kind: std::cell::Cell<u8>,
     /// bytenode 用 `Module.wrap` 包出来的 CommonJS 包装函数（`(exports, require,
     /// module, __filename, __dirname) => …`）对应哪个 SFI。
     ///
@@ -1020,6 +1038,7 @@ impl<'a> Decompiler<'a> {
             scope_cache: std::cell::RefCell::new(HashMap::new()),
             ro_map: None,
             lit_ctx: std::cell::Cell::new(false),
+            lit_kind: std::cell::Cell::new(0),
             emit_names: std::cell::RefCell::new(None),
             runtime: std::cell::Cell::new(false),
 
@@ -2425,6 +2444,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             }
             return Expr::ArrayLit(items);
         }
+        // 兜底：map 根名对不上（构建相关的根索引漂移），但调用点已经告诉我们这是
+        // 对象/数组字面量 → 按形状解。boilerplate 的解码器本身都是按槽位/形状读的。
+        match self.d.lit_kind.get() {
+            1 => return self.object_boilerplate(o),
+            2 => return self.array_boilerplate(o),
+            _ => {}
+        }
         // 未知常量：给出类型线索（注释）但落到语法合法、运行不抛错的值上
         Expr::Ident(format!("/* {}({o}) */ undefined", ty.name(self.d.table)))
     }
@@ -2641,12 +2667,18 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 这里按"值像不像下标/AccessorPair"来分辨。
     fn class_template_entries(&mut self, o: ObjId) -> Option<Vec<(String, Expr)>> {
         let ts = self.d.ts;
-        let packed = self
+        // 打包头是**一个 tagged 槽**：非压缩构建 8 字节、压缩构建 4 字节。
+        // 早先固定按 8 字节 `try_from`，压缩构建直接解不出来 → n_desc=0 → 类模板的
+        // 方法一个都扫不到（Electron 的 class 只剩空壳，`.hello is not a function`）。
+        let packed: Option<u64> = self
             .d
             .cache
             .raw_at_ts(o, ts, ts, ts)
-            .and_then(|d| <[u8; 8]>::try_from(d).ok())
-            .map(u64::from_le_bytes);
+            .and_then(|d| match d.len() {
+                8 => <[u8; 8]>::try_from(d).ok().map(u64::from_le_bytes),
+                4 => <[u8; 4]>::try_from(d).ok().map(|b| u32::from_le_bytes(b) as u64),
+                _ => None,
+            });
         // 打包头判定：高 32 位为 0 且整个值非 0（Smi 的 8 字节形态高 32 位是值本身）
         let n_desc = match packed {
             Some(v) if v != 0 && (v >> 32) == 0 => ((v >> 16) & 0xffff) as usize,
@@ -8120,24 +8152,23 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 // 对象字面量的常量池条目就是 BoilerplateDescription —— 只有这里能确定，
                 // 所以打开 lit_ctx（顶层脚本的 DeclareGlobals 数组形状近似，靠它区分）
                 let save_lit = self.d.lit_ctx.get();
+                let save_kind = self.d.lit_kind.get();
                 self.d.lit_ctx.set(true);
+                self.d.lit_kind
+                    .set(if base == "CreateObjectLiteral" { 1 } else { 2 });
                 let mut lit = idx_num(&arg(0)).map(|i| self.constant(i)).unwrap_or(Expr::Hole);
+                self.d.lit_kind.set(save_kind);
                 // 6.2 的空字面量常量池条目就是 `EmptyFixedArray` 这个根
                 // （bytecode-generator 的 EmptyFixedArrayConstantPoolEntry）——
                 // 按字面量种类补成 `{}` / `[]`；不补的话展开目标/基底是 undefined。
                 if let Some(i) = idx_num(&arg(0)) {
-                    let is_empty_root = match self.d.cache.array_elem(
-                        self.pool.unwrap_or(0),
-                        i,
-                    ) {
-                        Some(crate::serializer::Elem::Ref(Ref::Root(r))) => {
-                            let n = self.d.table.root_name(r).unwrap_or("");
-                            n == "EmptyFixedArray"
-                                || n == "EmptyBoilerplateDescription"
-                                || n == "EmptyObjectBoilerplateDescription"
-                        }
-                        _ => false,
-                    };
+                    // 空字面量的常量池条目就是**一个根**（V8 的
+                    // `EmptyFixedArrayConstantPoolEntry`）。根索引是逐构建的，别去比
+                    // 根名 —— 在这个调用点"常量是根"本身就等于"空字面量"。
+                    let is_empty_root = matches!(
+                        self.d.cache.array_elem(self.pool.unwrap_or(0), i),
+                        Some(crate::serializer::Elem::Ref(Ref::Root(_)))
+                    );
                     if is_empty_root {
                         lit = if base == "CreateObjectLiteral" {
                             Expr::ObjectLit(Vec::new())

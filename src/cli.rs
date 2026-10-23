@@ -794,6 +794,7 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
     let ts = table.tagged_size as usize;
     let d = crate::decompile::Decompiler::new(&cache, &table);
     let mut entries = serde_json::Map::new();
+    let mut conflicted: std::collections::HashSet<String> = std::collections::HashSet::new();
     for id in 0..cache.objects.len() {
         if !cache.obj(id).ty.is(&table, "SharedFunctionInfo") {
             continue;
@@ -837,12 +838,27 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
         else {
             continue;
         };
+        // 探针函数 `p_<name>(o){ return o.<name>; }`（标点走 `p_hex_` + `o["…"]`）的
+        // 常量池里，RO 引用就是该名字本身。**冲突保护**：同一个 RO 引用若被两个不同
+        // 函数认领，说明至少一方判断错了 → 两边都不写（写错名字比留 `<ro…>` 占位糟）。
         let _ = ts;
         for i in 0..cache.array_len(pool) {
             if let Some(crate::serializer::Elem::Ref(crate::serializer::Ref::RoRef(c, o))) =
                 cache.array_elem(pool, i)
             {
-                entries.insert(format!("{c}/{o}"), serde_json::Value::String(prop.clone()));
+                let key = format!("{c}/{o}");
+                let val = serde_json::Value::String(prop.clone());
+                match entries.get(&key) {
+                    Some(v) if v != &val => {
+                        entries.remove(&key);
+                        conflicted.insert(key);
+                    }
+                    Some(_) => {}
+                    None if conflicted.contains(&key) => {}
+                    None => {
+                        entries.insert(key, val);
+                    }
+                }
             }
         }
     }

@@ -1287,3 +1287,30 @@ README 里"数字体现质量"的要求（用户）顺带暴露了两处**测试
 Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_class`（类装配）与
 `top_stmt`（数组字面量）因此把 boilerplate 当成未知类型（输出带 `/* … */ undefined`）。
 修它需要按构建校准根列表（例如用可验证的对象形状反推偏移），不是本轮范围。
+
+**补充（同一轮的后半段）：为什么 Electron 的缓存连名字都不一样**
+
+1. **根索引列表是逐构建的**。`tables/*.json` 的 `roots` 来自 roots.h 的宏展开，其中
+   `TORQUE_DEFINED_MAP_ROOT_LIST` 是 torque 在**构建期**按 `.tq` 声明序生成、且受编译
+   flag 影响的整块 —— 我们表里那一段是按某一构建抓的。实测 Electron 19（V8 10.2.154.15）
+   的 `ScriptMap` 在 654，Node 18.20.8（同 V8 10.2.154.26，非压缩）在 655。
+   对此**不靠猜**：把依赖 map 根名的判断改成靠**字节码上下文 + 对象形状**：
+   - `CreateObjectLiteral` / `CreateArrayLiteral` 调常量池时记录 `lit_kind`，
+     `object_constant` 在类型对不上时按种类形状兜底解码；
+   - 空字面量不再比根名（"常量池条目是根"本身就是空字面量）；
+   - 行内缓存的属性名走 `LdaNamedProperty` 的操作数（不依赖根名）。
+2. **`receiver_info` 槽只在 V8 9.x 的 ScopeInfo 里存在**（9.4 的 scope-info.tq：
+   `receiver_info?[flags.receiver_variable == STACK || CONTEXT]`），10.x 起字段被删掉、
+   只剩 flag。代码里两处（`read_scope_with` 与 `disasm::scope_name_slots_with`）都无条件
+   `+1` 槽 → 10.2 的形参/函数名整体后移一格（Electron 里 `target` 变成 `_anon_N`，
+   名字槽读到 `context_local_infos` 的 raw 块）。`arrays_shift` 之外这是第二个"槽序"坑。
+3. **类模板的打包头**（`DescriptorArray` 第 1 格）按 8 字节读 → 压缩构建解不出来
+   （n_desc=0，类方法全丢）；改为按运行时 tagged size 解码。
+4. **压缩 Smi 是 `value << 1`（偶数）**：`disasm::decode_smi_bytes` 的 4 字节分支判反了，
+   压缩构建的 flags/param/clc 全解成 None。现在与 `serializer::decode_smi_bytes` 共用。
+5. **名字覆盖**：压缩构建把内化字符串放只读堆，`<ro0_…>` 占位因此远多于非压缩构建；
+   `jscd ro-map` 的探针必须**在同一构建/平台**上编译（`ELECTRON_RUN_AS_NODE=1` + mkcorpus
+   即可），生成的名表用 `--ro-map` 传入。实测：给对表之后，Electron 的
+   `call_once` 产物与 Node 侧**逐行一致**（fixture：`tests/fixtures/jsc/electron19-*`）。
+   另：`ro-map` 提取加了"同一 RO 引用被两个名字认领 → 双方都不写"的保护（写错名字比
+   占位危险），对既有 29 张表复跑结果**逐条相同**。
