@@ -900,6 +900,14 @@ pub(crate) fn canonical_name(name: &str) -> &str {
         "LdaLookupContextSlotNoCell" => "LdaLookupContextSlot",
         "LdaLookupContextSlotNoCellInsideTypeof" => "LdaLookupContextSlotInsideTypeof",
         "CreateFunctionContextWithCells" => "CreateFunctionContext",
+        // V8 15.x 把 TDZ 检查从 `*IfHole` 改名为 `*IfTdzHole`（并新增 `LdaTdzHole`）：
+        // 语义与原来的 hole 检查一致 —— 不折叠的话它们落到"未知内建"分支，
+        // 被渲染成 `__runtime.ThrowReferenceErrorIfTdzHole` 表达式，把 `calls += 1`
+        // 这类上下文读写整段污染掉（Electron 44/45 的 call_once 因此 ReferenceError）。
+        "ThrowReferenceErrorIfTdzHole" => "ThrowReferenceErrorIfHole",
+        "ThrowSuperNotCalledIfTdzHole" => "ThrowSuperNotCalledIfHole",
+        "ThrowSuperAlreadyCalledIfNotTdzHole" => "ThrowSuperAlreadyCalledIfNotHole",
+        "LdaTdzHole" => "LdaTheHole",
         _ => name,
     }
 }
