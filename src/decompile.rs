@@ -957,6 +957,7 @@ struct FnCtx<'a, 'b> {
     used_handler_starts: Vec<usize>,
     /// emit_range 递归深度（护栏，防栈溢出）
     emit_depth: usize,
+    _visited: std::collections::HashSet<(usize, usize)>,
     call_count: usize,
     /// 寄存器 → 它当前持有的属性访问表达式（`r2 = o.m` → `r2 => o.m`）。
     /// 用来把属性调用还原成 `o.m(args)`，而不是 `r2.call(o, args)`。
@@ -1519,10 +1520,6 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
     /// 反编译单个函数。
     pub fn decompile_function(&self, sfi: ObjId) -> Result<String, String> {
-        use std::sync::atomic::{AtomicUsize, Ordering};
-        static COUNTER: AtomicUsize = AtomicUsize::new(0);
-        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
-        if n % 10000 == 0 { eprintln!("[decompile] function #{}", n); }
         let bca = self
             .dis
             .sfi_function_data_slots()
@@ -1555,16 +1552,6 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                 scope.as_ref().map(|s| s.param_count).unwrap_or(0),
                 scope.as_ref().map(|s| s.flags).unwrap_or(0),
             );
-        }
-        // Skip functions with very large bytecodes to avoid stack overflow in deep recursion
-        let ts = self.ts;
-        let bytecode_len = self.cache.raw_at_ts(bca, ts, ts, ts)
-            .and_then(crate::serializer::decode_smi_bytes)
-            .unwrap_or(0) as usize;
-        if bytecode_len > 500 {
-            let fname = self.function_emit_name(sfi);
-            eprintln!("jscd: skip large function {} (id={}): {} bytecodes", fname, sfi, bytecode_len);
-            return Ok(format!("function {fname}() {{ /* skipped: {bytecode_len} bytecodes */ }}\n\n"));
         }
         let mut ctx = Box::new(FnCtx::new(self, sfi, bca, scope, scope_id)?);
         if ctx.wrapper_factory {
@@ -1995,6 +1982,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             async_dispatch: None,
             used_handler_starts: Vec::new(),
             emit_depth: 0,
+            _visited: std::collections::HashSet::new(),
             call_count: 0,
             reg_prop: HashMap::new(),
             out: String::new(),
@@ -6317,8 +6305,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             return Ok(());
         }
         self.emit_depth += 1;
+        let _visited_guard = (i, end);
         self.call_count += 1;
         let r = self.emit_range_inner(i, end);
+        self._visited.remove(&_visited_guard);
         self.emit_depth -= 1;
         r
     }
@@ -7103,7 +7093,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             else {
                 continue;
             };
-            if t == head && (ins.name.starts_with("JumpLoop") || t <= ins.offset) {
+            if t == head && (ins.name.starts_with("JumpLoop") || t < ins.offset) {
                 back = Some(j);
             }
         }
