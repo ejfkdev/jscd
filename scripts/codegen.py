@@ -903,6 +903,8 @@ TORQUE_MAP_COUNT_BY_VERSION = {
     "11_8": 34,   # node21：实测 delta +2（735 vs 737）
     "14_1": 32,   # node25：见下面 14.x 的说明
     "14_6": 32,   # node26
+    "14_8": 32,   # Electron 42：trace 实测 protector 段（constructor/next/resolve/valueOf）
+    #              在 1031/1032/1033/1035，表按 36 会整体 +4 —— 与 14.1/14.6 同为 32
 }
 TORQUE_MAP_COUNT = 36
 

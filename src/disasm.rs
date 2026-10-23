@@ -985,13 +985,18 @@ impl<'a> Disassembler<'a> {
         //   **digit 存绝对值**（`FromInt64` 里先取 absolute 再 set_64_bits）。
         //   负债就是"绝对值 + 符号位"，不是补码。
         let ts = self.layout.tagged_size;
-        if std::env::var("JSCD_DBG_BIG").is_ok() {
-            eprintln!("[bigint] id={id} ts={ts} size={}", self.cache.obj(id).byte_size);
-        }
         let bf = self.cache.raw_at(id, ts, ts.min(8))?;
         let bf = u32::from_le_bytes(bf[..4].try_into().ok()?);
         let negative = bf & 1 == 1;
-        let len = (bf >> 1) as usize;
+        // 位数直接由**对象尺寸**推：2*ts 是 map+bit_field（差字段补齐），
+        // 之后每个 digit 恒 8 字节。缓存里的 bit_field **编码不止一种**：
+        //   * 快照/代码缓存（本路径）：堆内形态 `sign | len_digits << 8`（64 位 build，
+        //     kPaddingBits=7）；10n 的 0x100 就是 1<<8；
+        //   * ValueSerializer：`sign | bytelength << 1`（`GetBitfieldForSerialization`）。
+        // 早先一律按 `bf>>1`（ValueSerializer 口径）解，14.8 的 `[10n, …]` 读出 128 位
+        // 垃圾。按尺寸推就不依赖编码，只保留符号位。
+        let body = self.cache.obj(id).byte_size.saturating_sub(2 * ts);
+        let len = body / 8;
         if len == 0 {
             return Some("0".into());
         }

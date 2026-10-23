@@ -1407,14 +1407,17 @@ manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--
    `ro-map` 就能还原（`function tick(a0)`）。`ro-map` 新增 `--names <列表>`：
    探针函数名读不出来时按声明顺序配对（探针里不要夹"runner"函数，否则会整体错位一格）。
 
-**当前状态（诚实版）**：Electron 42（14.8）9 个 fixture 里 **6 个行为逐用例一致**
+**当前状态（诚实版）**：Electron 42（14.8）9 个 fixture 里 **8 个行为逐用例一致**
 （`call_once`/`arith`/`closure`/`string_regex`/`class_basic`/`try_catch_after`）——
 其中两个关键修复：`decode_string` 的字符串布局基线必须固定成 **8 字节**（表按 ts=4 抓时
 `slot_unit()` 会把长度读到 hash 处，`/(\d+)-(\d+)/` 的 pattern 变成空串）；
 数组字面量要按 **结构体布局**（map | flags | constant_elements）展开到 constant_elements，
-否则压缩构建里 `[1.5, …]` 被渲染成 `[5, 0, void 0…]`。剩余 3 个：`generator`/`async_await`
-（TypeError，生成器/async 状态机）与 `num_literals`（BigInt 的**序列化** bit_field 是
-「字节长度」编码，与运行时不同，尚未按 `GetBitfieldForSerialization` 解）。
+否则压缩构建里 `[1.5, …]` 被渲染成 `[5, 0, void 0…]`。只剩 `async_await`（TypeError，async 状态机在 `target` 里的
+promise 数组/microtask 形态）。另两个也修了：`generator` 是 **14.8 的 torque map 段
+同样只有 32 条**（表按默认 36 → protector 字符串根整体 +4，`__torque_map_*` 被当成
+`next`）；`num_literals` 的 BigInt 在缓存里是**堆内 bit_field 编码**（`sign | len<<8`），
+与 `GetBitfieldForSerialization` 的字节长度口径不同 —— 现在直接按对象尺寸推位数，
+不依赖任何一种编码。
 Electron 44/45（15.2/15.6）`arith` 已一致，`call_once`/`closure` 仍有上下文槽/名字问题。
 另一个必须记的坑：`EmbeddedFeedback` 操作数的宽度**随版本变**（14.6 是 2 字节、15.2+ 是
 1 字节），别名表写死 2 会让 15.x 的 `Add/Sub/…` 每条多吃一字节、整段错位
