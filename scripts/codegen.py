@@ -1425,6 +1425,10 @@ def extract_parameter_count_semantics(text):
     m = re.search(r"parameter_count\(\) const \{(.*?)\n\}", text, re.S)
     if m and re.search(r"ReadField<uint16_t>", m.group(1)):
         return {"direct": True}
+    # V8 15.x 把 BytecodeArray::ParameterCount() 挪走了，头里只剩直接计数的
+    # `uint16_t parameter_size_`（不再是"字节数"）—— 语义仍是 direct。
+    if re.search(r"uint16_t\s+parameter_size_", text):
+        return {"direct": True}
     return {"direct": False}
 
 
@@ -1915,7 +1919,14 @@ def main():
         )
         src_sfi = git_show(tag, "src/objects/shared-function-info.tq")
         src_scope = git_show(tag, "src/objects/scope-info.tq")
-        src_ba_inl = git_show(tag, "src/objects/bytecode-array-inl.h")
+        # 15.x 起 `uint16_t parameter_size_`（直接计数）搬到了 bytecode-array.h，
+        # 只看 -inl.h 会判成"字节数"→ 形参个数全 0（Electron 44/45 的 a0 消失）。
+        src_ba_inl = "\n".join(
+            x for x in (
+                git_show(tag, "src/objects/bytecode-array-inl.h"),
+                git_show(tag, "src/objects/bytecode-array.h"),
+            ) if x
+        ) or None
         src_globals = git_show(tag, "src/common/globals.h")
         if not all([src_b, src_o, src_t]):
             print(f"skip {tag}: missing V8 sources", file=sys.stderr)

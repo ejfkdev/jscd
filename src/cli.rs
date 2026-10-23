@@ -907,6 +907,13 @@ fn ro_map_cmd(
         }) {
             ordered_sfis = res.1;
         }
+        if std::env::var("JSCD_DBG_RO").is_ok() {
+            eprintln!(
+                "[ro] ordered_sfis={} names={}",
+                ordered_sfis.len(),
+                probe_names.as_ref().map(|v| v.len()).unwrap_or(0)
+            );
+        }
         if ordered_sfis.is_empty() {
             for id in 0..cache.objects.len() {
                 if id == cache.top_sfi {
@@ -935,6 +942,10 @@ fn ro_map_cmd(
             let pos = ordered_sfis.iter().position(|x| *x == id)?;
             names.get(pos).cloned()
         });
+        if std::env::var("JSCD_DBG_RO").is_ok() {
+            let pos = ordered_sfis.iter().position(|x| *x == id);
+            eprintln!("[ro] sfi={id} pos={pos:?} prop={ordered_prop:?}");
+        }
         if let Some(prop) = ordered_prop {
             if let Some(bca) = d.sfi_function_data_slots().iter().find_map(|slot| {
                 match cache.slot_at(id, *slot) {
@@ -949,6 +960,13 @@ fn ro_map_cmd(
                     .and_then(|v| v.as_ref())
                     .and_then(|r| cache.ref_object(r));
                 if let Some(pool) = pool {
+                    if std::env::var("JSCD_DBG_RO").is_ok() {
+                        eprintln!(
+                            "[ro]   pool={pool} len={} first={:?}",
+                            cache.array_len(pool),
+                            cache.array_elem(pool, 0)
+                        );
+                    }
                     for i in 0..cache.array_len(pool) {
                         if let Some(crate::serializer::Elem::Ref(crate::serializer::Ref::RoRef(c, o))) =
                             cache.array_elem(pool, i)

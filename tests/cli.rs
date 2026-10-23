@@ -317,6 +317,44 @@ fn electron22_ro_map_resolves_names_and_string_roots() {
 }
 
 #[test]
+fn electron_14_8_to_15_6_closures_decompile() {
+    // Electron 42/44/45（V8 14.8/15.2/15.6，都是指针压缩 + V8 sandbox 构建）：
+    // 表按 Chromium DEPS 的 v8_revision + Electron 的补丁集校准，这里锁住闭包这条链 ——
+    // 15.x 的 ScopeInfo.has_outer 位（21）、裸 int32 的数组长度、TDZ hole 重命名、
+    // `GeneratorYieldResult` 的 yield 形态都走这一路。
+    for (jsc, ro, label) in [
+        (
+            "electron42-v8_14.8.178.38.jsc",
+            "electron42-ro-map.json",
+            "electron 42.11.18",
+        ),
+        (
+            "electron44-v8_15.2.124.43.jsc",
+            "electron44-ro-map.json",
+            "electron 44.9.3",
+        ),
+        (
+            "electron45-v8_15.6.75.19.jsc",
+            "electron45-ro-map.json",
+            "electron 45.0.0",
+        ),
+    ] {
+        let j = format!("tests/fixtures/jsc/{jsc}");
+        let r = format!("tests/fixtures/jsc/{ro}");
+        let o = jscd(&["--ro-map", &r, &j]);
+        assert!(o.status.success(), "{jsc}: {}", err(&o));
+        let s = out(&o);
+        assert!(s.contains("n = a0"), "{jsc}: 上下文赋值丢了：{s}");
+        assert!(s.contains("function inc"), "{jsc}: 闭包名没还原：{s}");
+        assert!(s.contains("return n = ++n"), "{jsc}: 捕获变量没绑定：{s}");
+
+        let info = out(&jscd(&["info", &j]));
+        assert!(info.contains(label), "{jsc}: 版本标签应是 {label}：{info}");
+        assert!(info.contains("supported:     yes") || info.contains("supported: yes"), "{info}");
+    }
+}
+
+#[test]
 fn directory_input_mirrors_tree_into_input_out() {
     let Some(node) = node() else {
         eprintln!("跳过：环境里没有 node");

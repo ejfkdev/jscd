@@ -690,7 +690,10 @@ fn read_scope_with<'a>(
     if std::env::var("JSCD_DBG_SCOPE").is_ok() {
         eprintln!(
             "[scope-outer] id={scope_id} flags={flags:#x} bit={} cursor_slot={} len={}",
-            cfg.has_outer_bit.unwrap_or(if table.v8.starts_with('6') { 20 } else if table.v8.starts_with('7') { 21 } else { 22 }),
+            cfg.has_outer_bit.unwrap_or_else(|| {
+                let maj: u32 = table.v8.split('.').next().and_then(|x| x.parse().ok()).unwrap_or(0);
+                if maj <= 6 { 20 } else if maj == 7 || maj >= 15 { 21 } else { 22 }
+            }),
             cursor / ts,
             cache.array_len(scope_id)
         );
@@ -703,12 +706,20 @@ fn read_scope_with<'a>(
         //   `nest(2)(3)` 因此算成 NaN）。
         let bit = cfg
             .has_outer_bit
-            .unwrap_or(if table.v8.starts_with('6') {
-                20
-            } else if table.v8.starts_with('7') {
-                21
-            } else {
-                22
+            .unwrap_or_else(|| {
+                // 6.x = 20、7.8 = 21、8.x–14.x = 22；**15.x 起回到 21**
+                // （15.6 scope-info.h：FunctionKind 5 位在 16..20，HasOuterScopeInfo
+                //  紧接其后 = 21；14.x 及更早还多 `SomeContextHasExtension` 一位）。
+                // 读错位的后果：闭包捕获的外层变量解不出名字 → 只剩 `__ctx.ctxN`，
+                // 而且外层赋值被优化器当死存储删掉（Electron 44/45 的 closure 返回 null）。
+                let maj: u32 = table.v8.split('.').next().and_then(|x| x.parse().ok()).unwrap_or(0);
+                if maj <= 6 {
+                    20
+                } else if maj == 7 || maj >= 15 {
+                    21
+                } else {
+                    22
+                }
             });
         (flags >> bit) & 1 == 1
     };
@@ -3938,6 +3949,23 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             let prologue = !async_fn && s == first_sus;
             // 值层：紧邻的 CreateIterResultObject 包装（值 = 寄存器区间首），done 常量层一并丢
             let mut value: Option<String> = None;
+            // V8 15.x 换了 yield 的发射形态（bytecode-generator 的 kInlineGeneratorYieldResult）：
+            //   `Star rV`（存值）→ `Mov <generator>, rG` → `CallRuntime [GeneratorYieldResult], rV-rG`
+            //   → `SuspendGenerator`
+            // 13.x/14.x 是 `CreateIterResultObject(value)` 包一层。认前者时值取它的第一个
+            // 参数寄存器（该寄存器此前已被 Star 赋值，`yield rN` 语义等价）。
+            if !prologue
+                && s >= 1
+                && self.call_name(s - 1).as_deref() == Some("GeneratorYieldResult")
+            {
+                if let Some(t) = self.reglist_nth(s - 1, 0) {
+                    value = Some(t.split('-').next().unwrap_or(&t).to_string());
+                }
+                skip[s - 1] = true;
+                if s >= 2 && base_at(s - 2) == "Mov" {
+                    skip[s - 2] = true;
+                }
+            }
             if !prologue && s >= 1 && is_intrinsic(s - 1, "CreateIterResultObject") {
                 if let Some(op) = self.instrs[s - 1].operands.get(1) {
                     let t = self.render_operand(op);
@@ -5066,6 +5094,27 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             // 否则 6.2 的 multi 会漏出 `return;` 和一段机器码。
             let is_gawait = self.instrs[s].name.starts_with("__gawait");
             let mut value: Option<String> = None;
+            // V8 15.x 的 yield 形态变了（bytecode-generator 的 `kInlineGeneratorYieldResult`）：
+            //   `Star rV`（存值）→ `Mov <generator>, rG` → `CallRuntime [GeneratorYieldResult], rV-rG`
+            //   → `SuspendGenerator`
+            // 13.x/14.x 是把值留在累加器里、用 CreateIterResultObject 包一层。这里按前一条
+            // 调用名认出新形态：yield 的值就是它的第一个参数寄存器（该寄存器在前面的 Star 里
+            // 已被赋值，渲染成 `yield rN` 语义等价），并把这次内建调用整段跳过。
+            if !is_gawait
+                && s >= 1
+                && self.call_name(s - 1).as_deref() == Some("GeneratorYieldResult")
+            {
+                // 参数是 RegList（`rV-rG`）：第一个寄存器就是值
+                if let Some(t) = self.reglist_nth(s - 1, 0) {
+                    value = Some(t.split('-').next().unwrap_or(&t).to_string());
+                }
+                skip[s - 1] = true;
+                why[s - 1] = "yield-result";
+                if s >= 2 && base_at(s - 2) == "Mov" {
+                    skip[s - 2] = true;
+                    why[s - 2] = "yield-result-mov";
+                }
+            }
             if !is_gawait && s >= 1 && self.intrinsic_is(s - 1, "CreateIterResultObject") {
                 if let Some(op) = self.instrs[s - 1].operands.get(1) {
                     let t = self.render_operand(op);
@@ -5145,7 +5194,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             }
             self.gen_yields.insert(s, value);
             if std::env::var("JSCD_DBG_GEN").is_ok() {
-                eprintln!("[gen6] yield s={s} value={:?} cont={cont}", self.gen_yields.get(&s));
+                eprintln!(
+                    "[gen6] yield s={s} value={:?} cont={cont} prev={} prev_call={:?} prev_ops={:?}",
+                    self.gen_yields.get(&s),
+                    self.instrs.get(s.wrapping_sub(1)).map(|i| i.name.clone()).unwrap_or_default(),
+                    self.call_name(s.wrapping_sub(1)),
+                    self.instrs.get(s.wrapping_sub(1)).map(|i| i.operands.clone())
+                );
             }
         }
         // yield* 的委托协议（6.2 同样要认：锚在"取 @@iterator 后调用"那条 CallProperty0 上）

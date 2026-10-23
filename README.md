@@ -3,7 +3,8 @@
 Reverse [bytenode](https://github.com/bytenode/bytenode)-compiled `.jsc` files back to JavaScript.
 Static parsing only: one pure-Rust binary — no patched V8, no Node runtime, no network.
 
-Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors); **≈ 25k `.jsc` files pass the
+Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors) and **Electron 19 → 45**
+(V8 10.2 – 15.6, pointer-compressed and sandboxed builds included); **≈ 25k `.jsc` files pass the
 tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
 optimization layers (register folding → swc copy propagation) make the decompiled source readable.
 
@@ -11,7 +12,7 @@ optimization layers (register folding → swc copy propagation) make the decompi
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.96+](https://img.shields.io/badge/rust-1.96%2B-orange.svg)](Cargo.toml)
-[![Node 8.0 – 26.10](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.10-green.svg)](#supported-versions)
+[![Node 8.0 – 26.12](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.12-green.svg)](#supported-versions)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#supported-versions)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)

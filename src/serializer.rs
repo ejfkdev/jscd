@@ -121,6 +121,10 @@ pub struct Object {
     pub start_offset: usize,
     /// 槽序列：index 升序（0 = map）
     pub slots: Vec<Slot>,
+    /// 长度字段是**裸 int32**而不是 Smi：V8 15.x 的 TrustedFixedArray/ProtectedFixedArray
+    /// （沙箱构建）把 length 存成 uint32 计数，`[1]` 的字节是 1 而不是 Smi 的 2。
+    /// 按类型名在解析时打标，`array_len` 据此选读法。
+    pub raw_len: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -851,6 +855,7 @@ impl<'a> Walker<'a> {
             byte_size,
             start_offset: tag_offset,
             slots: Vec::with_capacity(size_words.min(64)),
+            raw_len: false,
         });
         if let Some(l) = self.legacy.as_mut() {
             l.allocate(space, byte_size as u32, id);
@@ -863,6 +868,14 @@ impl<'a> Walker<'a> {
             }
         }
         let map = self.parse_ref(depth + 1)?;
+        // 沙箱构建的 trusted/protected 数组用裸 int32 计数（见 Object::raw_len）
+        if let SlotValue::Ref(Ref::Root(ri)) = &map {
+            if let Some(n) = self.table.root_name(*ri) {
+                if (n.contains("Trusted") || n.contains("Protected")) && n.contains("Array") {
+                    self.objects[id].raw_len = true;
+                }
+            }
+        }
         self.push_slot(id, 0, map);
 
         // 老族（≤8.4）没有 pending forward ref 机制（表里没有这个标签）→ 跳过这段解析。
@@ -1578,10 +1591,33 @@ impl<'a> CodeCache<'a> {
     /// FixedArray 长度（length 槽在 offset = ts）。
     pub fn array_len(&self, id: ObjId) -> usize {
         let ts = self.tagged_size;
-        self.raw_at(id, ts, ts)
+        let size = self.objects[id].byte_size;
+        let raw = self
+            .raw_at(id, ts, 4)
+            .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as usize)
+            .unwrap_or(0);
+        // 长度字段的编码**逐构建**不同：14.x 及更早是 Smi（值 = n<<1），15.x 写成
+        // **裸 int32**（值 = n，奇数时 Smi 解码直接失败）；指针数组元素占 ts、double
+        // 数组占 8 字节，所以两种读法里只有一个与对象尺寸自洽 —— 用尺寸裁决，
+        // 不依赖版本号，也不依赖 trusted/protected 标记。
+        let by_ts = size.saturating_sub(2 * ts) / ts.max(1);
+        let by_8 = size.saturating_sub(2 * ts) / 8;
+        let smi = self
+            .raw_at(id, ts, ts)
             .and_then(decode_smi_bytes)
-            .map(|v| v as usize)
-            .unwrap_or(0)
+            .map(|v| v as usize);
+        if let Some(n) = smi {
+            if n == by_ts || n == by_8 {
+                return n;
+            }
+        }
+        if raw == by_ts || raw == by_8 {
+            return raw;
+        }
+        if self.objects[id].raw_len {
+            return raw;
+        }
+        smi.unwrap_or(0)
     }
 
     /// FixedArray 第 index 个元素（元素从 offset = 2*ts 开始）。

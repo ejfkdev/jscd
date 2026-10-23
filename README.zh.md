@@ -3,7 +3,8 @@
 把 [bytenode](https://github.com/bytenode/bytenode) 编译的 `.jsc` 还原成 JavaScript。纯静态解析：
 纯 Rust 单二进制，不需要打过补丁的 V8，也不需要 Node 运行时、不联网。
 
-支持 **Node 8.0.0 → 26.12.1**（517 个发布 / 36 个 V8 minor），**≈ 25k 份 `.jsc` 通过测试、0 失败**
+支持 **Node 8.0.0 → 26.12.1**（517 个发布 / 36 个 V8 minor）与 **Electron 19 → 45**
+（V8 10.2 – 15.6，含指针压缩与 V8 sandbox 构建），**≈ 25k 份 `.jsc` 通过测试、0 失败**
 （31 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → swc 复制传播）
 提升反编译源码的可读性。
 
@@ -11,7 +12,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.96+](https://img.shields.io/badge/rust-1.96%2B-orange.svg)](Cargo.toml)
-[![Node 8.0 – 26.10](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.10-green.svg)](#支持的版本)
+[![Node 8.0 – 26.12](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.12-green.svg)](#支持的版本)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#支持的版本)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)

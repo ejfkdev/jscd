@@ -1963,7 +1963,7 @@
   }
  },
  "parameter_count": {
-  "direct": false
+  "direct": true
  },
  "roots": [
   "UndefinedValue",

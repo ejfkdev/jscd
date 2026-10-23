@@ -1407,7 +1407,11 @@ manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--
    `ro-map` 就能还原（`function tick(a0)`）。`ro-map` 新增 `--names <列表>`：
    探针函数名读不出来时按声明顺序配对（探针里不要夹"runner"函数，否则会整体错位一格）。
 
-**当前状态（诚实版）**：Electron 42（14.8）9 个 fixture 里 **8 个行为逐用例一致**
+**当前状态**：Electron 42 / 44 / 45（V8 14.8 / 15.2 / 15.6）9 个 fixture **全部逐用例一致**
+（各自 9/9，回归用例 `electron_14_8_to_15_6_closures_decompile`）。此前那批结构性 bug 都收掉了：
+字符串布局基线、数组 boilerplate 结构体展开、BigInt 位数按对象尺寸、14.8 的 torque 段 32 条、
+15.x 的 `ScopeInfo.has_outer` 位（21）、裸 int32 数组长度、`GeneratorYieldResult` 的 yield 形态。
+旧记录（供回溯）：Electron 42（14.8）9 个 fixture 里 **8 个行为逐用例一致**
 （`call_once`/`arith`/`closure`/`string_regex`/`class_basic`/`try_catch_after`）——
 其中两个关键修复：`decode_string` 的字符串布局基线必须固定成 **8 字节**（表按 ts=4 抓时
 `slot_unit()` 会把长度读到 hash 处，`/(\d+)-(\d+)/` 的 pattern 变成空串）；
