@@ -3737,6 +3737,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 | "Star8" | "Star9" | "Star10" | "Star11" | "Star12" | "Star13" | "Star14" | "Star15"
                 | "Return" | "Throw" | "ReThrow" | "StaGlobal" | "StaGlobalSloppy" | "StaGlobalStrict" | "StaLookupSlot"
                 | "StaNamedProperty" | "SetNamedProperty" | "StaKeyedProperty" | "SetKeyedProperty" | "StaNamedOwnProperty" | "DefineNamedOwnProperty"
+                | "DefineNamedOwnPropertyInLiteral"
                 | "StaKeyedPropertyAsDefine" | "StaDataPropertyInLiteral" | "DefineKeyedOwnPropertyInLiteral" | "StaInArrayLiteral"
                 | "DefineKeyedOwnProperty"
                 | "Add" | "Sub" | "Mul" | "Div" | "Mod" | "Exp" | "BitwiseOr" | "BitwiseXor"
@@ -7618,6 +7619,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 });
             }
             "StaNamedProperty" | "SetNamedProperty" | "StaNamedOwnProperty" | "DefineNamedOwnProperty"
+            // 15.x 起对象字面量的属性初始化改用这条（Electron/Chromium 反向移植的 CL）——
+            // 不认它的话 `{ a: tick(n) }` 的初值被整条丢掉，只剩 `{ a: void 0 }`。
+            | "DefineNamedOwnPropertyInLiteral"
             // 6.2 的存储指令还带 Sloppy/Strict 后缀（6.8 起才并入无后缀名），操作数形状一致
             | "StaNamedPropertySloppy" | "StaNamedPropertyStrict" | "StaNamedPropertyNoFeedback" => {
                 let obj = self.reg_expr(&arg(0));

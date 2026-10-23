@@ -1635,13 +1635,21 @@ OPERAND_TYPE_ALIASES = {
     "FeedbackSlot": "Idx",          # 1/scalable
     "CoverageSlot": "Idx",          # 1/scalable
     "AbortReason": "Flag8",         # 1/fixed
-    "EmbeddedFeedback": "Flag16",   # 2/fixed
+    # EmbeddedFeedback 的宽度**随版本变**：14.6 是 kFixedUnsignedShort（2 字节），
+    # 15.2+ 改成 kFixedUnsignedByte（1 字节）。写死 2 会让 15.x 的 `Add/Sub/...`
+    # 每条多吃一个字节 → 反汇编错位（opcode 0xf9 out of range）。按提取到的尺寸选。
+    "EmbeddedFeedback": "Flag16",
 }
 
 
 def normalize_operand_types(table):
     """把 14.x 的语义操作数名折叠回历史种类（bytecodes 与 operand_types 一起改）。"""
-    aliases = OPERAND_TYPE_ALIASES
+    aliases = dict(OPERAND_TYPE_ALIASES)
+    emb = table.get("operand_types", {}).get("EmbeddedFeedback")
+    if emb is not None:
+        aliases["EmbeddedFeedback"] = {1: "Flag8", 2: "Flag16"}.get(
+            int(emb.get("size") or 0), "Flag16"
+        )
     table["bytecodes"] = [
         {**b, "operands": [aliases.get(o, o) for o in b.get("operands", [])]}
         for b in table["bytecodes"]

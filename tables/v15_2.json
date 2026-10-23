@@ -603,7 +603,7 @@
    "name": "Add",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -612,7 +612,7 @@
    "name": "Sub",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -621,7 +621,7 @@
    "name": "Mul",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -630,7 +630,7 @@
    "name": "Div",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -639,7 +639,7 @@
    "name": "Mod",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -648,7 +648,7 @@
    "name": "Exp",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -657,7 +657,7 @@
    "name": "BitwiseOr",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -666,7 +666,7 @@
    "name": "BitwiseXor",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -675,7 +675,7 @@
    "name": "BitwiseAnd",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -684,7 +684,7 @@
    "name": "ShiftLeft",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -693,7 +693,7 @@
    "name": "ShiftRight",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -702,7 +702,7 @@
    "name": "ShiftRightLogical",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -721,7 +721,7 @@
    "name": "AddSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -730,7 +730,7 @@
    "name": "SubSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -739,7 +739,7 @@
    "name": "MulSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -748,7 +748,7 @@
    "name": "DivSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -757,7 +757,7 @@
    "name": "ModSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -766,7 +766,7 @@
    "name": "ExpSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -775,7 +775,7 @@
    "name": "BitwiseOrSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -784,7 +784,7 @@
    "name": "BitwiseXorSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -793,7 +793,7 @@
    "name": "BitwiseAndSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -802,7 +802,7 @@
    "name": "ShiftLeftSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -811,7 +811,7 @@
    "name": "ShiftRightSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -820,7 +820,7 @@
    "name": "ShiftRightLogicalSmi",
    "operands": [
     "Imm",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -1094,7 +1094,7 @@
    "name": "TestEqual",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -1103,7 +1103,7 @@
    "name": "TestEqualStrict",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -1112,7 +1112,7 @@
    "name": "TestLessThan",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -1121,7 +1121,7 @@
    "name": "TestGreaterThan",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -1130,7 +1130,7 @@
    "name": "TestLessThanOrEqual",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },
@@ -1139,7 +1139,7 @@
    "name": "TestGreaterThanOrEqual",
    "operands": [
     "Reg",
-    "Flag16"
+    "Flag8"
    ],
    "prefix": null
   },

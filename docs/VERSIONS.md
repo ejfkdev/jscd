@@ -1407,8 +1407,12 @@ manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--
    `ro-map` 就能还原（`function tick(a0)`）。`ro-map` 新增 `--names <列表>`：
    探针函数名读不出来时按声明顺序配对（探针里不要夹"runner"函数，否则会整体错位一格）。
 
-**当前状态（诚实版）**：Electron 42（14.8）的 `call_once` 能反出正确的函数名/属性名/字节码；
-9 个 fixture 的行为对拍 **2 通过 / 7 有差异**（`arith`、`closure` 全对），差异集中在
-上下文变量计数、BigInt 字面量、类装配、生成器等 —— opcode 编号已确认无误，问题在
-反编译器的**语义层**（14.8/15.x 的寄存器/上下文使用方式），下一轮继续。表与解析链路
-（14.8/15.2/15.6 + 对应观察到的 version_hash）已经入库，Node 侧 144 项矩阵零回归。
+**当前状态（诚实版）**：Electron 42（14.8）上 `call_once`/`arith`/`closure` 三个 fixture
+**行为逐用例一致**（含对象字面量初值 —— 15.x 反向移植的 `DefineNamedOwnPropertyInLiteral`
+已接上）；`string_regex` 还差最后一段（`m ? m[2] : "none"` 的三元被丢掉）。Electron 44/45
+（15.2/15.6）`arith` 已一致，`call_once`/`closure` 仍有上下文槽/名字问题。
+另一个必须记的坑：`EmbeddedFeedback` 操作数的宽度**随版本变**（14.6 是 2 字节、15.2+ 是
+1 字节），别名表写死 2 会让 15.x 的 `Add/Sub/…` 每条多吃一字节、整段错位
+（`opcode 0xf9 out of range`）—— 现在按提取到的尺寸选 Flag8/Flag16。
+表与解析链路（14.8/15.2/15.6 + 对应观察到的 version_hash）已经入库，
+Node 侧 144 项矩阵 + 20 个整脚本零回归。
