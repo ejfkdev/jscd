@@ -1,6 +1,7 @@
 // 本文件由 scripts/codegen.py 生成，请勿手改。
 pub static MANIFEST_JSON: &str = include_str!("../tables/manifest.json");
 pub static EMBEDDED_TABLE_FILES: &[(&str, &str)] = &[
+    ("v8_7_220_31.json", include_str!("../tables/v8_7_220_31.json")),
     ("v10_1.json", include_str!("../tables/v10_1.json")),
     ("v10_2.json", include_str!("../tables/v10_2.json")),
     ("v10_7_19.1.0.json", include_str!("../tables/v10_7_19.1.0.json")),

@@ -1416,7 +1416,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         // 而这些名字是函数声明（有 hoisting），赋值本身没有。
         let mut alias = String::new();
         for id in 0..self.cache.objects.len() {
-            if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
+                        if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
                 continue;
             }
             let raw = self.dis.sfi_name(id);
@@ -1447,7 +1447,10 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                     continue;
                 }
             }
-            let text = self.decompile_function(id)?;
+            let text = match self.decompile_function(id) {
+                Ok(t) => t,
+                Err(e) => { eprintln!("jscd: skip fn id={}: {}", id, e); continue; }
+            };
             w.write_str(&text).map_err(|_| "write failed".to_string())?;
         }
         Ok(())
@@ -1537,7 +1540,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                 scope.as_ref().map(|s| s.flags).unwrap_or(0),
             );
         }
-        let mut ctx = FnCtx::new(self, sfi, bca, scope, scope_id)?;
+        let mut ctx = Box::new(FnCtx::new(self, sfi, bca, scope, scope_id)?);
         if ctx.wrapper_factory {
             // 闭包工厂只是"把包装函数交出去"，没有可执行的顶层语句
             return Ok(String::new());
@@ -1724,6 +1727,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .raw_at_ts(bca, ts, ts, ts)
             .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
+
+
         let hdr = d.cache.bca_rt_off(d.table, ts, bca, ba.header_size);
         let code = d.cache.raw_at_ts(bca, hdr, bytecode_len, ts).unwrap_or(&[]);
         let parameter_size = ba
@@ -5670,7 +5675,14 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         // ── 发射 ──
         self.flush_acc_before("SwitchOnSmiNoFeedback");
-        self.line(&format!("switch ({var_name}) {{"));
+        // `<this>`/`<context>` are register spellings, not JS (`switch (<this>)` on a String.prototype method)
+        let subject = if var_name.starts_with('<') {
+            let e = self.operand_expr(&var_name);
+            Self::render_stmt(&e)
+        } else {
+            var_name.clone()
+        };
+        self.line(&format!("switch ({subject}) {{"));
         self.indent += 1;
         // 按目标体归组：同一个体的所有 case 标签要挤在体之前
         // （V8 的派发链顺序是 1→体A、2→体A、3→体B，直接顺序输出会把 case 2 挂到体 B 上）
@@ -7069,7 +7081,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             else {
                 continue;
             };
-            if t == head && (ins.name.starts_with("JumpLoop") || t <= ins.offset) {
+            if t == head && (ins.name.starts_with("JumpLoop") || t < ins.offset) {
                 back = Some(j);
             }
         }
@@ -7926,7 +7938,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         "CallUndefinedReceiver1" => 1,
                         _ => 2,
                     };
-                    (0..n).map(|k| self.operand_expr(&arg(1 + k))).collect()
+                    let args: Vec<Expr> = (0..n).map(|k| self.operand_expr(&arg(1 + k))).collect();
+                    args
                 };
                 self.acc = Some(Expr::Call {
                     callee: Box::new(callee),
