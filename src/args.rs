@@ -144,6 +144,10 @@ pub enum Cmd {
         file: PathBuf,
         #[command(flatten)]
         common: Common,
+        /// 探针名列表（每行一个，顺序与探针源里函数声明一致）。
+        /// V8 13+ 的函数名常是只读堆引用、缓存里读不出 `p_xxx` 时靠它配对。
+        #[arg(long)]
+        names: Option<PathBuf>,
     },
     /// (dev) 解析 payload 并导出对象表
     #[command(hide = true)]

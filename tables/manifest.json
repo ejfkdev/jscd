@@ -1,7 +1,25 @@
 {
- "generated_at": "2026-10-23T05:48:26+00:00",
+ "generated_at": "2026-10-23T07:04:03+00:00",
  "schema_version": 1,
  "versions": [
+  {
+   "hash": 2170681234,
+   "node": "electron 45.0.0",
+   "table": "v15_6.json",
+   "v8": "15.6.75.19"
+  },
+  {
+   "hash": 3633754905,
+   "node": "electron 44.9.3",
+   "table": "v15_2.json",
+   "v8": "15.2.124.43"
+  },
+  {
+   "hash": 137827106,
+   "node": "electron 42.11.18",
+   "table": "v14_8.json",
+   "v8": "14.8.178.38"
+  },
   {
    "hash": 4220232508,
    "node": "v8.2.1",

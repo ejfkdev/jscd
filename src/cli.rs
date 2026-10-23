@@ -47,7 +47,9 @@ pub fn run_cmd(cli: crate::args::Cli) -> Result<(), String> {
                 runtime,
             )
         }
-        Cmd::RoMap { file, common } => ro_map_cmd(&file, &common, json),
+        Cmd::RoMap { file, common, names } => {
+            ro_map_cmd(&file, &common, json, names.as_deref())
+        }
         Cmd::DebugParse { file } => debug_parse_cmd(&file),
     }
 }
@@ -272,8 +274,13 @@ fn functions_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), St
         });
         let (bc_len, params, frame) = match bca {
             Some(b) => {
+                // length 不恒在 +ts：沙箱构建多一个 self_indirect_pointer（+2*ts）
+                let len_off = ba
+                    .off("length")
+                    .map(|o| cache.bca_rt_off(&table, ts, b, o))
+                    .unwrap_or(ts);
                 let len = cache
-                    .raw_at(b, ts, ts)
+                    .raw_at(b, len_off, ts)
                     .and_then(crate::serializer::decode_smi_bytes)
                     .unwrap_or(0);
                 let params = ba
@@ -820,9 +827,97 @@ fn node_check(src: &str) -> Result<(), String> {
 /// (probe) 探针 jsc → 只读堆名表：
 /// 探针里的每个函数形如 `function p_<name>(o) { return o.<name>; }`，
 /// 其常量池中的 ro 引用即该属性名对应的 (chunk, offset)。
-fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), String> {
+fn ro_map_cmd(
+    file: &Path,
+    common: &Common,
+    json_flag: bool,
+    names_file: Option<&Path>,
+) -> Result<(), String> {
     let data = load_input(file)?;
     let (_, table, cache) = parse_cache(&data)?;
+    // 探针名列表（与探针源里函数声明顺序一致）。V8 13+ 的函数名常是只读堆引用，
+    // 缓存里读不出 `p_xxx` 名字 —— 这时只能按**顺序**把 SFI 和名字列表配对。
+    let probe_names: Option<Vec<String>> = match names_file {
+        Some(p) => {
+            let text = std::fs::read_to_string(p)
+                .map_err(|e| format!("{}: {e}", p.display()))?;
+            let mut v = Vec::new();
+            for line in text.lines() {
+                let n = line.trim_end_matches('\r');
+                if n.is_empty() {
+                    continue;
+                }
+                // 允许 `p:<name>` / `g:<name>` 前缀标注探针形态（属性名 / 全局名）；
+                // 两者都只是"这行对应第 i 个 SFI"，前缀仅用于文档与调试。
+                let n = n
+                    .strip_prefix("p:")
+                    .or_else(|| n.strip_prefix("g:"))
+                    .unwrap_or(n);
+                v.push(n.replace("\\n", "\n").replace("\\t", "\t"));
+            }
+            Some(v)
+        }
+        None => None,
+    };
+    // 探针 SFI 的**声明顺序**：优先用顶层 `DeclareGlobals` 常量表（V8 在那里按声明序
+    // 记着每个全局函数声明的 SFI），拿不到再退回 object id 顺序。
+    let mut ordered_sfis: Vec<usize> = Vec::new();
+    if probe_names.is_some() {
+        if let Some(res) = parse_cache(&data).ok().and_then(|(_, t, c)| {
+            let d = crate::decompile::Decompiler::new(&c, &t);
+            let _ = &d;
+            let top = c.top_sfi;
+            let bca = d.sfi_function_data_slots().iter().find_map(|slot| {
+                match c.slot_at(top, *slot) {
+                    Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(b)))
+                        if c.obj(*b).ty.is(&t, "BytecodeArray") => Some(*b),
+                    _ => None,
+                }
+            })?;
+            let pool = c
+                .slot_at(bca, d.bca_constant_pool_slot())
+                .and_then(|v| v.as_ref())
+                .and_then(|r| c.ref_object(r))?;
+            for i in 0..c.array_len(pool) {
+                let Some(crate::serializer::Elem::Ref(r)) = c.array_elem(pool, i) else {
+                    continue;
+                };
+                let Some(obj) = c.ref_object(r) else { continue };
+                let n = c.array_len(obj);
+                if n < 2 {
+                    continue;
+                }
+                let mut sfs = Vec::new();
+                let mut ok = false;
+                for k in 0..n {
+                    if let Some(crate::serializer::Elem::Ref(crate::serializer::Ref::Object(o))) =
+                        c.array_elem(obj, k)
+                    {
+                        if c.obj(o).ty.is(&t, "SharedFunctionInfo") {
+                            sfs.push(o);
+                            ok = true;
+                        }
+                    }
+                }
+                if ok && sfs.len() >= 2 {
+                    return Some((c, sfs));
+                }
+            }
+            None
+        }) {
+            ordered_sfis = res.1;
+        }
+        if ordered_sfis.is_empty() {
+            for id in 0..cache.objects.len() {
+                if id == cache.top_sfi {
+                    continue;
+                }
+                if cache.obj(id).ty.is(&table, "SharedFunctionInfo") {
+                    ordered_sfis.push(id);
+                }
+            }
+        }
+    }
     let ts = table.tagged_size as usize;
     let d = crate::decompile::Decompiler::new(&cache, &table);
     let mut entries = serde_json::Map::new();
@@ -835,6 +930,48 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
             continue;
         }
         let name = d.sfi_name(id);
+        // 顺序配对模式：SFI 在 ordered_sfis 里的位置 → names[pos]
+        let ordered_prop: Option<String> = probe_names.as_ref().and_then(|names| {
+            let pos = ordered_sfis.iter().position(|x| *x == id)?;
+            names.get(pos).cloned()
+        });
+        if let Some(prop) = ordered_prop {
+            if let Some(bca) = d.sfi_function_data_slots().iter().find_map(|slot| {
+                match cache.slot_at(id, *slot) {
+                    Some(crate::serializer::SlotValue::Ref(crate::serializer::Ref::Object(b)))
+                        if cache.obj(*b).ty.is(&table, "BytecodeArray") => Some(*b),
+                    _ => None,
+                }
+            }) {
+                let pool = d
+                    .bca_constant_pool_slot()
+                    .pipe(|s| cache.slot_at(bca, s))
+                    .and_then(|v| v.as_ref())
+                    .and_then(|r| cache.ref_object(r));
+                if let Some(pool) = pool {
+                    for i in 0..cache.array_len(pool) {
+                        if let Some(crate::serializer::Elem::Ref(crate::serializer::Ref::RoRef(c, o))) =
+                            cache.array_elem(pool, i)
+                        {
+                            let key = format!("{c}/{o}");
+                            let val = serde_json::Value::String(prop.clone());
+                            match entries.get(&key) {
+                                Some(v) if v != &val => {
+                                    entries.remove(&key);
+                                    conflicted.insert(key);
+                                }
+                                Some(_) => {}
+                                None if conflicted.contains(&key) => {}
+                                None => {
+                                    entries.insert(key, val);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            continue;
+        }
         // 名字编码：p_<ident> 或 p_hex_<hex(utf8)>
         let prop: String = if let Some(hex) = name.strip_prefix("p_hex_") {
             let bytes: Option<Vec<u8>> = (0..hex.len() / 2)

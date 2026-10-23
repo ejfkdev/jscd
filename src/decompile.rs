@@ -522,7 +522,10 @@ fn read_scope_with<'a>(
         cfg.context_local_count_slot.unwrap_or(3)
     };
     let (param_off, clc_off) = if cfg.position_info_early {
-        (ts + 8, ts + 16)
+        // 13.x+：flags(u32)@ts，之后紧跟 ParameterCount/ContextLocalCount —— 按**槽**算
+        // （2*ts / 3*ts）。早先写成 ts+8 / ts+16，在指针压缩构建（ts=4）上多跳一格：
+        // clc 读到 177 之类的垃圾，函数名/参数名整段丢失（Electron 42+ 全是 _anon_）。
+        (2 * ts, 3 * ts)
     } else if cfg.parameter_names_first {
         // 6.x：数值域多一格 StackLocalCount（Flags/Param/Stack/CLC）→ ParamCount 在 CLC 前两格
         ((clc_slot - 2) * ts, clc_slot * ts)

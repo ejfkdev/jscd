@@ -41,6 +41,11 @@ pub struct Disassembler<'a> {
     /// 没有它只能回落成空字符串（node24 的 `count` 因此成了匿名函数，
     /// 调用点 `count(...)` 找的是全局名 → 生成器 fixture 全空）
     ro_map: Option<std::rc::Rc<crate::decompile::RoMap>>,
+    /// 全局函数声明的名字（`DeclareGlobals` 常量表里 name→SFI）。
+    /// V8 13+（沙箱构建）的 SFI 常常**没有名字**（`HasSharedName()` 为 false，
+    /// V8 自己的 --print-bytecode 也打空），但脚本顶层的 DeclareGlobals 常量表里
+    /// 明确记着 `(名字, SFI)` 对 —— 用它给全局函数命名，产物才跑得起来。
+    declared: std::cell::OnceCell<std::collections::HashMap<ObjId, String>>,
 }
 
 impl<'a> Disassembler<'a> {
@@ -94,7 +99,84 @@ impl<'a> Disassembler<'a> {
             layout,
             source_len: 0,
             ro_map: None,
+            declared: std::cell::OnceCell::new(),
         }
+    }
+
+    /// `DeclareGlobals` 常量表 → {SFI: 名字}（只算全局函数声明）。
+    fn declared_names(&self) -> &std::collections::HashMap<ObjId, String> {
+        self.declared.get_or_init(|| {
+            let mut map = std::collections::HashMap::new();
+            let top = self.cache.top_sfi;
+            let Some(bca) = self.sfi_function_data_slots().iter().find_map(|slot| {
+                match self.cache.slot_at(top, *slot) {
+                    Some(SlotValue::Ref(Ref::Object(b)))
+                        if self.cache.obj(*b).ty.is(self.table, "BytecodeArray") =>
+                    {
+                        Some(*b)
+                    }
+                    _ => None,
+                }
+            }) else {
+                return map;
+            };
+            let pool = self
+                .cache
+                .slot_at(bca, self.bca_constant_pool_slot())
+                .and_then(|v| v.as_ref())
+                .and_then(|r| self.cache.ref_object(r));
+            let Some(pool) = pool else {
+                return map;
+            };
+            let ts = self.layout.tagged_size;
+            let names = &self.table.runtime_names;
+            let decl_idx = names.iter().position(|n| n == "DeclareGlobals");
+            // 解码顶层字节码：`LdaConstant [k]` 后紧跟 `CallRuntime [DeclareGlobals]`
+            let _ = ts;
+            for v in 0..self.cache.array_len(pool) {
+                let Some(Elem::Ref(r)) = self.cache.array_elem(pool, v) else {
+                    continue;
+                };
+                let Some(obj) = self.cache.ref_object(r) else {
+                    continue;
+                };
+                // 候选：偶数长度、条目交替 (String, SFI)
+                let n = self.cache.array_len(obj);
+                if n < 2 || !n.is_multiple_of(2) {
+                    continue;
+                }
+                let mut got = Vec::new();
+                let mut ok = true;
+                for i in (0..n).step_by(2) {
+                    let name = match self.cache.array_elem(obj, i) {
+                        Some(Elem::Ref(r)) => name_of_ref_ro(self.cache, self.table, self.ro_map.as_deref(), r),
+                        _ => None,
+                    };
+                    let sfi = match self.cache.array_elem(obj, i + 1) {
+                        Some(Elem::Ref(Ref::Object(s)))
+                            if self.cache.obj(s).ty.is(self.table, "SharedFunctionInfo") => Some(s),
+                        _ => None,
+                    };
+                    match (name, sfi) {
+                        (Some(nm), Some(s)) if !nm.is_empty() => got.push((s, nm)),
+                        _ => {
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+                if ok && !got.is_empty() {
+                    // 只认"全是全局函数声明"的那张表；`DeclareGlobals` 的 runtime 名若可查，
+                    // 也要求一致（查不到时按结构兜底）。
+                    let _ = decl_idx;
+                    for (s, nm) in got {
+                        map.entry(s).or_insert(nm);
+                    }
+                    break;
+                }
+            }
+            map
+        })
     }
 
     /// 附上只读堆名表（`--ro-map`）。
@@ -125,6 +207,17 @@ impl<'a> Disassembler<'a> {
     /// name_or_scope_info 为 String 直接用；为 ScopeInfo 时读 FunctionName
     /// （function_variable_info.name），空则回落 inferred_function_name。
     pub fn sfi_name(&self, id: ObjId) -> String {
+        let name = self.sfi_name_scoped(id);
+        if name.is_empty() {
+            if let Some(n) = self.declared_names().get(&id) {
+                return n.clone();
+            }
+        }
+        name
+    }
+
+    /// ScopeInfo 里的函数名（老路径；沙箱构建常为空）。
+    fn sfi_name_scoped(&self, id: ObjId) -> String {
         if std::env::var("JSCD_DBG_SFI").is_ok() {
             let n = self.cache.array_len(id).max(16);
             let mut out = Vec::new();
@@ -373,9 +466,11 @@ impl<'a> Disassembler<'a> {
             return (function_name, inferred);
         }
 
-        // 13.x：flags+padding(ts+8) | parameter_count(ts+8) | context_local_count(ts+16)
-        let param_off = ts + 8;
-        let clc_off = ts + 16;
+        // 13.x：flags(u32)@ts | parameter_count@2*ts | context_local_count@3*ts
+        // （按**槽**算 —— 早先写成 ts+8 / ts+16，指针压缩构建（ts=4）上整体多跳一格，
+        //   函数名槽算成 150+ 的垃圾，Electron 42+ 的函数全成 `_anon_N`）
+        let param_off = 2 * ts;
+        let clc_off = 3 * ts;
         let _ = param_off;
         let Some(n) = self
             .cache

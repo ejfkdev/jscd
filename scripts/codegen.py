@@ -144,6 +144,7 @@ NEEDED_V8_FILES = [
     "src/heap-symbols.h",
     "src/objects/objects-definitions.h",
     "src/objects-definitions.h",
+    "src/objects/object-list-macros.h",
     "src/runtime/runtime.h",
     "src/objects/bytecode-array.tq",
     "src/objects/code.tq",
@@ -166,7 +167,9 @@ REPO_URL = "https://github.com/nodejs/node"
 V8_REPO = None
 V8_TAGGED_SIZE = 8
 V8_SANDBOX = None
-V8_TAG_RE = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
+V8_PATCHES = []          # --v8-patches：Electron 的 V8 补丁目录（.patch），只应用命中取数文件的 hunk
+V8_HASHES = {}           # --v8-hash TAG=0x...：真缓存里读到的 version_hash（Electron 会加盐）
+V8_TAG_RE = re.compile(r"^(?:\d+\.\d+\.\d+\.\d+|[0-9a-f]{40})$")
 
 
 def is_v8_tag(tag):
@@ -290,9 +293,109 @@ def _batch_fetch(tag, missing, repo=None):
                 f.write(payload.decode("utf-8", "replace"))
 
 
+_PATCH_CACHE = {}
+
+
+def _apply_hunks(text, hunks):
+    """把 unified diff 的 hunk 顺序应用到 text；找不到上下文的 hunk 跳过并告警。"""
+    lines = text.splitlines(keepends=True)
+    cursor = 0
+    applied = 0
+    for old, new in hunks:
+        # old/new 都含行尾换行；在 lines 里从 cursor 起找 old 序列
+        n = len(old)
+        found = -1
+        for i in range(cursor, len(lines) - n + 1):
+            if lines[i:i + n] == old:
+                found = i
+                break
+        if found < 0:
+            continue
+        lines[found:found + n] = new
+        cursor = found + len(new)
+        applied += 1
+    return "".join(lines), applied
+
+
+def _parse_patch(text):
+    """→ {path: [(old_lines, new_lines), ...]}
+
+    注意：遇到新的 `diff --git` 要**先把上一个 hunk 归属到旧路径**再切路径 ——
+    先前版本把挂起的 hunk 记到了下一个文件上（bytecodes.h 的 hunk 变成别处的改动，
+    补丁看起来"打不上"）。
+    """
+    out = {}
+    path = None
+    old, new = [], []
+    in_hunk = False
+
+    def flush():
+        nonlocal old, new, in_hunk
+        if path and in_hunk and (old or new):
+            out.setdefault(path, []).append((old, new))
+        old, new, in_hunk = [], [], False
+
+    for line in text.splitlines(keepends=True):
+        if line.startswith("diff --git "):
+            flush()
+            parts = line.rstrip("\n").split(" b/")
+            path = parts[-1] if len(parts) > 1 else None
+            continue
+        if line.startswith("@@ "):
+            flush()
+            in_hunk = True
+            continue
+        if not in_hunk:
+            continue
+        if line.startswith("\\"):
+            continue
+        tag, body = line[:1], line[1:]
+        if tag == " ":
+            old.append(body)
+            new.append(body)
+        elif tag == "-":
+            old.append(body)
+        elif tag == "+":
+            new.append(body)
+    flush()
+    return out
+
+
+def _patched(tag, path, text):
+    """按 --v8-patches 给取数文件打补丁（Electron 会改 bytecodes.h 等）。"""
+    if not V8_PATCHES:
+        return text
+    key = (tag, path)
+    if key in _PATCH_CACHE:
+        return _PATCH_CACHE[key]
+    cur = text
+    for pf in V8_PATCHES:
+        try:
+            hunks_by_path = _parse_patch(open(pf, encoding="utf-8", errors="replace").read())
+        except OSError as e:
+            print(f"warn: read patch {pf}: {e}", file=sys.stderr)
+            continue
+        hunks = hunks_by_path.get(path)
+        if not hunks:
+            continue
+        cur, applied = _apply_hunks(cur, hunks)
+        if applied != len(hunks):
+            print(f"warn: {os.path.basename(pf)}: {path} applied {applied}/{len(hunks)} hunks",
+                  file=sys.stderr)
+        else:
+            print(f"patch {os.path.basename(pf)}: {path} ok", file=sys.stderr)
+    _PATCH_CACHE[key] = cur
+    return cur
+
+
 def git_show(tag, path):
-    """历史入口：等价于取 deps/v8/<path>。"""
-    return repo_file(tag, path, in_v8=True)
+    """历史入口：等价于取 deps/v8/<path>（V8 标签/修订下会应用 --v8-patches）。"""
+    text = repo_file(tag, path, in_v8=True)
+    if text is None:
+        return None
+    if V8_PATCHES and is_v8_tag(tag):
+        return _patched(tag, path, text)
+    return text
 
 
 def parse_v8_version(tag):
@@ -1551,7 +1654,11 @@ def normalize_operand_types(table):
 
 
 def ver_key(version):
-    return tuple(int(x) for x in version.lstrip("v").split("."))
+    """版本号 → 可排序元组。V8 修订 sha（40 位十六进制）排在所有数字版本之后。"""
+    try:
+        return tuple(int(x) for x in version.lstrip("v").split("."))
+    except ValueError:
+        return (10 ** 9,)
 
 
 def load_index(path, floor=None):
@@ -1620,6 +1727,10 @@ def main():
                     help="V8 版本号（如 15.6.75.19），可多次；用于 Electron/Chrome 独有版本")
     ap.add_argument("--v8-tagged-size", type=int, default=8,
                     help="--v8-tag 构建的 kTaggedSize（Chromium/Electron 是 4 = 指针压缩）")
+    ap.add_argument("--v8-hash", action="append", default=[],
+                    help="TAG=0x...：用真缓存里读到的 version_hash 覆盖计算值（Electron 加盐）")
+    ap.add_argument("--v8-patches", default=None,
+                    help="Electron 的 V8 补丁目录（*.patch）：取数时把命中文件的 hunk 打上")
     ap.add_argument("--v8-sandbox", choices=["auto", "on", "off"], default="auto",
                     help="--v8-tag 构建是否开 V8 sandbox（auto：ts==4 即视为开）")
     ap.add_argument("--v8-label", action="append", default=[],
@@ -1632,8 +1743,17 @@ def main():
     args = ap.parse_args()
     NODE = args.node
     OFFLINE = args.offline
-    global V8_REPO, V8_TAGGED_SIZE, V8_SANDBOX
+    global V8_REPO, V8_TAGGED_SIZE, V8_SANDBOX, V8_PATCHES, V8_HASHES
     V8_REPO = args.v8_repo
+    if args.v8_patches:
+        V8_PATCHES = sorted(glob.glob(os.path.join(args.v8_patches, "*.patch")))
+    for item in args.v8_hash:
+        if "=" in item:
+            k, v = item.split("=", 1)
+            try:
+                V8_HASHES[k.strip()] = int(v.strip(), 0)
+            except ValueError:
+                ap.error(f"bad --v8-hash value: {item}")
     V8_TAGGED_SIZE = args.v8_tagged_size
     V8_SANDBOX = None if args.v8_sandbox == "auto" else (args.v8_sandbox == "on")
     v8_labels = {}
@@ -1770,6 +1890,10 @@ def main():
         src_d = git_show(tag, "src/objects/objects-definitions.h") or git_show(
             tag, "src/objects-definitions.h"
         )
+        # 根列表里的 TDZ_HOLE_LIST 定义在 object-list-macros.h；早先没取这个文件，
+        # 该条目被整条丢掉 → 从 index 40 起所有根名/根索引**整体错位一格**
+        # （Electron/Chrome 的 V8 sandbox 构建因此把 BytecodeArray 认成 TrustedByteArray）。
+        src_d = "\n".join(x for x in (src_d, git_show(tag, "src/objects/object-list-macros.h")) if x)
         src_rt = git_show(tag, "src/runtime/runtime.h")
         src_intr = git_show(tag, "src/interpreter/interpreter-intrinsics.h")
         # BytecodeArray 定义位置随版本移动：9.x–11.x 在 objects/code.tq，12.x+ 在 objects/bytecode-array.tq
@@ -1883,7 +2007,7 @@ def main():
             p = [int(x) for x in e_v8.split(".")]
             versions.append({
                 "v8": e_v8,
-                "hash": v8_hash(table["hash"]["algorithm"], *p),
+                "hash": V8_HASHES.get(tag) or v8_hash(table["hash"]["algorithm"], *p),
                 "node": e["version"],
                 "table": file_of_content[content_key],
             })

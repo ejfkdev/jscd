@@ -1381,3 +1381,34 @@ manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--
 （或宏展开序与源码不同）。**没验证通过就不发这些表**：宁可"不支持 + 明确报错"，
 也不能静默把字节码错位解出来。要支持 Electron 37–45，下一步是从真缓存反推 opcode/根表
 （类似 11.20 对 Electron 19 做的校准），而不是只从源码生成。
+
+## 13. Electron 42/44/45 的**真值校准**（表已入库，语义仍在收尾）
+
+上一节说"只能从真缓存反推"。这一轮把反推做成了**可复现的流程**：
+
+1. **拿到构建的真实 V8 源码**：Electron 的 V8 不是 v8 标签，而是 Chromium 在
+   `DEPS` 里 pin 的 revision（Chromium 148/152/156 分别是 `ba595dc…` / `a11d960c…` /
+   `392e4442…`）。`scripts/codegen.py` 新增 `--v8-repo/--v8-tag`（直接吃 revision sha），
+   再把 Electron 的 `patches/v8/*.patch` 里命中取数文件的 hunk 打上（`--v8-patches`）——
+   例如 `cherry-pick-dc3104ddb997.patch` 给 14.8/15.2 加了 extra bytecode
+   `DefineNamedOwnPropertyInLiteral`，不打补丁的 opcode 表会**整体差一**。
+2. **验证 opcode 表**：用目标构建自己的 `--print-bytecode` 采集 `字节 → 名字`，
+   与表逐条比对（14.8/15.2/15.6 各 174-176 个 opcode，**0 不一致**）。
+3. **验证根表**：用 `--trace-serializer` 采集 `Encoding root N: <Map(TYPE)>`，
+   与表的根名逐条比对。这一步揪出 15.6 的 **`TDZ_HOLE_LIST` 丢失**：它定义在
+   `src/objects/object-list-macros.h`，早先取数没取这个文件 → 从 index 40 起
+   所有根索引**整体错位一格**（BytecodeArray 认成 TrustedByteArray）。
+4. **修沙箱布局**：`ScopeInfo` 的数值域偏移写死成 `ts+8 / ts+16`（8 字节基线），
+   指针压缩构建（ts=4）上多跳一格 → clc 读成 177、函数名槽算成 150+；
+   两处（`decompile::read_scope_with`、`disasm::scope_name_slots_with`）都改成
+   `2*ts / 3*ts`。`BytecodeArray.length`、`functions` 子命令同理。
+5. **函数名**：沙箱构建的 SFI 常常没有名字（V8 自己的 printer 也打空），但
+   `ScopeInfo.function_variable_info_name` 里有（多为只读堆引用）——配上同构建
+   `ro-map` 就能还原（`function tick(a0)`）。`ro-map` 新增 `--names <列表>`：
+   探针函数名读不出来时按声明顺序配对（探针里不要夹"runner"函数，否则会整体错位一格）。
+
+**当前状态（诚实版）**：Electron 42（14.8）的 `call_once` 能反出正确的函数名/属性名/字节码；
+9 个 fixture 的行为对拍 **2 通过 / 7 有差异**（`arith`、`closure` 全对），差异集中在
+上下文变量计数、BigInt 字面量、类装配、生成器等 —— opcode 编号已确认无误，问题在
+反编译器的**语义层**（14.8/15.x 的寄存器/上下文使用方式），下一轮继续。表与解析链路
+（14.8/15.2/15.6 + 对应观察到的 version_hash）已经入库，Node 侧 144 项矩阵零回归。
