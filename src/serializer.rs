@@ -237,6 +237,8 @@ struct Walker<'a> {
     objects: Vec<Object>,
     hot: HotRing,
     pending: std::collections::HashMap<u32, Vec<(ObjId, usize)>>,
+    /// id the next kRegisterPendingForwardRef gets
+    pending_next: u32,
     /// 6.x 的 `*WithSkip` 前缀读到的待跳过字节数：值落在跳过之后的位置，
     /// 由对象内容循环统一记账（槽指针 += skip，再写值）。
     extra_skip: usize,
@@ -616,7 +618,12 @@ impl<'a> Walker<'a> {
             Ok(SlotValue::Ref(Ref::RoRef(u32::MAX, i as u32)))
         } else if Some(b) == self.opt_tag("kRegisterPendingForwardRef") {
             // V8 8.7: does NOT read a putint — just registers current slot as pending
-            Ok(SlotValue::PendingRef(0))
+            // ...but its id is implicit: the index in V8's `unresolved_forward_refs_`, i.e.
+            // registration order. V8 clears that vector whenever nothing is outstanding,
+            // so numbering restarts at 0 then (see the resolve side).
+            let pid = self.pending_next;
+            self.pending_next += 1;
+            Ok(SlotValue::PendingRef(pid))
         } else if Some(b) == self.opt_tag("kClearedWeakReference") {
             Ok(SlotValue::ClearedWeak)
         } else if Some(b) == self.opt_tag("kWeakPrefix")
@@ -849,6 +856,36 @@ impl<'a> Walker<'a> {
             start_offset: tag_offset,
             slots: Vec::with_capacity(size_words.min(64)),
         });
+        // V8 8.7 serializes the map *before* allocating the object (the same change that
+        // brought kNewMetaMap and pending forward refs), so the kNextChunk its allocation
+        // triggers comes right after the map: `kNewObject size <map> kNextChunk <space> ...`.
+        // Allocating first put the first object of every chunk at the tail of the previous
+        // one; every later address in that chunk drifted by its size and backrefs missed
+        // (or hit the wrong object: an ObjectBoilerplateDescription whose key resolved to
+        // itself sent object_constant into infinite recursion). Older legacy builds emit
+        // kNextChunk before kNewObject, and there a kNextChunk after the map belongs to a
+        // nested child, so this only applies when the table has kNewMetaMap.
+        let map_first = self.legacy.is_some() && self.opt_tag("kNewMetaMap").is_some();
+        let mut map = None;
+        if map_first {
+            // a new map object allocates in map space; don't let it eat our alignment hint
+            let align = self.legacy.as_mut().map_or(0, |l| std::mem::take(&mut l.align));
+            map = Some(self.parse_ref(depth + 1)?);
+            let t_next = self.opt_tag("kNextChunk");
+            while t_next.is_some()
+                && self.peek() == t_next
+                && self.data.get(self.pos + 1).copied() == Some(space)
+            {
+                self.byte()?;
+                self.byte()?;
+                if let Some(l) = self.legacy.as_mut() {
+                    l.next_chunk(space);
+                }
+            }
+            if let Some(l) = self.legacy.as_mut() {
+                l.align = align;
+            }
+        }
         if let Some(l) = self.legacy.as_mut() {
             l.allocate(space, byte_size as u32, id);
             if std::env::var("JSCD_DBG_LEGACY").is_ok() && (id >= 18) {
@@ -859,7 +896,10 @@ impl<'a> Walker<'a> {
                 );
             }
         }
-        let map = self.parse_ref(depth + 1)?;
+        let map = match map {
+            Some(m) => m,
+            None => self.parse_ref(depth + 1)?,
+        };
         self.push_slot(id, 0, map);
 
         // 老族（≤8.4）没有 pending forward ref 机制（表里没有这个标签）→ 跳过这段解析。
@@ -877,6 +917,9 @@ impl<'a> Walker<'a> {
                             }
                         }
                         self.pending.remove(&pid);
+                        if self.pending.is_empty() {
+                            self.pending_next = 0;
+                        }
                     }
                     _ => break,
                 }
@@ -1183,6 +1226,7 @@ pub fn parse_with<'a>(
         objects: Vec::new(),
         hot: HotRing::default(),
         pending: std::collections::HashMap::new(),
+        pending_next: 0,
         extra_skip: 0,
         table,
     };
@@ -1247,7 +1291,11 @@ pub fn parse_with<'a>(
                     }
                     let t_new = w.tag("kNewObject")?;
                     let n_sp = w.n_spaces();
-                    if legacy_tolerant && (t_new..t_new + n_sp).contains(&b) {
+                    // 8.7 (kNewMetaMap builds) no longer pre-allocates deferred objects: the
+                    // referencing slot got a pending forward ref, and here the object comes as
+                    // a plain kNewObject whose map is followed by kResolvePendingForwardRef.
+                    let map_first = w.opt_tag("kNewMetaMap").is_some();
+                    if legacy_tolerant && !map_first && (t_new..t_new + n_sp).contains(&b) {
                         // 老族 deferred 条目（V8 `DeserializeDeferredObjects`）：
                         //   kNewObject+space | backref | size | 剩余槽
                         // backref 的**编码随版本**：6.x 是一个位域 uint32（空间号在标签里），
