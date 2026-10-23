@@ -1343,7 +1343,7 @@ Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_c
 （探针与目标缓存必须用同一个二进制编译）。Electron 22（x64）用同构建探针：
 36 个行为 fixture **36/36 逐用例一致**（fixture：`tests/fixtures/jsc/electron22-*`）。
 
-## 12. 版本盘点（2026-10-23）：Node 26.12.1 覆盖；Electron 37–45 暂不支持（原因已定位）
+## 12. 版本盘点（2026-10-23）：Node 26.12.1 覆盖；Electron 37–45 的差异（已由 §13/§14 解决）
 
 **Node**：最新 `v26.12.1`（2026-10-21）的 V8 仍是 **14.6.202.34**，与 26.10.0 共用一张表。
 manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--index-entries` 只改索引、
@@ -1382,7 +1382,7 @@ manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--
 也不能静默把字节码错位解出来。要支持 Electron 37–45，下一步是从真缓存反推 opcode/根表
 （类似 11.20 对 Electron 19 做的校准），而不是只从源码生成。
 
-## 13. Electron 42/44/45 的**真值校准**（表已入库，语义仍在收尾）
+## 13. Electron 37–45 的**真值校准**（表已入库）
 
 上一节说"只能从真缓存反推"。这一轮把反推做成了**可复现的流程**：
 
@@ -1428,3 +1428,46 @@ Electron 44/45（15.2/15.6）`arith` 已一致，`call_once`/`closure` 仍有上
 （`opcode 0xf9 out of range`）—— 现在按提取到的尺寸选 Flag8/Flag16。
 表与解析链路（14.8/15.2/15.6 + 对应观察到的 version_hash）已经入库，
 Node 侧 144 项矩阵 + 20 个整脚本零回归。
+
+## 14. Electron 37–45 补齐（2026-10-23）
+
+§13 的流程在 42/44/45 上跑通后，本轮把剩下的主版本全部补齐：
+**37（13.8）/ 38（14.0）/ 39（14.2）/ 40（14.4）/ 41（14.6）/ 43（15.0）**。
+每张表仍由 Chromium `DEPS` 的 v8_revision + Electron `patches/v8` 生成，再用目标构建自己的
+`--print-bytecode` / `--trace-serializer` 校验：opcode 逐字节一致，字符串根 208–250 条全对齐
+（唯一"不一致"是 `FixedArrayMap`/`FixedCOWArrayMap` 共用 FIXED_ARRAY_TYPE，属于检查脚本的误报）。
+
+行为侧：Electron 37–45 每个构建跑 9 个 fixture（call_once/arith/closure/string_regex/
+class_basic/generator/async_await/try_catch_after/num_literals），**9/9 全部逐用例一致**。
+
+这一轮新遇到的版本差异（都已修）：
+
+1. **13.8 起脚本上下文没有 extension 槽**：Electron 37 顶层 `let calls` 编译成
+   `StaCurrentContextSlot [2]`，而 12.4–13.6（node22/24）是 `[3]`。`script_ctx_base()`
+   的 +1 只能用在 12.4–13.6；13.8+ 用 `min_context_slots`，否则顶层变量名解析成 `__ctx.ctx2`
+   （call_once 的 `calls` 全是 NaN）。
+2. **15.0 的 `HasOuterScopeInfo` 仍是 22**：`scope-info.tq` 到 15.0 还带 `is_asm_module` 一位，
+   **15.2 起**删掉该位、位次前移到 21。按 ">=15 → 21" 一刀切会让 15.0 的闭包读不到外层
+   ScopeInfo（closure 返回 null）；14.x 一直是 22。
+3. **14.0–14.4 的 torque map 段是 32 条**（和 14.1/14.6/14.8 一样），默认 36 会让
+   ALLOCATION_SITE 与 NAME_FOR_PROTECTOR 段整体后移 4 —— protector 字符串根全部错位。
+4. **14.6 的 version_hash 撞车**：Node 26 与 Electron 41 都是 `0x97ffbd52`，但一个不开沙箱、
+   一个开，BytecodeArray/ScopeInfo 字段偏移不同。识别不能只按 hash 取一张表：
+   `tables_for(v8)` 返回该 minor 下全部候选，`parse_cache` 逐张解析并按**字节码总长度**打分
+   （错表往往能挂上 BytecodeArray，但 length 全是 0）。info 的 node 行会同时列出
+   `v26.12.1 / electron 41.10.7`。
+5. **13.8 的字符串拼接特化**：`Add_LhsIsStringConstant_Internalize <reg>, [slot]`
+   （左操作数在寄存器、右操作数在累加器）—— 不认它会把 `obj["c" + n]` 渲染成
+   `obj[__runtime.Add_LhsIsStringConstant_Internalize]`，取值 undefined。
+6. **codegen 的 C 字符串转义**：`\"` / `\'` / `\\` 三种要真解（表里就是 `"`、`'`、`\`），
+   `\x1e` 保持字面写法（与 V8 printer 口径一致）。修正后所有表的引号根名都对上了。
+
+健壮性（错表/坏缓存不再卡死）：
+
+- `read_scope_with` 的 context 名字数按 **对象尺寸与 payload 长度** 双重封顶；
+- `context_name_walk` 的 outer 链加 visited 检测（环 → 返回 None）；
+- 老族的"变量区扫 outer"回退只在 V8 ≤ 8 生效，且扫描上界同样按 payload 封顶。
+  14.6 的 Node 表误套 Electron 41 缓存时，之前会在这三处之一无限循环。
+
+最终数字：manifest **526 条**（517 Node 发布 + 9 个 Electron 构建）、**45 张表**；
+Node 侧 216 pass / 0 fail + 30 个整脚本全过；cargo 65 条测试；clippy 零告警。

@@ -543,6 +543,20 @@ fn read_scope_with<'a>(
         .and_then(crate::serializer::decode_smi_bytes)
         .unwrap_or(0) as usize;
 
+    // 门禁：ScopeInfo 的槽位不可能多过它自己的字节数，也不可能多过整份 payload。
+    // 表与缓存不是同一构建时（14.6 的 Node 与 Electron 共用 version_hash，但一个
+    // 不开沙箱、一个开，数值域偏移不同）clc 会读成天文数字，后面的名字循环会一直
+    // 跑不完；这里直接判失败，让外层去试另一种 tagged_size / 另一张表。
+    // `byte_size` 本身也可能是垃圾（长度字段同样读错），所以再按 payload 长度封顶。
+    let max_slots = cache
+        .obj(scope_id)
+        .byte_size
+        .min(cache.payload().len())
+        / ts.max(1);
+    if n > max_slots || param_count as usize > max_slots {
+        return None;
+    }
+
     // 变量区起点（字节）
     let vpart_slot = if legacy {
         cfg.variable_part
@@ -692,7 +706,19 @@ fn read_scope_with<'a>(
             "[scope-outer] id={scope_id} flags={flags:#x} bit={} cursor_slot={} len={}",
             cfg.has_outer_bit.unwrap_or_else(|| {
                 let maj: u32 = table.v8.split('.').next().and_then(|x| x.parse().ok()).unwrap_or(0);
-                if maj <= 6 { 20 } else if maj == 7 || maj >= 15 { 21 } else { 22 }
+                let minor: u32 = table
+                    .v8
+                    .split('.')
+                    .nth(1)
+                    .and_then(|x| x.parse().ok())
+                    .unwrap_or(0);
+                if maj <= 6 {
+                    20
+                } else if maj == 7 || maj > 15 || (maj == 15 && minor >= 2) {
+                    21
+                } else {
+                    22
+                }
             }),
             cursor / ts,
             cache.array_len(scope_id)
@@ -713,9 +739,18 @@ fn read_scope_with<'a>(
                 // 读错位的后果：闭包捕获的外层变量解不出名字 → 只剩 `__ctx.ctxN`，
                 // 而且外层赋值被优化器当死存储删掉（Electron 44/45 的 closure 返回 null）。
                 let maj: u32 = table.v8.split('.').next().and_then(|x| x.parse().ok()).unwrap_or(0);
+                let minor: u32 = table
+                    .v8
+                    .split('.')
+                    .nth(1)
+                    .and_then(|x| x.parse().ok())
+                    .unwrap_or(0);
+                // 15.2 起 scope-info.tq 删掉了 `is_asm_module` 一位 → HasOuterScopeInfo
+                // 从 22 前移到 21；15.0/15.1 仍带该位（Electron 43 的 inc 因此读不到
+                // 外层作用域，闭包变量全成 `__ctx.ctxN`）。
                 if maj <= 6 {
                     20
-                } else if maj == 7 || maj >= 15 {
+                } else if maj == 7 || maj > 15 || (maj == 15 && minor >= 2) {
                     21
                 } else {
                     22
@@ -734,9 +769,14 @@ fn read_scope_with<'a>(
     // 是 **10 位** → HasOuterScopeInfo 在 25 而不是 22；ReceiverInfo/PositionInfo 有无
     // 也不同）→ 按 flag+cursor 读不到。直接在变量区里扫一个 ScopeInfo 引用：外层作用域
     // 是本作用域变量区里唯一的 ScopeInfo，而且这里只拿它解析变量名（有类型校验）。
-    if scope.outer.is_none() {
+    if scope.outer.is_none() && legacy {
         let start = names_off / ts;
-        let end = cache.array_len(scope_id) + 2;
+        // 长度字段在错表下可能是天文数字：按 payload 封顶，否则这个倒序扫描
+        // 会从 1.8e19 一路往下（现代构建本就走不到这里，但坏输入不能卡死）。
+        let end = cache
+            .array_len(scope_id)
+            .min(cache.payload().len() / ts.max(1))
+            + 2;
         for k in (start..end).rev() {
             if let Some(Ref::Object(o)) = cache.slot_at(scope_id, k).and_then(|v| v.as_ref()) {
                 if o != scope_id && cache.obj(o).ty.is(table, "ScopeInfo") {
@@ -1170,12 +1210,11 @@ impl<'a> Decompiler<'a> {
         let major: u32 = it.next().and_then(|x| x.parse().ok()).unwrap_or(0);
         let minor: u32 = it.next().and_then(|x| x.parse().ok()).unwrap_or(0);
         // 12.4–13.6：脚本上下文多一个 extension 槽，变量从 min+1 起。
-        // **14.x 起这个槽没了**（`LdaCurrentScriptContextSlot` 一族被
-        // `LdaCurrentContextSlot` 取代，槽号整体 -1）——实测 twoclasses：
-        // 13.6 是 `LdaCurrentScriptContextSlot [3]/[4]`，14.6 是
-        // `LdaCurrentContextSlot [2]/[3]`，此时再 +1 会把两个槽都算成第一个变量
-        // （输出里 A/B 都成了 A）。
-        if (major == 12 && minor >= 4) || major == 13 {
+        // **13.8 起这个槽没了**（`LdaCurrentScriptContextSlot` 一族被
+        // `LdaCurrentContextSlot` 取代，槽号整体 -1）——Electron 37（13.8）实测
+        // 顶层 `let calls` 是 `StaCurrentContextSlot [2]`；13.6（node24）仍是 [3]。
+        // 14.x 沿用 13.8 的版式。再 +1 会把变量槽算成作用域外 → 名字掉成 `__ctx.ctx2`。
+        if (major == 12 && minor >= 4) || (major == 13 && minor < 8) {
             min + 1
         } else {
             min
@@ -3622,7 +3661,13 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     fn context_name_walk(&self, start: ObjId, slot: usize, depth: usize, base: usize) -> Option<String> {
         let mut sid = start;
         let mut hops = depth;
+        // 坏缓存/错表会把 outer 链读成环，且 `depth` 也可能是垃圾值：
+        // 无环校验时这里会永远转下去（14.6 Node 表碰 Electron 沙箱缓存就是这样卡死的）。
+        let mut seen = std::collections::HashSet::new();
         loop {
+            if !seen.insert(sid) {
+                return None;
+            }
             let scope = self.d.scope_by_id(sid)?;
             let has_ctx = !scope.context_locals.is_empty() || scope.locals_table.is_some();
             if has_ctx {
@@ -7817,7 +7862,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             // —— acc 是另一个操作数，语义就是 `reg + acc`（bytecodes.h 的注释：kReg /* lhs */、
             // acc 读写；`"c" + n` 走这条）。不认它会把 `obj["c" + n]` 渲染成
             // `obj[__runtime.Add_StringConstant_Internalize]` → 取到 undefined。
-            "Add_StringConstant_Internalize" => {
+            // 13.8（Electron 37）另有一版 `Add_LhsIsStringConstant_Internalize <reg>, [slot]`：
+            // 左操作数仍是寄存器里的字符串常量，累加器是右操作数，语义相同。
+            "Add_StringConstant_Internalize" | "Add_LhsIsStringConstant_Internalize" => {
                 let l = self.reg_expr(&arg(0));
                 let r = self.acc.clone().unwrap_or(Expr::Hole);
                 self.acc = Some(Expr::Bin {

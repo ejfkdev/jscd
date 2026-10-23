@@ -378,20 +378,40 @@ fn node_version_key(node: &str) -> (u32, u32, u32) {
     (a, b, c)
 }
 
+/// 同一个 hash 下的排序键：Node 发布优先（`v` 前缀），其次按版本号。
+fn is_node_release(node: &str) -> (u8, u32, u32, u32) {
+    let (a, b, c) = node_version_key(node);
+    (u8::from(node.starts_with('v')), a, b, c)
+}
+
 /// 按 version_hash 精确查表 → 未命中则爆破。
 ///
 /// 同一个版本哈希会对应多个发布（同一 V8 版本的所有 Node 发布共用它）：
-/// 取**最新的那个**来显示 —— `info` 对 14.6 的缓存该说 v26.12.1，而不是最早登记的那条。
+/// 取**最新的 Node 发布**来显示 —— `info` 对 14.6 的缓存该说 v26.12.1，而不是最早登记的那条。
+/// 非 Node 发行版（Electron）若也共用这个 hash（14.6.202.34：Node 26 与 Electron 41
+/// 的盐值恰好相同），一并列出，避免误判缓存来源。
 pub fn identify(version_hash: u32) -> Identified {
     if let Some(m) = manifest() {
-        let best = m
-            .versions
-            .iter()
-            .filter(|v| v.hash == version_hash)
-            .max_by_key(|v| node_version_key(&v.node));
-        if let Some(v) = best {
+        let hits: Vec<_> = m.versions.iter().filter(|v| v.hash == version_hash).collect();
+        if let Some(v) = hits.iter().max_by_key(|v| is_node_release(&v.node)) {
+            let chosen_is_node = v.node.starts_with('v');
+            let mut others: Vec<&str> = hits
+                .iter()
+                .map(|x| x.node.as_str())
+                .filter(|n| *n != v.node.as_str())
+                // Node 侧同一 V8 版本有几十个补丁发布，只列发行版种类（Electron）；
+                // 若这个 hash 只有 Electron 条目，则保留各个 Electron 版本。
+                .filter(|n| !(chosen_is_node && n.starts_with('v')))
+                .collect();
+            others.sort_unstable();
+            others.dedup();
+            let node = if others.is_empty() {
+                leaked(v.node.as_str())
+            } else {
+                leaked(&format!("{} / {}", v.node, others.join(" / ")))
+            };
             return Identified {
-                node: leaked(v.node.as_str()),
+                node,
                 v8: leaked(v.v8.as_str()),
                 confidence: "exact",
             };
@@ -417,16 +437,35 @@ pub fn identify(version_hash: u32) -> Identified {
 
 /// 按识别到的 V8 版本取解析表；无内嵌表时返回 None（调用方走默认布局兜底）。
 pub fn table_for(v8: &str) -> Option<VersionTable> {
+    tables_for(v8).into_iter().next()
+}
+
+/// 同一个 V8 major.minor 下的**全部**表。
+///
+/// 一般只有一张；但不同构建可能共用 version_hash 而布局不同（14.6 的 Node 26
+/// 不开沙箱、Electron 41 开沙箱，hash 却相同）—— 这时只能按解析成功率挑。
+pub fn tables_for(v8: &str) -> Vec<VersionTable> {
     let v8_minor = v8.rsplit_once('.').map(|(a, _)| a).unwrap_or(v8);
-    let m = manifest().as_ref()?;
-    // manifest.versions 是完整 build 粒度（90 项），表是 major.minor 粒度（36 项）；
-    // 先找同 major.minor 的条目，再加载其表文件。
-    let entry = m
+    let Some(m) = manifest().as_ref() else {
+        return Vec::new();
+    };
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for entry in m
         .versions
         .iter()
-        .find(|v| v.v8.rsplit_once('.').map(|(a, _)| a) == Some(v8_minor))?;
-    let raw = table_map().get(entry.table.as_str())?;
-    serde_json::from_str(raw).ok()
+        .filter(|v| v.v8.rsplit_once('.').map(|(a, _)| a) == Some(v8_minor))
+    {
+        if !seen.insert(entry.table.as_str()) {
+            continue;
+        }
+        if let Some(raw) = table_map().get(entry.table.as_str()) {
+            if let Ok(t) = serde_json::from_str(raw) {
+                out.push(t);
+            }
+        }
+    }
+    out
 }
 
 /// 泄漏到 'static —— 版本字符串总量恒定（≤90 条 × 短字符串），进程级单例足够。

@@ -1,7 +1,43 @@
 {
- "generated_at": "2026-10-23T07:04:03+00:00",
+ "generated_at": "2026-10-23T10:34:43+00:00",
  "schema_version": 1,
  "versions": [
+  {
+   "hash": 2550119762,
+   "node": "electron 41.10.7",
+   "table": "v14_6.json",
+   "v8": "14.6.202.34"
+  },
+  {
+   "hash": 3235406482,
+   "node": "electron 38.8.6",
+   "table": "v14_0.json",
+   "v8": "14.0.365.10"
+  },
+  {
+   "hash": 3095044641,
+   "node": "electron 40.10.6",
+   "table": "v14_4.json",
+   "v8": "14.4.258.32"
+  },
+  {
+   "hash": 2404442679,
+   "node": "electron 39.8.10",
+   "table": "v14_2.json",
+   "v8": "14.2.231.22"
+  },
+  {
+   "hash": 782918285,
+   "node": "electron 43.8.3",
+   "table": "v15_0.json",
+   "v8": "15.0.245.31"
+  },
+  {
+   "hash": 3188140863,
+   "node": "electron 37.10.3",
+   "table": "v13_8.json",
+   "v8": "13.8.258.32"
+  },
   {
    "hash": 2170681234,
    "node": "electron 45.0.0",

@@ -701,6 +701,27 @@ def _roots_six_x(*sources):
     return out
 
 
+def c_string_literal(arg):
+    """C 字符串字面量 → 文本。
+
+    只解 `\\"` / `\\'` / `\\\\` 三种转义（引号字符本身就是根名的一部分）；
+    `\\x1e` 之类保持字面写法 —— 与 V8 `--trace-serializer` 的打印口径一致，
+    表里的根名也是给人看的，真放进控制字符反而看不见。
+    """
+    s = arg.strip()
+    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+        s = s[1:-1]
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s) and s[i + 1] in ('"', "'", "\\"):
+            out.append(s[i + 1])
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+
 def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
     if torque_count is None:
         torque_count = TORQUE_MAP_COUNT
@@ -732,11 +753,15 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
         """按顶层逗号切分宏实参。**必须跳过字符串字面量**：`V_(_, comma_string, ",")`
         的实参里就有逗号，早先会切成 `"` + `"` 两段，于是逗号字符串根的名字成了
         `String:`（空字面量）—— node24 的 `join(",")` 分隔符变成空串、结果全粘一起。"""
-        args, depth, cur, in_str = [], 0, "", None
+        args, depth, cur, in_str, esc = [], 0, "", None, False
         for ch in inner:
             if in_str:
                 cur += ch
-                if ch == in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == in_str:
                     in_str = None
                 continue
             if ch in ("\"", "'"):
@@ -800,7 +825,7 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
         if "INTERNALIZED_STRING" in gen:
             # 条目 V(_, name_string, "literal")：优先用字面量，否则去 _string 后缀
             if len(args) >= 3 and args[2].startswith('"'):
-                literal = args[2].strip('"')
+                literal = c_string_literal(args[2])
                 order.append("String:" + literal)
             else:
                 order.append("String:" + args[1].removesuffix("_string"))
@@ -902,6 +927,9 @@ TORQUE_MAP_COUNT_BY_VERSION = {
     "10_8": 25,   # node19
     "11_8": 34,   # node21：实测 delta +2（735 vs 737）
     "14_1": 32,   # node25：见下面 14.x 的说明
+    "14_0": 32,   # Electron 38：trace 实测 protector 根在 1020/1021/1022/1024
+    "14_2": 32,   # Electron 39：trace 实测 protector 根在 1022/1023/1024/1026
+    "14_4": 32,   # Electron 40：同 14.2（constructor 在 1023）
     "14_6": 32,   # node26
     "14_8": 32,   # Electron 42：trace 实测 protector 段（constructor/next/resolve/valueOf）
     #              在 1031/1032/1033/1035，表按 36 会整体 +4 —— 与 14.1/14.6 同为 32

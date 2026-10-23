@@ -388,15 +388,24 @@ fn parse_cache<'a>(
             return crate::serializer::parse_with(t_payload(data, &t), &t, &[]).map(|c| (h0, t, c));
         }
     }
-    // 候选表：精确识别到的排第一；识别不到（老族哈希算法不同）时逐个试
-    let mut candidates: Vec<crate::tables::VersionTable> = Vec::new();
-    if let Some(t) = crate::tables::table_for(ident.v8) {
-        candidates.push(t);
-    }
+    // 候选表：精确识别到的**全部**表排前面 —— 同一个 version_hash 可能有多种布局
+    // （14.6.202.34 同时被 Node 26 与 Electron 41 使用，后者开沙箱、字段偏移不同），
+    // 只能按解析结果打分挑。识别不到（老族哈希算法不同）时逐个试。
+    let mut candidates: Vec<crate::tables::VersionTable> = if ident.confidence == "exact" {
+        crate::tables::tables_for(ident.v8)
+    } else {
+        Vec::new()
+    };
     if candidates.is_empty() {
         candidates = crate::tables::all_tables();
     }
     let mut errors = Vec::new();
+    let mut best: Option<(
+        usize,
+        crate::header::Header,
+        crate::tables::VersionTable,
+        crate::serializer::CodeCache,
+    )> = None;
     for table in candidates {
         let Ok(h) = crate::header::Header::parse_with(data, &table.header) else {
             continue;
@@ -458,12 +467,19 @@ fn parse_cache<'a>(
             match crate::serializer::parse_with(payload, &t, &reservations) {
                 // 解析"读通"不等于读对：版本不匹配时（例如 V8 14.6 的 payload 撞上 13.6
                 // 的表）反序列化可能一路不报错，却读成没有函数、没有字节码的空壳 ——
-                // 输出只剩运行时前导，看着成功其实全是垃圾。这里必须过结构门禁。
-                Ok(c) if cache_has_code(&c, &t) => return Ok((h, t, c)),
-                Ok(_) => errors.push(format!(
-                    "{} tagged_size={ts}: parsed but contains no function",
-                    t.v8
-                )),
+                // 输出只剩运行时前导，看着成功其实全是垃圾。这里必须过结构门禁，
+                // 并且在多张候选表之间按"能读出多少个函数"挑最好的。
+                Ok(c) => {
+                    let score = cache_code_score(&c, &t);
+                    if score == 0 {
+                        errors.push(format!(
+                            "{} tagged_size={ts}: parsed but contains no function",
+                            t.v8
+                        ));
+                    } else if best.as_ref().is_none_or(|(s, ..)| score > *s) {
+                        best = Some((score, h.clone(), t.clone(), c));
+                    }
+                }
                 Err(e) => {
                     if errors.len() < 40 {
                         errors.push(format!("{} tagged_size={ts}: {e}", t.v8))
@@ -472,28 +488,55 @@ fn parse_cache<'a>(
             }
         }
     }
+    if let Some((_, h, t, c)) = best {
+        return Ok((h, t, c));
+    }
     Err(unsupported_msg(&ident, h0.version_hash, &errors))
 }
 
-/// 结构门禁：真实缓存里至少有一个挂着 `BytecodeArray` 的 SFI。
+/// 结构门禁评分：所有挂着 `BytecodeArray` 的 SFI 的字节码总长度。
 ///
-/// 空源码也会编出 `StackCheck; Return` 的顶层字节码，所以"一个都没有"只可能意味着
-/// 这张表跟这份 payload 不是一路货。
-fn cache_has_code(cache: &crate::serializer::CodeCache, table: &crate::tables::VersionTable) -> bool {
+/// 空源码也会编出 `StackCheck; Return` 的顶层字节码，所以"一个都没有 / 全为 0"只可能
+/// 意味着这张表跟这份 payload 不是一路货。多个候选表都可能"读通"时（14.6 的 Node 与
+/// Electron 共用 version_hash），按读出来的字节码量挑最像的 —— 错表往往能挂上
+/// BytecodeArray，却把 length 读成 0。
+fn cache_code_score(
+    cache: &crate::serializer::CodeCache,
+    table: &crate::tables::VersionTable,
+) -> usize {
     use crate::serializer::{Ref, SlotValue};
     let layout = crate::bytecode::FamilyLayout::from_table(table);
     let d = crate::disasm::Disassembler::new(cache, table, layout)
         .with_ro_map(embedded_ro_map(&table.v8, table.tagged_size as usize));
     let slots = d.sfi_function_data_slots();
-    (0..cache.objects.len()).any(|id| {
-        cache.obj(id).ty.is(table, "SharedFunctionInfo")
-            && slots.iter().any(|s| {
-                matches!(
-                    cache.slot_at(id, *s),
-                    Some(SlotValue::Ref(Ref::Object(b))) if cache.obj(*b).ty.is(table, "BytecodeArray")
-                )
-            })
-    })
+    let ts = table.tagged_size as usize;
+    let ba = table
+        .bytecode_array
+        .clone()
+        .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(ts));
+    let len_off = ba.off("length");
+    let cap = cache.payload().len();
+    let mut total = 0usize;
+    for id in 0..cache.objects.len() {
+        if !cache.obj(id).ty.is(table, "SharedFunctionInfo") {
+            continue;
+        }
+        let bca = slots.iter().find_map(|s| match cache.slot_at(id, *s) {
+            Some(SlotValue::Ref(Ref::Object(b))) if cache.obj(*b).ty.is(table, "BytecodeArray") => {
+                Some(*b)
+            }
+            _ => None,
+        });
+        if let Some(b) = bca {
+            let off = len_off.map(|o| cache.bca_rt_off(table, ts, b, o)).unwrap_or(ts);
+            let len = cache
+                .raw_at(b, off, ts)
+                .and_then(crate::serializer::decode_smi_bytes)
+                .unwrap_or(0) as usize;
+            total += len.min(cap);
+        }
+    }
+    total
 }
 
 /// 候选表全灭时的最终报错：把"版本对不对"和"payload 坏没坏"分开说。

@@ -318,15 +318,47 @@ fn electron22_ro_map_resolves_names_and_string_roots() {
 
 #[test]
 fn electron_14_8_to_15_6_closures_decompile() {
-    // Electron 42/44/45（V8 14.8/15.2/15.6，都是指针压缩 + V8 sandbox 构建）：
+    // Electron 37–45（V8 13.8–15.6，都是指针压缩 + V8 sandbox 构建）：
     // 表按 Chromium DEPS 的 v8_revision + Electron 的补丁集校准，这里锁住闭包这条链 ——
-    // 15.x 的 ScopeInfo.has_outer 位（21）、裸 int32 的数组长度、TDZ hole 重命名、
-    // `GeneratorYieldResult` 的 yield 形态都走这一路。
+    // 15.x 的 ScopeInfo.has_outer 位（15.0 是 22、15.2+ 是 21）、裸 int32 的数组长度、
+    // TDZ hole 重命名、`GeneratorYieldResult` 的 yield 形态都走这一路。
+    // Electron 41 与 Node 26 共用 14.6.202.34 的 version_hash 但沙箱布局不同 ——
+    // 这条用例同时锁住"多候选表按字节码量打分挑表"。
     for (jsc, ro, label) in [
+        (
+            "electron37-closure.jsc",
+            "electron37-ro-map.json",
+            "electron 37.10.3",
+        ),
+        (
+            "electron38-closure.jsc",
+            "electron38-ro-map.json",
+            "electron 38.8.6",
+        ),
+        (
+            "electron39-closure.jsc",
+            "electron39-ro-map.json",
+            "electron 39.8.10",
+        ),
+        (
+            "electron40-closure.jsc",
+            "electron40-ro-map.json",
+            "electron 40.10.6",
+        ),
+        (
+            "electron41-closure.jsc",
+            "electron41-ro-map.json",
+            "electron 41.10.7",
+        ),
         (
             "electron42-v8_14.8.178.38.jsc",
             "electron42-ro-map.json",
             "electron 42.11.18",
+        ),
+        (
+            "electron43-closure.jsc",
+            "electron43-ro-map.json",
+            "electron 43.8.3",
         ),
         (
             "electron44-v8_15.2.124.43.jsc",
