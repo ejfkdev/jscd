@@ -373,7 +373,7 @@ fn parse_cache<'a>(
         // （我们的提取器照样收进表里），但它们的 .jsc 已经没有预留表了：实测 16.3(9.0) 与
         // 16.20(9.4) 的 payload 起点字节逐位相同。按存在性判会把 9.0–9.3 多跳一段，
         // 报 "unexpected end of payload"。
-        let legacy_family = table
+        let legacy_family = std::env::var("JSCD_NO_LEGACY_SKIP").is_err() && table
             .v8
             .split('.')
             .next()
@@ -536,7 +536,7 @@ pub fn decompile_text(
     //      产物不是合法 JS 时它返回 None，这里就保持文本级结果。
     //   ② 只跑在"纯代码"输出上：`--runtime` 的前导是手写基础设施，压缩器只会帮倒忙。
     let text = crate::opt::optimize(&text);
-    let text = if runtime {
+    let text = if runtime || std::env::var_os("JSCD_NO_SWC").is_some() {
         text
     } else {
         crate::opt_js::optimize(&text).unwrap_or(text)

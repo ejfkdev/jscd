@@ -218,7 +218,7 @@ impl HotRing {
 }
 
 pub struct CodeCache<'a> {
-    payload: &'a [u8],
+    pub payload: &'a [u8],
     tagged_size: usize,
     pub objects: Vec<Object>,
     pub top_sfi: ObjId,
@@ -615,7 +615,8 @@ impl<'a> Walker<'a> {
             let i = self.putint()? as usize;
             Ok(SlotValue::Ref(Ref::RoRef(u32::MAX, i as u32)))
         } else if Some(b) == self.opt_tag("kRegisterPendingForwardRef") {
-            Ok(SlotValue::PendingRef(self.putint()?))
+            // V8 8.7: does NOT read a putint — just registers current slot as pending
+            Ok(SlotValue::PendingRef(0))
         } else if Some(b) == self.opt_tag("kClearedWeakReference") {
             Ok(SlotValue::ClearedWeak)
         } else if Some(b) == self.opt_tag("kWeakPrefix")
@@ -810,6 +811,9 @@ impl<'a> Walker<'a> {
 
     /// size/map/slots 的读取；老族额外把分配地址记进分配器（backref 要用）。
     fn parse_new_object_space(&mut self, depth: usize, space: u8) -> R<ObjId> {
+        if std::env::var("JSCD_CHKPT").is_ok() && self.objects.len() >= 32740 {
+            eprintln!("[chkpt] obj={} pos={} space={}", self.objects.len(), self.pos, space);
+        }
         let tag_offset = self.pos.saturating_sub(1);
         let size_words = self.putint()? as usize;
         // 6.x：LO 空间对象在 size 之后还有一个「可执行性」字节
@@ -1311,6 +1315,10 @@ pub fn parse_with<'a>(
     let t_nop = w.tag("kNop")?;
     while let Some(b) = w.peek() {
         if b != t_nop {
+            if legacy_tolerant {
+                eprintln!("jscd: 老族尾段非 Nop 字节 0x{b:02x} at {}，跳过剩余", w.pos);
+                break;
+            }
             return Err(format!(
                 "unexpected byte 0x{b:02x} after kSynchronize at {}",
                 w.pos

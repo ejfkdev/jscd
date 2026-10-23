@@ -957,6 +957,7 @@ struct FnCtx<'a, 'b> {
     used_handler_starts: Vec<usize>,
     /// emit_range 递归深度（护栏，防栈溢出）
     emit_depth: usize,
+    call_count: usize,
     /// 寄存器 → 它当前持有的属性访问表达式（`r2 = o.m` → `r2 => o.m`）。
     /// 用来把属性调用还原成 `o.m(args)`，而不是 `r2.call(o, args)`。
     reg_prop: HashMap<u32, Expr>,
@@ -1416,7 +1417,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         // 而这些名字是函数声明（有 hoisting），赋值本身没有。
         let mut alias = String::new();
         for id in 0..self.cache.objects.len() {
-            if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
+                        if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
                 continue;
             }
             let raw = self.dis.sfi_name(id);
@@ -1437,8 +1438,13 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         if with_runtime && !alias.is_empty() {
             let _ = w.write_str(&alias);
         }
+        // Track SFIs that have been inlined (wrapper chains) to prevent infinite loops
+        let mut inlined: std::collections::HashSet<ObjId> = std::collections::HashSet::new();
         for id in 0..self.cache.objects.len() {
             if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
+                continue;
+            }
+            if inlined.contains(&id) {
                 continue;
             }
             let name = self.dis.sfi_name(id);
@@ -1447,7 +1453,16 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                     continue;
                 }
             }
-            let text = self.decompile_function(id)?;
+            let text = match self.decompile_function(id) {
+                Ok(t) => {
+                    // If this function was a wrapper factory, mark the child as inlined
+                    if let Some(child) = self.wrapper_sfi.get() {
+                        inlined.insert(child);
+                    }
+                    t
+                }
+                Err(e) => { eprintln!("jscd: skip fn id={}: {}", id, e); continue; }
+            };
             w.write_str(&text).map_err(|_| "write failed".to_string())?;
         }
         Ok(())
@@ -1504,6 +1519,10 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
     /// 反编译单个函数。
     pub fn decompile_function(&self, sfi: ObjId) -> Result<String, String> {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        if n % 10000 == 0 { eprintln!("[decompile] function #{}", n); }
         let bca = self
             .dis
             .sfi_function_data_slots()
@@ -1537,7 +1556,17 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                 scope.as_ref().map(|s| s.flags).unwrap_or(0),
             );
         }
-        let mut ctx = FnCtx::new(self, sfi, bca, scope, scope_id)?;
+        // Skip functions with very large bytecodes to avoid stack overflow in deep recursion
+        let ts = self.ts;
+        let bytecode_len = self.cache.raw_at_ts(bca, ts, ts, ts)
+            .and_then(crate::serializer::decode_smi_bytes)
+            .unwrap_or(0) as usize;
+        if bytecode_len > 500 {
+            let fname = self.function_emit_name(sfi);
+            eprintln!("jscd: skip large function {} (id={}): {} bytecodes", fname, sfi, bytecode_len);
+            return Ok(format!("function {fname}() {{ /* skipped: {bytecode_len} bytecodes */ }}\n\n"));
+        }
+        let mut ctx = Box::new(FnCtx::new(self, sfi, bca, scope, scope_id)?);
         if ctx.wrapper_factory {
             // 闭包工厂只是"把包装函数交出去"，没有可执行的顶层语句
             return Ok(String::new());
@@ -1724,6 +1753,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .raw_at_ts(bca, ts, ts, ts)
             .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
+
+
         let hdr = d.cache.bca_rt_off(d.table, ts, bca, ba.header_size);
         let code = d.cache.raw_at_ts(bca, hdr, bytecode_len, ts).unwrap_or(&[]);
         let parameter_size = ba
@@ -1964,6 +1995,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             async_dispatch: None,
             used_handler_starts: Vec::new(),
             emit_depth: 0,
+            call_count: 0,
             reg_prop: HashMap::new(),
             out: String::new(),
             indent: 0,
@@ -5737,6 +5769,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 重建成 `try { <try 体>; return rV; } finally { <finally 体> }` —— throw 路径本来就是
     /// finally 的天然语义，完成码分发整段丢掉。
     fn try_emit_try_finally_no_catch(&mut self, i: usize, end: usize, ho: Handler) -> Option<usize> {
+        if self.emit_depth > 80 { return None; }
         let fail = |why: &str| {
             if std::env::var("JSCD_DBG_TF").is_ok() {
                 eprintln!("[tf-solo] ✗ {why}");
@@ -6279,11 +6312,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     fn emit_range(&mut self, i: usize, end: usize) -> Result<(), String> {
         // 结构化规则之间可能互相重入（try/switch/guard 的区间重叠）→ 加护栏，
         // 宁可输出一条注释也不要栈溢出把整个进程带走。
-        if self.emit_depth > 80 {
+        if self.emit_depth > 15 || self.call_count > 100000 {
             self.line("/* 结构化递归过深：此处降级为线性输出 */");
             return Ok(());
         }
         self.emit_depth += 1;
+        self.call_count += 1;
         let r = self.emit_range_inner(i, end);
         self.emit_depth -= 1;
         r
@@ -7926,7 +7960,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         "CallUndefinedReceiver1" => 1,
                         _ => 2,
                     };
-                    (0..n).map(|k| self.operand_expr(&arg(1 + k))).collect()
+                    let args: Vec<Expr> = (0..n).map(|k| self.operand_expr(&arg(1 + k))).collect();
+                    args
                 };
                 self.acc = Some(Expr::Call {
                     callee: Box::new(callee),
