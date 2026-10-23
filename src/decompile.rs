@@ -957,8 +957,6 @@ struct FnCtx<'a, 'b> {
     used_handler_starts: Vec<usize>,
     /// emit_range 递归深度（护栏，防栈溢出）
     emit_depth: usize,
-    _visited: std::collections::HashSet<(usize, usize)>,
-    call_count: usize,
     /// 寄存器 → 它当前持有的属性访问表达式（`r2 = o.m` → `r2 => o.m`）。
     /// 用来把属性调用还原成 `o.m(args)`，而不是 `r2.call(o, args)`。
     reg_prop: HashMap<u32, Expr>,
@@ -1439,13 +1437,8 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         if with_runtime && !alias.is_empty() {
             let _ = w.write_str(&alias);
         }
-        // Track SFIs that have been inlined (wrapper chains) to prevent infinite loops
-        let mut inlined: std::collections::HashSet<ObjId> = std::collections::HashSet::new();
         for id in 0..self.cache.objects.len() {
             if !self.cache.obj(id).ty.is(self.table, "SharedFunctionInfo") {
-                continue;
-            }
-            if inlined.contains(&id) {
                 continue;
             }
             let name = self.dis.sfi_name(id);
@@ -1455,13 +1448,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                 }
             }
             let text = match self.decompile_function(id) {
-                Ok(t) => {
-                    // If this function was a wrapper factory, mark the child as inlined
-                    if let Some(child) = self.wrapper_sfi.get() {
-                        inlined.insert(child);
-                    }
-                    t
-                }
+                Ok(t) => t,
                 Err(e) => { eprintln!("jscd: skip fn id={}: {}", id, e); continue; }
             };
             w.write_str(&text).map_err(|_| "write failed".to_string())?;
@@ -1982,8 +1969,6 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             async_dispatch: None,
             used_handler_starts: Vec::new(),
             emit_depth: 0,
-            _visited: std::collections::HashSet::new(),
-            call_count: 0,
             reg_prop: HashMap::new(),
             out: String::new(),
             indent: 0,
@@ -5690,7 +5675,14 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         // ── 发射 ──
         self.flush_acc_before("SwitchOnSmiNoFeedback");
-        self.line(&format!("switch ({var_name}) {{"));
+        // `<this>`/`<context>` are register spellings, not JS (`switch (<this>)` on a String.prototype method)
+        let subject = if var_name.starts_with('<') {
+            let e = self.operand_expr(&var_name);
+            Self::render_stmt(&e)
+        } else {
+            var_name.clone()
+        };
+        self.line(&format!("switch ({subject}) {{"));
         self.indent += 1;
         // 按目标体归组：同一个体的所有 case 标签要挤在体之前
         // （V8 的派发链顺序是 1→体A、2→体A、3→体B，直接顺序输出会把 case 2 挂到体 B 上）
@@ -5757,7 +5749,6 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 重建成 `try { <try 体>; return rV; } finally { <finally 体> }` —— throw 路径本来就是
     /// finally 的天然语义，完成码分发整段丢掉。
     fn try_emit_try_finally_no_catch(&mut self, i: usize, end: usize, ho: Handler) -> Option<usize> {
-        if self.emit_depth > 80 { return None; }
         let fail = |why: &str| {
             if std::env::var("JSCD_DBG_TF").is_ok() {
                 eprintln!("[tf-solo] ✗ {why}");
@@ -6300,15 +6291,12 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     fn emit_range(&mut self, i: usize, end: usize) -> Result<(), String> {
         // 结构化规则之间可能互相重入（try/switch/guard 的区间重叠）→ 加护栏，
         // 宁可输出一条注释也不要栈溢出把整个进程带走。
-        if self.emit_depth > 15 || self.call_count > 100000 {
+        if self.emit_depth > 80 {
             self.line("/* 结构化递归过深：此处降级为线性输出 */");
             return Ok(());
         }
         self.emit_depth += 1;
-        let _visited_guard = (i, end);
-        self.call_count += 1;
         let r = self.emit_range_inner(i, end);
-        self._visited.remove(&_visited_guard);
         self.emit_depth -= 1;
         r
     }
