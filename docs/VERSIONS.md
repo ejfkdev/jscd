@@ -1251,3 +1251,39 @@ README 里"数字体现质量"的要求（用户）顺带暴露了两处**测试
    尚未移植的仍是：V8 5.8 / 6.0–6.1 / 6.6–6.7 / 7.0 / 7.4 的 payload 族
    （8.0–8.9 / 10.0–10.8 / 11.x / 12.0 的部分发布）：`jscd info` 能识别（或明确报
    `unsupported`），payload 反序列化会**显式报错**而不是输出垃圾。
+
+### 11.20 issue #1：Electron（指针压缩）生成的 `.jsc` 解析失败
+
+现象（Electron 19.0.10 / V8 10.2.154.15，`bytenode.compileFile({electron:true})`）：
+`jscd info` 认出 V8 10.2.154.15、`supported: yes`，但反序列化报
+`10.2.154.26 tagged_size=4: object 8 (at payload +54) size mismatch: consumed 44 of 40 bytes`。
+
+根因（都是"**同一 V8 minor、不同构建配置**"的差异；Node 在 macOS 上的构建是**非压缩**的，
+所以既有矩阵从没覆盖到压缩构建）：
+
+1. **对象 size 的单位是 tagged，不是 8 字节对齐**。
+   V8 `Deserializer::ReadObject`：`size_in_bytes = size_in_tagged * kTaggedSize`
+   （10.2 / 11.3 / 14.6 的源码一致）。压缩构建 `kTaggedSize = 4` → 单位 4；
+   我们此前对现代族固定按 8 算，压缩构建的预算直接翻倍，槽读超界。
+2. **表里的字段偏移是"抓取配置"（8 字节基准）下的**，压缩构建换算槽号必须用抓取基准：
+   `VersionTable::capture_tagged_size`（新增，serde 默认 8）+ `slot_unit()`；
+   `SFI`/`BytecodeArray`/`ScopeInfo` 的槽号一律用它，不能用运行时回退出来的 `ts`。
+3. **BytecodeArray 头部**：tagged 字段减半、raw 字段（int32/uint16/uint8）不变 →
+   不能整体缩放。用 BCA 的**最后一个 Raw 槽**（头部尾巴 + 字节码）做锚：
+   它的槽号 = 它前面有多少个 tagged 槽（`CodeCache::bca_rt_off`）。
+4. **字符串布局**：`map(ts) + hash(uint32) + length(int32) + chars` → 压缩构建里
+   长度/字符区偏移固定减 `(capture - ts)`（12→8、16→12）。
+5. **压缩 Smi 编码**：`value << 1`（**偶数**），`decode_smi_bytes` 的 4 字节分支此前判反了，
+   压缩构建里 `length` 全解成 0（反编译出空函数体）。
+6. **CJS 包装函数摊平后的形参名**：`param_ref_name()` 在"包装函数 + params ≥ 4"时
+   给出 `exports/require/module/__filename/__dirname`；摊平路径不建签名，所以必须**按需**算。
+
+验证：issue 里的 544 字节样本现在反编译成 `module.exports = add; function add(a0, a1) { return a0 + a1; }`，
+`--runtime` 产物 `node` 跑出 `add(3,4)=7`；fixture 落在
+`tests/fixtures/jsc/electron19-v8_10.2.154.15.jsc`（回归用例 `electron_pointer_compressed_cache_decompiles`）；
+用同一份 Electron 编译仓库 5 个整脚本 fixture：`top_async/top_const/top_var` 输出逐字一致。
+
+**已知残留（未修）**：根索引列表是**逐构建**的。Electron 19 的 `ScriptMap` 在 654，
+Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_class`（类装配）与
+`top_stmt`（数组字面量）因此把 boilerplate 当成未知类型（输出带 `/* … */ undefined`）。
+修它需要按构建校准根列表（例如用可验证的对象形状反推偏移），不是本轮范围。

@@ -817,16 +817,13 @@ impl<'a> Walker<'a> {
         if self.legacy.is_some() && self.is_six_x() && space == self.lo_space() {
             let _ = self.byte()?;
         }
-        // 老族（≤8.4）的 size 单位是 `1 << kObjectAlignmentBits`，而 V8 8.4 的
-        // `kObjectAlignmentBits = kTaggedSizeLog2` —— 也就是**等于 tagged size**
-        // （指针压缩构建 ts=4 → 4 字节/单位，非压缩 ts=8 → 8）。按 8 算会让每个对象的
-        // 字节尺寸翻倍、后续地址全偏（space2 的 backref 因此命不中）。
-        // 现代族固定 8 字节单位（kObjectAlignmentBits = 3）。
-        let unit = if self.legacy.is_some() {
-            self.tagged_size.max(4)
-        } else {
-            8
-        };
+        // size 字段的单位是 **tagged**，不是 8 字节对齐：
+        // V8 `Deserializer::ReadObject`：`size_in_bytes = size_in_tagged * kTaggedSize`
+        // （10.2 / 11.3 / 14.6 的源码都是这一行）。压缩构建 ts=4 → 单位 4，非压缩 ts=8 → 单位 8。
+        // 早先现代族固定按 8 算：非压缩构建（ts=8）碰巧对，压缩构建（ts=4）预算翻倍、
+        // 每个对象多吞一倍槽 —— Electron 19（V8 10.2.154.15，指针压缩）的 .jsc 就此解析失败
+        // （"object 8 ... consumed 44 of 40 bytes"）。
+        let unit = self.tagged_size.max(4);
         let byte_size = size_words * unit;
         if let Ok(v) = std::env::var("JSCD_DBG_OBJ") {
             let want = v == "1" || space == v.parse::<u8>().unwrap_or(255);
@@ -836,7 +833,8 @@ impl<'a> Walker<'a> {
                     .get(tag_offset..(tag_offset + 12).min(self.data.len()))
                     .unwrap_or(&[]);
                 eprintln!(
-                    "[objtag] pos={tag_offset} space={space} size_words={size_words} unit={unit} bytes={byte_size} ctx={ctx:02x?}"
+                    "[objtag] ts={} pos={tag_offset} space={space} size_words={size_words} unit={unit} bytes={byte_size} ctx={ctx:02x?}",
+                    self.tagged_size
                 );
             }
         }
@@ -889,7 +887,9 @@ impl<'a> Walker<'a> {
         let size_bytes = size_words * unit;
         let mut consumed_bytes = ts; // map 已占 1 个 tagged 槽
         let t_deferred = self.opt_tag("kDeferred");
+        let dbg_slots = std::env::var("JSCD_DBG_SLOTS").ok();
         while consumed_bytes < size_bytes {
+            let slot_pos = self.pos;
             // 老族：`kDeferred` 出现在对象头之后 → 该对象剩下的槽在 deferred 段里
             if t_deferred.is_some() && self.peek() == t_deferred {
                 self.byte()?;
@@ -910,6 +910,14 @@ impl<'a> Walker<'a> {
                 SlotValue::StreamBytes(_) => 0,
                 _ => ts, // 引用：`current++`
             };
+            if let Some(w) = &dbg_slots {
+                if w == "1" || *w == id.to_string() {
+                    let tag = self.data.get(slot_pos).copied().unwrap_or(0);
+                    eprintln!(
+                        "[slot] ts={ts} id={id} pos={slot_pos} tag=0x{tag:02x} n_bytes={n_bytes} consumed={consumed_bytes} budget={size_bytes}"
+                    );
+                }
+            }
             if let SlotValue::StreamBytes(_) = v {
                 // 只吃流、不进对象字节数（如 kOffHeapBackingStore 的内联缓冲）
                 continue;
@@ -1522,6 +1530,40 @@ impl<'a> CodeCache<'a> {
     }
 
     #[inline]
+    /// 表里 BCA 字段的偏移是**抓取配置**（8 字节基准）下的对象内字节偏移。
+    /// 运行时（压缩构建 ts=4）里 tagged 字段减半、raw 字段（int32/uint16/uint8）不变，
+    /// 所以不能整体缩放：用 BCA 的**最后一个 Raw 槽**（头部尾巴 + 字节码的原始块）做锚 ——
+    /// 它的槽号恰好等于它前面有多少个 tagged 槽。
+    pub fn bca_rt_off(
+        &self,
+        table: &crate::tables::VersionTable,
+        ts: usize,
+        id: ObjId,
+        capture_off: usize,
+    ) -> usize {
+        let cap = table.slot_unit();
+        if ts == cap {
+            return capture_off;
+        }
+        let tail = self
+            .objects[id]
+            .slots
+            .iter()
+            .rev()
+            .find_map(|s| matches!(s.value, SlotValue::Raw(_)).then_some(s.index));
+        match tail {
+            Some(tail) => {
+                let tail_cap = tail * cap;
+                if capture_off >= tail_cap {
+                    tail * ts + (capture_off - tail_cap)
+                } else {
+                    capture_off / cap * ts
+                }
+            }
+            None => capture_off / cap * ts,
+        }
+    }
+
     pub fn raw_at(&self, id: ObjId, byte_off: usize, len: usize) -> Option<&'a [u8]> {
         self.raw_at_ts(id, byte_off, len, self.tagged_size)
     }
@@ -1597,9 +1639,12 @@ pub fn decode_smi_bytes(d: &[u8]) -> Option<i64> {
                 None
             }
         }
+        // 压缩构建（kTaggedSize=4）的 Smi 是 `value << 1`（kSmiTag = 0）→ **偶数**。
+        // 早先这里判成了奇数，压缩构建的 `length`/`parameter_size` 等 Smi 全部解成 None
+        // （Electron 的 bytecode length 因此显示 0）。
         4 => {
             let raw = u32::from_le_bytes(d.try_into().ok()?);
-            if raw & 1 == 0 {
+            if raw & 1 != 0 {
                 None
             } else {
                 Some(((raw as i32) >> 1) as i64)

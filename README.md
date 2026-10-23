@@ -554,7 +554,8 @@ checkout is required:
 python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-existing
 ```
 
-Version-by-version engineering notes: [docs/VERSIONS.md](docs/VERSIONS.md) (Chinese).
+Version-by-version engineering notes: [docs/VERSIONS.md](docs/VERSIONS.md) (Chinese) — including
+pointer-compressed builds (Electron / Chrome), whose cache layout differs from Node's.
 
 ## How it works
 

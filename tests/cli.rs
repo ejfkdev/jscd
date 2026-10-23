@@ -210,6 +210,24 @@ fn file_input_defaults_to_stdout_and_writes_files() {
 }
 
 #[test]
+fn electron_pointer_compressed_cache_decompiles() {
+    // issue #1：Electron 19（V8 10.2.154.15）是**指针压缩**构建 —— V8 的 `ReadObject`
+    // 里对象 size 的单位是 tagged（4 字节），字符串/BytecodeArray 头的字节偏移也随之
+    // 变化。与 Node 在同一 V8 minor 上的非压缩构建不同，早先直接解析失败。
+    let jsc = "tests/fixtures/jsc/electron19-v8_10.2.154.15.jsc";
+    let o = jscd(&[jsc]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(s.contains("module.exports = add"), "顶层语句应还原：{s}");
+    assert!(s.contains("a0 + a1"), "函数体应还原：{s}");
+
+    let o = jscd(&["info", jsc]);
+    let info = out(&o);
+    assert!(info.contains("10.2.154.15"), "{info}");
+    assert!(info.contains("supported:     yes"), "{info}");
+}
+
+#[test]
 fn directory_input_mirrors_tree_into_input_out() {
     let Some(node) = node() else {
         eprintln!("跳过：环境里没有 node");

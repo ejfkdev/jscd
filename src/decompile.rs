@@ -1627,7 +1627,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
         let mut slots: Vec<usize> = Vec::new();
         if let Some(l) = self.table.shared_function_info.as_ref() {
             for f in ["scope_info", "name_or_scope_info"] {
-                if let Some(v) = l.slot(self.ts, f) {
+                if let Some(v) = l.slot(self.table.slot_unit(), f) {
                     slots.push(v);
                 }
             }
@@ -1705,12 +1705,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .raw_at_ts(bca, ts, ts, ts)
             .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
-        let code = d
-            .cache
-            .raw_at_ts(bca, ba.header_size, bytecode_len, ts)
-            .unwrap_or(&[]);
+        let hdr = d.cache.bca_rt_off(d.table, ts, bca, ba.header_size);
+        let code = d.cache.raw_at_ts(bca, hdr, bytecode_len, ts).unwrap_or(&[]);
         let parameter_size = ba
             .off("parameter_size")
+            .map(|o| d.cache.bca_rt_off(d.table, ts, bca, o))
             .and_then(|o| d.cache.raw_at_ts(bca, o, 4, ts))
             .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
             .unwrap_or(0);
@@ -2041,20 +2040,29 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 None => n,
             }
         };
-        let names: Vec<String> = if params > 64 {
-            vec![format!("/* {params} 个参数（异常值，忽略） */")]
+        let bare: Vec<String> = if params > 64 {
+            Vec::new()
         } else if self.inline_body && self.d.wrapper_sfi.get() == Some(self.sfi) && params >= 4 {
             // bytenode 的 CommonJS 包装函数：名字固定是这五个（Node 的 Module.wrap 同款），
             // 叫回真名，摊平后的 `require(...)`/`module.exports` 才既好读又能直接跑
             const CJS: [&str; 5] = ["exports", "require", "module", "__filename", "__dirname"];
             (0..params)
                 .map(|i| {
-                    let n = CJS.get(i as usize).map(|s| (*s).to_string()).unwrap_or_else(|| format!("a{i}"));
-                    with_default(i as usize, n)
+                    CJS.get(i as usize)
+                        .map(|s| (*s).to_string())
+                        .unwrap_or_else(|| format!("a{i}"))
                 })
                 .collect()
         } else {
-            (0..params).map(|i| with_default(i as usize, format!("a{i}"))).collect()
+            (0..params).map(|i| format!("a{i}")).collect()
+        };
+        let names: Vec<String> = if params > 64 {
+            vec![format!("/* {params} 个参数（异常值，忽略） */")]
+        } else {
+            bare.iter()
+                .enumerate()
+                .map(|(i, n)| with_default(i, n.clone()))
+                .collect()
         };
 
         if self.d.runtime.get() {
@@ -2159,6 +2167,23 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 两者**交叉验证一致**（`scope.param_count + 1 == bca_param_count()`）时才敢少写一个 —
     /// 直接无脑 −1 曾让老族寄存器名算成 `a-2`（node14 = V8 8.4 产物直接语法错），
     /// 所以只在能证明"那个多出来的就是 this"时替换（`8.17` 的 `function bump(a0,a1)` → `bump(a0)`）。
+    /// 形参的**引用名**：bytenode 的 CJS 包装函数摊平进文件后，它的形参就是
+    /// `exports / require / module / __filename / __dirname`（Node `Module.wrap` 同款），
+    /// 叫回真名后产物在 node 下（CJS 作用域本来就有这五个）直接能跑。
+    ///
+    /// 注意这里**按需**算，不依赖 `finish()` 里那份签名（摊平路径根本不建签名）。
+    fn param_ref_name(&self, n: u32) -> String {
+        const CJS: [&str; 5] = ["exports", "require", "module", "__filename", "__dirname"];
+        if self.inline_body
+            && self.d.wrapper_sfi.get() == Some(self.sfi)
+            && (n as usize) < CJS.len()
+            && self.signature_param_count() >= 4
+        {
+            return CJS[n as usize].to_string();
+        }
+        format!("a{n}")
+    }
+
     fn signature_param_count(&self) -> u32 {
         let bc = self.bca_param_count();
         let legacy = self.d.table.v8.starts_with('8')
@@ -2186,6 +2211,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(self.d.ts));
         let v = ba
             .off("parameter_size")
+            .map(|o| self.d.cache.bca_rt_off(self.d.table, self.d.ts, self.bca, o))
             .and_then(|o| self.d.cache.raw_at_ts(self.bca, o, 4, self.d.ts))
             .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
             .unwrap_or(0);
@@ -6263,7 +6289,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             // （体里可能仍按该寄存器读这个形参；不写回的话读到的是上一个函数遗留的 rN）。
             if self.instrs[i].name == "__pregs" {
                 if let Some(&(pidx, r)) = self.pregs_fixups.get(&i) {
-                    let name = format!("a{pidx}");
+                    let name = self.param_ref_name(pidx as u32);
                     self.line(&format!("{} = {name};", self.reg_display(r)));
                     if self.regs.len() <= r as usize {
                         self.regs.resize(r as usize + 1, None);
@@ -8702,7 +8728,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         if let Some(rest) = s.strip_prefix('a') {
             if let Ok(n) = rest.parse::<i32>() {
-                return Expr::Ident(format!("a{n}"));
+                // CJS 包装函数摊平后形参叫 module/exports/…（见 param_ref_name）
+                return Expr::Ident(match u32::try_from(n) {
+                    Ok(n) => self.param_ref_name(n),
+                    Err(_) => format!("a{n}"),
+                });
             }
         }
         if let Some(rest) = s.strip_prefix('r') {

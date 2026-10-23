@@ -530,7 +530,7 @@ Node 发布都在 `tables/manifest.json` 里（510 条），每个 V8 minor 一�
 python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-existing
 ```
 
-逐版本的工程笔记（6.x/7.x 各代字节码差异都记在里面）：[docs/VERSIONS.md](docs/VERSIONS.md)。
+逐版本的工程笔记（6.x/7.x 各代字节码差异、指针压缩构建的布局差异都记在里面）：[docs/VERSIONS.md](docs/VERSIONS.md)。
 
 ## 实现
 

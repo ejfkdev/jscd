@@ -30,14 +30,25 @@ pub struct VersionEntry {
     pub table: String,
 }
 
+/// `capture_tagged_size` 的 serde 默认值：当前所有表的偏移都是 8 字节基准。
+fn default_slot_unit() -> usize {
+    8
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct VersionTable {
     pub v8: String,
     pub source_tag: String,
     pub header: crate::header::HeaderLayout,
     pub hash: HashCfg,
-    /// tagged 指针宽度：macOS 构建 = 8（无指针压缩），linux/win x64 = 4
+    /// 运行时的 tagged 指针宽度：macOS 构建 = 8（无指针压缩），linux/win x64 = 4。
+    /// 解析失败时会回退另一种（CLI 会就地改这个字段）。
     pub tagged_size: u8,
+    /// 表内字段偏移的**抓取基准**：生成这张表时的 tagged size（当前所有表都是 8）。
+    /// 与运行时的 `tagged_size` 分开：压缩构建（ts=4）回退时不能把基准也改掉，
+    /// 否则"字节偏移 → 槽号"会翻倍（Electron 的 SFI function_data 就从槽 1 变槽 2）。
+    #[serde(default = "default_slot_unit")]
+    pub capture_tagged_size: usize,
     pub bytecodes: Vec<BytecodeDef>,
     pub operand_types: HashMap<String, OperandTypeInfo>,
     /// roots.h 根数组顺序（index → 名字）
@@ -110,6 +121,18 @@ impl VersionTable {
     pub fn v8_tags(&self) -> String {
         self.source_tag.clone()
     }
+
+    /// 表内字节偏移的**抓取基准**（生成表时的 tagged size，当前所有表都是 8）。
+    ///
+    /// 与运行时的 `tagged_size` 分开：解析失败回退到另一种 tagged size 时，这个基准
+    /// 不能跟着变 —— 否则"字节偏移 → 槽号"会翻倍（压缩构建 ts=4 时 Electron 的
+    /// SFI function_data 就从槽 1 读成槽 2）。
+    pub fn slot_unit(&self) -> usize {
+        match self.capture_tagged_size {
+            0 => 8,
+            n => n,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -169,8 +192,11 @@ impl StructLayout {
         self.fields.get(name).copied()
     }
     /// 槽下标（槽从 0 = map 起算）。
-    pub fn slot(&self, tagged_size: usize, name: &str) -> Option<usize> {
-        self.off(name).map(|o| o / tagged_size)
+    ///
+    /// `unit` 要传**抓取基准**（`VersionTable::slot_unit`），不是运行时的 tagged size：
+    /// 表里的偏移是按 8 字节配置抓的，压缩构建（ts=4）若按 4 去除，槽号会翻倍。
+    pub fn slot(&self, unit: usize, name: &str) -> Option<usize> {
+        self.off(name).map(|o| o / unit.max(1))
     }
     /// 依次尝试多个候选字段名（跨版本改名）。
     pub fn slot_any(&self, tagged_size: usize, names: &[&str]) -> Option<usize> {

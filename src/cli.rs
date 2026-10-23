@@ -185,7 +185,7 @@ fn functions_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), St
     // 嵌套关系：SFI 的常量池里引用到的子 SFI（常量池元素恒为指针槽，直接读槽即可）
     let mut children: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
     let mut all_sfis: Vec<usize> = Vec::new();
-    let pool_slot = ba.fields.get("constant_pool").map(|o| o / ts).unwrap_or(2);
+    let pool_slot = ba.fields.get("constant_pool").map(|o| o / table.slot_unit()).unwrap_or(2);
     for id in 0..cache.objects.len() {
         if !cache.obj(id).ty.is(&table, "SharedFunctionInfo") {
             continue;
@@ -258,6 +258,7 @@ fn functions_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), St
                     .unwrap_or(0);
                 let params = ba
                     .off("parameter_size")
+                    .map(|o| cache.bca_rt_off(&table, ts, b, o))
                     .and_then(|o| cache.raw_at(b, o, 4))
                     .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
                     .unwrap_or(0);
@@ -268,6 +269,7 @@ fn functions_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), St
                 };
                 let frame = ba
                     .off("frame_size")
+                    .map(|o| cache.bca_rt_off(&table, ts, b, o))
                     .and_then(|o| cache.raw_at(b, o, 4))
                     .map(|x| u32::from_le_bytes(x.try_into().unwrap()))
                     .unwrap_or(0);

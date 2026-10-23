@@ -46,11 +46,11 @@ pub struct Disassembler<'a> {
 impl<'a> Disassembler<'a> {
     /// SFI 槽位：function_data（含 13.6 的 trusted/untrusted 拆分）。
     pub fn sfi_function_data_slots(&self) -> Vec<usize> {
-        let ts = self.layout.tagged_size;
+        let _ts = self.layout.tagged_size;
         if let Some(sfi) = &self.table.shared_function_info {
             let v: Vec<usize> = ["function_data", "trusted_function_data", "untrusted_function_data"]
                 .iter()
-                .filter_map(|n| sfi.slot(ts, n))
+                .filter_map(|n| sfi.slot(self.table.slot_unit(), n))
                 .collect();
             if !v.is_empty() {
                 return v;
@@ -60,26 +60,20 @@ impl<'a> Disassembler<'a> {
     }
 
     pub fn sfi_name_slot(&self) -> usize {
-        let ts = self.layout.tagged_size;
         self.table
             .shared_function_info
             .as_ref()
-            .and_then(|s| s.slot(ts, "name_or_scope_info"))
+            .and_then(|s| s.slot(self.table.slot_unit(), "name_or_scope_info"))
             .unwrap_or(fallback_slots::SFI_NAME)
     }
 
+    /// 表里存的是抓取配置下的字节偏移 → 槽号要用抓取基准换算（见 `slot_unit`）。
     fn bca_slot(&self, names: &[&str], fallback: usize) -> usize {
-        let ts = self.layout.tagged_size;
+        let unit = self.table.slot_unit();
         self.table
             .bytecode_array
             .as_ref()
-            .and_then(|b| b.fields.get(*names.first().unwrap()).copied().map(|o| o / ts))
-            .or_else(|| {
-                self.table
-                    .bytecode_array
-                    .as_ref()
-                    .and_then(|b| names.iter().find_map(|n| b.fields.get(*n).copied().map(|o| o / ts)))
-            })
+            .and_then(|b| names.iter().find_map(|n| b.fields.get(*n).copied().map(|o| o / unit)))
             .unwrap_or(fallback)
     }
 
@@ -482,21 +476,27 @@ impl<'a> Disassembler<'a> {
             .bytecode_array
             .clone()
             .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(self.layout.tagged_size));
-        let header = ba_layout.header_size;
-        let obj = self.cache.obj(bca_id);
+        let ts = self.layout.tagged_size;
+        // 表里的偏移是抓取配置（8 字节）下的；压缩构建（ts=4）要换算成运行时偏移。
+        let rt_off = |name: &str| -> Option<usize> {
+            ba_layout
+                .off(name)
+                .map(|o| self.cache.bca_rt_off(self.table, ts, bca_id, o))
+        };
+        let header = self
+            .cache
+            .bca_rt_off(self.table, ts, bca_id, ba_layout.header_size);
         let bytecode_len = self
             .cache
-            .raw_at(bca_id, self.layout.tagged_size, self.layout.tagged_size)
-            .map(|d| read_u64(d) >> 32)
+            .raw_at(bca_id, ts, ts)
+            .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
-        let frame_size = ba_layout
-            .off("frame_size")
+        let frame_size = rt_off("frame_size")
             .and_then(|o| self.cache.raw_at(bca_id, o, 4))
             .map(|d| u32::from_le_bytes(d.try_into().unwrap()))
             .unwrap_or(0);
         // parameter_size 是字节数；V8 的 parameter_count() = parameter_size / kSystemPointerSize
-        let parameter_size = ba_layout
-            .off("parameter_size")
+        let parameter_size = rt_off("parameter_size")
             .and_then(|o| self.cache.raw_at(bca_id, o, 4))
             .map(|d| u32::from_le_bytes(d.try_into().unwrap()) as i32)
             .unwrap_or(0);
@@ -513,14 +513,13 @@ impl<'a> Disassembler<'a> {
             parameter_size / 8
         };
         // osr 字段名随版本变（osr_loop_nesting_level / osr_urgency_and_install_target）；11.3+ 已移除
-        let osr = ba_layout
-            .off("osr_loop_nesting_level")
-            .or_else(|| ba_layout.off("osr_urgency_and_install_target"))
+        let osr = ["osr_loop_nesting_level", "osr_urgency_and_install_target"]
+            .iter()
+            .find_map(|n| rt_off(n))
             .and_then(|o| self.cache.raw_at(bca_id, o, 1))
             .map(|d| d[0])
             .unwrap_or(0);
-        let age = ba_layout
-            .off("bytecode_age")
+        let age = rt_off("bytecode_age")
             .and_then(|o| self.cache.raw_at(bca_id, o, 1))
             .map(|d| d[0])
             .unwrap_or(0);
@@ -602,7 +601,6 @@ impl<'a> Disassembler<'a> {
             out,
         );
         let _ = writeln!(out);
-        let _ = obj;
         Ok(())
     }
 
@@ -931,9 +929,24 @@ pub fn decode_string(cache: &CodeCache<'_>, table: &VersionTable, id: ObjId) -> 
     // 长度的**形态**随版本变：≤6.x 是 Smi（占一个 tagged 槽，字符区在 12+ts = 20），
     // 7.x 起是 int32（字符区在 16）。按 6.x 读成 int32 时长度恒为 0（Smi 的低半字为 0），
     // 于是所有字符串都变成空串 —— node8 的 SFI 名、全局名全丢。
-    let len_off = table.string_length_offset.unwrap_or(12);
+    // 表里（以及这里的默认值）都是抓取配置（8 字节基准）下的偏移：
+    //   字符串布局 @0 map | @8 hash_field | @12 length | @16 chars
+    // 压缩构建（ts=4）里所有 tagged 字段减半 → 12/16 要换成 8/12，否则长度读到 0、
+    // 字符区从错误位置开始（Electron 的 property 名因此全成空串）。
+    // 注意不是整体缩放：字符串里只有 **map 一个 tagged 字段**，hash（uint32）与 length
+    // （int32）是 raw —— 所以压缩构建下它们的位置固定减去 (capture - ts) 个字节。
+    let cap = table.slot_unit();
+    let ts = table.tagged_size as usize;
+    let shift = cap.saturating_sub(ts);
+    let rt = |o: usize| -> usize {
+        if ts == cap {
+            o
+        } else {
+            o.saturating_sub(shift)
+        }
+    };
+    let len_off = rt(table.string_length_offset.unwrap_or(12));
     let length = if table.string_length_smi {
-        let ts = table.tagged_size as usize;
         let d = cache.raw_at(id, len_off, ts)?;
         if ts == 8 {
             (read_u64(d) >> 32) as u32 as usize
@@ -951,7 +964,7 @@ pub fn decode_string(cache: &CodeCache<'_>, table: &VersionTable, id: ObjId) -> 
         crate::serializer::Ty::Str(crate::serializer::StrKind::TwoByte) => false,
         _ => obj.ty.name(table).contains("OneByte"),
     };
-    let chars_off = table.string_chars_offset.unwrap_or(16);
+    let chars_off = rt(table.string_chars_offset.unwrap_or(16));
     let d = cache.raw_at(id, chars_off, length)?;
     if is_one_byte {
         Some(String::from_utf8_lossy(d).into_owned())
