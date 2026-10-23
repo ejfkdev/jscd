@@ -1342,3 +1342,42 @@ Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_c
 只读堆坐标还随**架构**走：同为 Electron 22/`--no-lazy`，x64 与 arm64 的同一字符串偏移不同
 （探针与目标缓存必须用同一个二进制编译）。Electron 22（x64）用同构建探针：
 36 个行为 fixture **36/36 逐用例一致**（fixture：`tests/fixtures/jsc/electron22-*`）。
+
+## 12. 版本盘点（2026-10-23）：Node 26.12.1 覆盖；Electron 37–45 暂不支持（原因已定位）
+
+**Node**：最新 `v26.12.1`（2026-10-21）的 V8 仍是 **14.6.202.34**，与 26.10.0 共用一张表。
+manifest 从 510 条补到 **517 条**：26.11/26.12 等发布只是登记（`--index-entries` 只改索引、
+不重建表；版本哈希只按 V8 版本算）。实测 node 26.12.1 编 36 个行为 fixture + 5 个整脚本：
+**36 pass / 0 fail，整脚本 5/5**。
+
+**bytenode**：最新 1.7.0（一直用的就是这个），文件格式没变 —— 仍是裸 V8 code cache
+（24/32 字节头 + payload）。
+
+**V8 / Electron**：Electron 36–45 的 V8 依次是 13.6 / 13.8 / 14.0 / 14.2 / 14.4 / 14.6 /
+14.8 / 15.0 / 15.2 / 15.6。13.6、14.1（Node 24/25）、14.6（Node 26）已有表；
+**13.8/14.0/14.2/14.4/14.8/15.0/15.2/15.6 没有**。本轮试着补，卡在三处硬差异：
+
+1. **Electron 给版本哈希加了盐**：`patches/v8/feat_key_code_caches_to_the_patch_set_and_the
+   _embedded_blob.patch` 把 `v8_version_hash_salt`（由补丁集/嵌入 blob 推导）混进
+   `Version::Hash()`。所以 Electron 37+ 的 `version_hash` **无法从 V8 源码算**，只能从真缓存读，
+   而且大概率每个 Electron 发布都不同 → 识别要退化成"按表做结构探测"。
+2. **V8 15.6 的 `Version::Hash()` 又变了**：混入 embedder 字符串（`-electron.0`），整数改用
+   rapidhash 的 mum 混合（14.x 还是 Thomas Wang）。仅凭版本号算不出来。
+3. **V8 sandbox（Chromium/Electron 默认开）**：SFI 的 `trusted_function_data` 是**间接指针**
+   （`kIndirectPointerPrefix` + 一个引用），`ExposedTrustedObject` 头部多一个
+   `self_indirect_pointer`（4 字节）→ `BytecodeArray` 的 `length`/`frame_size` 等整体后移一格。
+   本轮已修（对非 sandbox 构建是空操作）：
+   - 间接/受保护指针前缀**透明解引用**（早先与 `kWeakPrefix` 一起包成 WeakRef → SFI 取不到
+     BytecodeArray，所有函数都成"未编译"）；
+   - `BytecodeArray.length` 按表的字段偏移读（不再硬编码 `+ts`）；
+   - codegen 的扭矩类体解析改成**花括号配对**（`class TrustedObject extends HeapObject {}`
+     这种空体会把下一个类的字段吃进来，`self_indirect_pointer` 被算两次）；
+   - codegen 新增 `--v8-repo/--v8-tag/--v8-tagged-size/--v8-sandbox`（从 v8/v8 标签取源码）、
+     `--merge-existing`、`--index-entries`。
+
+修完这三处后，Electron 42（V8 14.8）的顶层字节码能读出来（16 字节），但 **opcode 编号仍差 1**：
+真实构建的 `CallRuntime` 在 `0x71`，14.8 标签表在 `0x70`（`Return` 同理 0xba vs 0xb7）——
+标签源码里 `BYTECODE_LIST` 没有条件项，说明 Electron/Chromium 的 V8 构建多了一个 bytecode
+（或宏展开序与源码不同）。**没验证通过就不发这些表**：宁可"不支持 + 明确报错"，
+也不能静默把字节码错位解出来。要支持 Electron 37–45，下一步是从真缓存反推 opcode/根表
+（类似 11.20 对 Electron 19 做的校准），而不是只从源码生成。

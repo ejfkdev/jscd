@@ -3,7 +3,7 @@
 Reverse [bytenode](https://github.com/bytenode/bytenode)-compiled `.jsc` files back to JavaScript.
 Static parsing only: one pure-Rust binary — no patched V8, no Node runtime, no network.
 
-Supports **Node 8.0.0 → 26.10.0** (510 releases / 36 V8 minors); **≈ 25k `.jsc` files pass the
+Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors); **≈ 25k `.jsc` files pass the
 tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
 optimization layers (register folding → swc copy propagation) make the decompiled source readable.
 
@@ -23,7 +23,7 @@ optimization layers (register folding → swc copy propagation) make the decompi
 
 ## Highlights
 
-- **Coverage** — every Node release from 8.0.0 → 26.10.0 (510 releases / 36 V8 minors) is
+- **Coverage** — every Node release from 8.0.0 → 26.12.1 (517 releases / 36 V8 minors) is
   identified; a V8 outside the tables is a clear error, not a guess.
 - **Runnable output** — `--runtime` adds the `__runtime` stubs so the result runs under `node`;
   `--verify` puts it through `node --check`.
@@ -486,10 +486,10 @@ supported:     yes
 
 Version tables are generated from Node sources by `scripts/codegen.py` and embedded at build time.
 Selection is keyed on the V8 version hash; every Node release from 8.0.0 on is listed in
-`tables/manifest.json` (510 entries), and one table covers each V8 minor — identical tables are
+`tables/manifest.json` (517 entries), and one table covers each V8 minor — identical tables are
 stored once.
 
-**Every Node release from 8.0.0 through 26.10.0 is identified** (510 releases, 90 V8 versions),
+**Every Node release from 8.0.0 through 26.12.1 is identified** (517 releases, 90 V8 versions),
 and **29 of the 36 V8 minors pass the full behavior matrix** — 31 Node lines, all green
 (1,108 pass / 0 fail / 8 skip / 0 known-fail). The remaining 7 minors (5.8, 6.0, 6.1, 6.6, 6.7,
 7.0, 7.4) are identified by `jscd info` but their payload deserialization **errors out loudly**
@@ -501,7 +501,7 @@ instead of emitting garbage.
 | 5.8, 6.0, 6.1, 6.6, 6.7, 7.0, 7.4 | 8.0–8.9, 10.0–10.8, 11.x, 12.0 (partial releases) | identified; payload **explicitly rejected** |
 
 <details>
-<summary>Full mapping: 36 version tables → 510 Node releases</summary>
+<summary>Full mapping: 36 version tables → 517 Node releases</summary>
 
 | Node releases | V8 (newest) | table |
 | --- | --- | --- |
@@ -540,7 +540,7 @@ instead of emitting garbage.
 | 23.0.0–23.11.1 | 12.9.202.28 | `tables/v12_9_23.11.1.json` |
 | 24.0.0–24.21.0 | 13.6.233.17 | `tables/v13_6.json` |
 | 25.0.0–25.9.0 | 14.1.146.11 | `tables/v14_1.json` |
-| 26.0.0–26.10.0 | 14.6.202.34 | `tables/v14_6_26.10.0.json` |
+| 26.0.0–26.12.1 | 14.6.202.34 | `tables/v14_6_26.10.0.json` |
 
 </details>
 
@@ -622,7 +622,7 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
 
 | Metric | Value |
 | --- | --- |
-| Supported Node releases | **510** (`v8.0.0` → `v26.10.0`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
+| Supported Node releases | **517** (`v8.0.0` → `v26.12.1`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
 | Version tables / read-only-heap name maps | **36** tables + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
 | Behavior fixtures | **36** fixtures (**121 assertion cases**) + **5** whole-script fixtures — 41 files / 629 lines |
 | One full matrix run | 31 Node lines × 36 fixtures = **1,116 cells** + 155 script cells ⇒ **3,751 case-by-case comparisons** and **1,271 structural gates** |
@@ -674,7 +674,7 @@ also uses older and newer lines — install the remaining 23 with:
 mise install node@8.17.0 node@12.5.0 node@12.9.0 node@12.15.0 node@13.14.0 node@14.0.0 \
   node@14.4.0 node@14.5.0 node@14.6.0 node@15.14.0 node@16.3.0 node@16.5.0 node@16.8.0 \
   node@16.9.0 node@17.1.0 node@17.9.1 node@18.2.0 node@19.1.0 node@19.9.0 node@21.7.3 \
-  node@23.11.1 node@25.9.0 node@26.10.0
+  node@23.11.1 node@25.9.0 node@26.12.1
 ```
 
 </details>

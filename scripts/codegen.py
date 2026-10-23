@@ -52,6 +52,32 @@ def repo_file(tag, path, in_v8=True):
     """
     rel = f"deps/v8/{path}" if in_v8 else path
     cache = _cache_path(tag, path)
+    if is_v8_tag(tag):
+        # v8 仓库的路径没有 deps/v8/ 前缀；node 侧文件（node.gypi/common.gypi）不存在
+        if not in_v8:
+            return None
+        if cache and os.path.exists(cache):
+            with open(cache, encoding="utf-8") as f:
+                return f.read()
+        if cache and os.path.exists(cache + ".404"):
+            return None
+        if V8_REPO and os.path.exists(os.path.join(V8_REPO, ".git")):
+            have = subprocess.run(["git", "-C", V8_REPO, "cat-file", "-e", f"{tag}^{{commit}}"],
+                                  capture_output=True, text=True)
+            if have.returncode == 0:
+                r = subprocess.run(["git", "-C", V8_REPO, "show", f"{tag}:{path}"],
+                                   capture_output=True, text=True)
+                if r.returncode == 0:
+                    if cache:
+                        os.makedirs(os.path.dirname(cache), exist_ok=True)
+                        with open(cache, "w", encoding="utf-8") as f:
+                            f.write(r.stdout)
+                    return r.stdout
+                if cache:
+                    os.makedirs(os.path.dirname(cache), exist_ok=True)
+                    open(cache + ".404", "w").close()
+                return None
+        return None
     if cache and os.path.exists(cache):
         with open(cache, encoding="utf-8") as f:
             return f.read()
@@ -135,6 +161,17 @@ NEEDED_V8_FILES = [
 REPO_DIR = None      # --repo-dir：blob 过滤的部分克隆（只按需取文件，不拉全量）
 REPO_URL = "https://github.com/nodejs/node"
 
+# Node 从未发布过的 V8 版本（Electron/Chrome 用）：源码只能从 v8/v8 仓库取。
+# `--v8-repo` 指向一份 `--filter=blob:none --depth 1` 的 v8 克隆，`--v8-tag` 给版本号。
+V8_REPO = None
+V8_TAGGED_SIZE = 8
+V8_SANDBOX = None
+V8_TAG_RE = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
+
+
+def is_v8_tag(tag):
+    return bool(V8_TAG_RE.match(tag))
+
 
 def _git(args, **kw):
     return subprocess.run(["git", "-C", REPO_DIR, *args], capture_output=True, text=True, **kw)
@@ -171,6 +208,29 @@ def prefetch(tag, jobs=16):
     实现：先 fetch 该 tag 的 commit+树（无 blob），再一次 `git cat-file --batch`
     让它把所有缺失的 blob 合并成一轮网络往返，逐个写进文件缓存。
     """
+    if is_v8_tag(tag):
+        wanted = [(p, True) for p in NEEDED_V8_FILES]
+        missing = []
+        for path, _ in wanted:
+            cache = _cache_path(tag, path)
+            if cache and (os.path.exists(cache) or os.path.exists(cache + ".404")):
+                continue
+            missing.append((path, path))
+        if missing and V8_REPO and os.path.exists(os.path.join(V8_REPO, ".git")):
+            have = subprocess.run(["git", "-C", V8_REPO, "cat-file", "-e", f"{tag}^{{commit}}"],
+                                  capture_output=True, text=True)
+            if have.returncode != 0:
+                r = subprocess.run(["git", "-C", V8_REPO, "fetch", "--depth", "1",
+                                    "--filter=blob:none", "-q", "origin",
+                                    f"refs/tags/{tag}:refs/tags/{tag}"],
+                                   capture_output=True, text=True)
+                if r.returncode != 0:
+                    print(f"warn: fetch v8 {tag} failed: {r.stderr.strip()[:120]}",
+                          file=sys.stderr)
+            _batch_fetch(tag, missing, repo=V8_REPO)
+        for path, _ in wanted:
+            repo_file(tag, path, True)
+        return
     wanted = [(p, True) for p in NEEDED_V8_FILES] + [("node.gypi", False), ("common.gypi", False)]
     missing = []
     for path, in_v8 in wanted:
@@ -193,14 +253,14 @@ def prefetch(tag, jobs=16):
         repo_file(tag, path, in_v8)
 
 
-def _batch_fetch(tag, missing):
+def _batch_fetch(tag, missing, repo=None):
     """一次 cat-file --batch 取多文件：missing blob 会被合并成一轮 fetch。
 
     输出格式：每个请求回 `<sha> <type> <size>\n<payload>\n`，对象不存在则回
     `<spec> missing\n`。这里按顺序一一对应地切出来写缓存。
     """
     req = ("\n".join(f"{tag}:{rel}" for _, rel in missing) + "\n").encode()
-    r = subprocess.run(["git", "-C", REPO_DIR, "cat-file", "--batch"],
+    r = subprocess.run(["git", "-C", repo or REPO_DIR, "cat-file", "--batch"],
                        input=req, capture_output=True)
     if r.returncode != 0:
         return  # 交给逐个兜底
@@ -986,11 +1046,27 @@ def extract_intrinsic_names(text):
 
 
 def _tq_class(text, name):
-    """在 .tq 文本里找 `class NAME ... { ... }`，返回 (body, base_name)。"""
-    m = re.search(rf"(?:extern )?class {name}\b([^{{]*)\{{(.*?)\n\}}", text, re.S)
+    """在 .tq 文本里找 `class NAME ... { ... }`，返回 (body, base_name)。
+
+    按**花括号配对**取 body：早先用 `\n}` 收尾，遇到单行空体（`class TrustedObject
+    extends HeapObject {}`）会一路吃到**下一个类的字段**里 —— 沙箱构建下
+    ExposedTrustedObject 的 `self_indirect_pointer` 被算进 TrustedObject，随后又
+    算一次，BytecodeArray 的 length/handler_table 等整体后移 4 字节，SFI 的
+    trusted_function_data 也找不到 → Electron/Chrome（V8 sandbox）全成"未编译"。
+    """
+    m = re.search(rf"(?:extern )?class {name}\b([^{{]*)\{{", text)
     if not m:
         return None, None
-    header, body = m.group(1), m.group(2)
+    header = m.group(1)
+    i, depth, start = m.end(), 1, m.end()
+    while i < len(text) and depth:
+        c = text[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        i += 1
+    body = text[start:i - 1] if depth == 0 else text[start:]
     bm = re.search(r"extends\s+(\w+)", header)
     return body, (bm.group(1) if bm else None)
 
@@ -1341,12 +1417,25 @@ def extract_hash_fold(tag):
     return "right_fold"
 
 
+def sandbox_of(tag):
+    """V8 sandbox 是否开启：Chromium/Electron 默认开（与 ts 解耦，便于单独校准）。"""
+    if V8_SANDBOX is not None:
+        return V8_SANDBOX
+    return extract_tagged_size(tag) == 4
+
+
 def extract_tagged_size(tag):
     """kTaggedSize：看 build 配置里指针压缩是否对该平台开启。
 
     code cache 与平台绑定；Node 官方构建：linux/win x64 开压缩(4)，macOS 不开(8)。
     这里从 node 的 common.gypi 读默认值并按平台覆写。
+
+    **V8 标签**（--v8-tag，Electron/Chrome 用）没有 node.gypi：按 `--v8-tagged-size`
+    （默认 8）走。Chromium/Electron 是压缩 + V8 sandbox 构建，要用 4（sandbox 由
+    `V8_SANDBOX` 决定，`--v8-sandbox` 可强制）。
     """
+    if is_v8_tag(tag):
+        return V8_TAGGED_SIZE
     gypi = repo_file(tag, "node.gypi", in_v8=False) or ""
     gypi += repo_file(tag, "common.gypi", in_v8=False) or ""
     enabled = re.search(r"'v8_enable_pointer_compression':\s*(\d)", gypi)
@@ -1525,10 +1614,33 @@ def main():
                     help="已生成的 ro-map 目录（workspace/ro）：按 V8 minor 收进 tables/ 并内嵌")
     ap.add_argument("--per-minor", action="store_true",
                     help="每个 V8 major.minor 只保留最新 patch 的表（其余发布映射到它）")
+    ap.add_argument("--v8-repo", default=None,
+                    help="v8/v8 的部分克隆（blob 过滤 + depth 1）；配合 --v8-tag 取 Node 未发布的 V8 版本")
+    ap.add_argument("--v8-tag", action="append", default=[],
+                    help="V8 版本号（如 15.6.75.19），可多次；用于 Electron/Chrome 独有版本")
+    ap.add_argument("--v8-tagged-size", type=int, default=8,
+                    help="--v8-tag 构建的 kTaggedSize（Chromium/Electron 是 4 = 指针压缩）")
+    ap.add_argument("--v8-sandbox", choices=["auto", "on", "off"], default="auto",
+                    help="--v8-tag 构建是否开 V8 sandbox（auto：ts==4 即视为开）")
+    ap.add_argument("--v8-label", action="append", default=[],
+                    help="V8_TAG=标签，写进 manifest 的 node 字段（如 15.6.75.19=electron 45.0.0）")
+    ap.add_argument("--index-entries", action="store_true",
+                    help="只按 --index 给**已有表**补 manifest 发布条目（不抓源码、不重建表）")
+    ap.add_argument("--merge-existing", action="store_true",
+                    help="在现有 tables/manifest.json 上追加：保留既有条目/表/ro-map，只生成新 tag 的表")
     ap.add_argument("--out", default=None, help="输出目录（默认仓库根）")
     args = ap.parse_args()
     NODE = args.node
     OFFLINE = args.offline
+    global V8_REPO, V8_TAGGED_SIZE, V8_SANDBOX
+    V8_REPO = args.v8_repo
+    V8_TAGGED_SIZE = args.v8_tagged_size
+    V8_SANDBOX = None if args.v8_sandbox == "auto" else (args.v8_sandbox == "on")
+    v8_labels = {}
+    for item in args.v8_label:
+        if "=" in item:
+            k, v = item.split("=", 1)
+            v8_labels[k.strip()] = v.strip()
     out_root = args.out or os.path.join(os.path.dirname(__file__), "..")
     CACHE_DIR = args.cache or os.path.join(out_root, "workspace", "node-src")
     global REPO_DIR
@@ -1536,6 +1648,26 @@ def main():
         REPO_DIR = args.repo_dir or os.path.join(out_root, "workspace", "node-partial")
     tables_dir = os.path.join(out_root, "tables")
     os.makedirs(tables_dir, exist_ok=True)
+
+    # --merge-existing：先把现有产物读进来，生成阶段结束后再合并（只补不减）
+    merged_versions, merged_tables, merged_ro = [], {}, {}
+    if args.merge_existing:
+        mpath = os.path.join(tables_dir, "manifest.json")
+        if os.path.exists(mpath):
+            with open(mpath, encoding="utf-8") as f:
+                merged_versions = json.load(f).get("versions", [])
+        for f in sorted(glob.glob(os.path.join(tables_dir, "v*.json"))):
+            try:
+                with open(f, encoding="utf-8") as fh:
+                    merged_tables[os.path.basename(f)] = json.load(fh)
+            except (OSError, ValueError) as e:
+                print(f"warn: skip {f}: {e}", file=sys.stderr)
+        for f in sorted(glob.glob(os.path.join(tables_dir, "ro_map_*.json"))):
+            base = os.path.basename(f)
+            v8 = base[len("ro_map_"):-len(".json")].replace("_", ".")
+            merged_ro[v8] = base
+        print(f"merge-existing: {len(merged_versions)} versions, "
+              f"{len(merged_tables)} tables, {len(merged_ro)} ro-maps", file=sys.stderr)
 
     donors = {}
     if args.donors:
@@ -1552,7 +1684,52 @@ def main():
         if e.get("v8"):
             index_by_v8.setdefault(e["v8"], []).append(e)
 
-    tags = list(args.tag)
+    if args.index_entries:
+        # 新增 Node 发布（同一 V8 版本）→ 只更新 manifest 的版本索引，表沿用现有的。
+        # 版本哈希只按 V8 版本算，所以同一张表可以直接登记新发布。
+        have = {(v["v8"], v["node"]) for v in merged_versions}
+        added = 0
+        for e in index:
+            v8 = e.get("v8")
+            if not v8:
+                continue
+            mk = ".".join(v8.split(".")[:2])
+            fname = None
+            for t in merged_tables.values():
+                if t.get("v8") == v8:
+                    fname = next((f for f, tt in merged_tables.items() if tt is t), None)
+                    break
+            if fname is None:
+                # 同 minor 的表（--per-minor：补丁版本共用一张）
+                cand = os.path.join(tables_dir, f"v{mk.replace('.', '_')}.json")
+                if os.path.exists(cand):
+                    fname = os.path.basename(cand)
+            if fname is None:
+                continue
+            if (v8, e["version"]) in have:
+                continue
+            p4 = [int(x) for x in v8.split(".")]
+            # 折叠方式从现有表取（源码不在手边；≥12 一律左折叠）
+            fold = next(
+                (t["hash"]["algorithm"] for t in merged_tables.values()
+                 if t.get("v8") == v8 and t.get("hash")),
+                "left_fold" if p4[0] >= 12 else "right_fold",
+            )
+            merged_versions.append({
+                "v8": v8,
+                "hash": v8_hash(fold, *p4),
+                "node": e["version"],
+                "table": fname,
+            })
+            added += 1
+        print(f"index-entries: +{added} releases (total {len(merged_versions)})", file=sys.stderr)
+        with open(os.path.join(tables_dir, "manifest.json"), "w") as f:
+            json.dump({"schema_version": 1,
+                       "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                       "versions": merged_versions}, f, indent=1, sort_keys=True)
+        return
+
+    tags = list(args.tag) + list(args.v8_tag)
     if args.all_from:
         tags += tags_for_all(index, major_floor=floor)
         print(f"index: {len(index)} releases >= {args.all_from}, "
@@ -1616,6 +1793,9 @@ def main():
             "hash": {"algorithm": extract_hash_fold(tag)},
             "header": extract_header_layout(tag),
             "tagged_size": extract_tagged_size(tag),
+            # 偏移是在这个 tagged size 下算出来的：运行时 ts 不同时要按这个基准换算
+            # （Electron/Chrome 是 4；Node 官方 macOS 是 8）
+            "capture_tagged_size": extract_tagged_size(tag),
             "bytecodes": extract_bytecodes(src_b),
             "operand_types": extract_operand_types(src_o),
             "serialization": {
@@ -1649,7 +1829,7 @@ def main():
                 }.items() if v},
                 "SharedFunctionInfo",
                 extract_tagged_size(tag),
-                sandbox=extract_tagged_size(tag) == 4,
+                sandbox=sandbox_of(tag),
             ),
             "runtime_names": extract_runtime_names(src_rt),
             "intrinsic_names": extract_intrinsic_names(src_intr),
@@ -1662,7 +1842,7 @@ def main():
                     "fixed-array.tq": src_fixed,
                 }.items() if v},
                 extract_tagged_size(tag),
-                sandbox=extract_tagged_size(tag) == 4,
+                sandbox=sandbox_of(tag),
             ),
         }
 
@@ -1695,7 +1875,9 @@ def main():
         fold_of_v8[table["v8"]] = table["hash"]["algorithm"]
 
         # 没给 index 时，至少把 tag 自己登记进去
-        entries = index_by_v8.get(table["v8"]) or [{"version": tag.lstrip("v"), "v8": table["v8"]}]
+        entries = index_by_v8.get(table["v8"]) or [
+            {"version": v8_labels.get(table["v8"], tag.lstrip("v")), "v8": table["v8"]}
+        ]
         for e in entries:
             e_v8 = e.get("v8") or table["v8"]
             p = [int(x) for x in e_v8.split(".")]
@@ -1705,6 +1887,20 @@ def main():
                 "node": e["version"],
                 "table": file_of_content[content_key],
             })
+
+    if args.merge_existing:
+        # 既有条目：同一 (v8, node) 已被新生成覆盖的不重复加；其余原样保留
+        have = {(v["v8"], v["node"]) for v in versions}
+        versions += [v for v in merged_versions if (v["v8"], v["node"]) not in have]
+        # 既有表：只补缺（新生成的同名文件优先）
+        for fname, t in merged_tables.items():
+            if fname not in table_files:
+                table_files[fname] = t
+            if t.get("v8"):
+                tables_by_v8.setdefault(t["v8"], t)
+                fname_of_v8.setdefault(t["v8"], fname)
+        print(f"merge-existing: +{len(versions)} versions / {len(table_files)} tables total",
+              file=sys.stderr)
 
     # index 里每个发布 → 它那个 V8 版本的表（4 段精确匹配；表是按 V8 版本生成的，
     # 同名表已按内容去重，所以这里给的是"这个发布该用哪张表"）
@@ -1823,6 +2019,8 @@ def main():
             with open(os.path.join(tables_dir, fname), "w", encoding="utf-8") as f:
                 f.write(text)
         print(f"ro-maps: {len(ro_files)} V8 versions", file=sys.stderr)
+    for v8str, fname in merged_ro.items():
+        ro_files.setdefault(v8str, fname)
 
     # 生成 Rust 内嵌清单
     lines = ["// 本文件由 scripts/codegen.py 生成，请勿手改。"]
@@ -1833,7 +2031,7 @@ def main():
     lines.append("];")
     with open(os.path.join(out_root, "src", "tables_embed.rs"), "w") as f:
         f.write("\n".join(lines) + "\n")
-    if args.ro_maps:
+    if ro_files:
         rlines = ["// 本文件由 scripts/codegen.py 生成，请勿手改。",
                   "pub static RO_MAPS: &[(&str, &str)] = &["]
         for mk in sorted(ro_files, key=lambda s: tuple(int(x) for x in s.split("."))):

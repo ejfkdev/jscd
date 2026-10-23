@@ -488,9 +488,12 @@ impl<'a> Disassembler<'a> {
         let header = self
             .cache
             .bca_rt_off(self.table, ts, bca_id, ba_layout.header_size);
+        // length 不是恒在 +ts：沙箱构建（Chromium/Electron）的 ExposedTrustedObject
+        // 头部多一个 self_indirect_pointer（4 字节），length 落到 +2*ts。按表的字段偏移读。
+        let len_off = rt_off("length").unwrap_or(ts);
         let bytecode_len = self
             .cache
-            .raw_at(bca_id, ts, ts)
+            .raw_at(bca_id, len_off, ts)
             .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
         let frame_size = rt_off("frame_size")
@@ -529,6 +532,12 @@ impl<'a> Disassembler<'a> {
             .cache
             .raw_at(bca_id, header, bytecode_len)
             .unwrap_or_default();
+        if std::env::var("JSCD_DBG_CODE").is_ok() {
+            eprintln!(
+                "[code] bca={bca_id} header={header} len={bytecode_len} bytes={:02x?}",
+                code
+            );
+        }
 
         let decoder = Decoder::new(self.table, self.layout, parameter_count);
         let instrs = decoder.decode(code).map_err(|e| {

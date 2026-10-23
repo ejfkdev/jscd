@@ -618,12 +618,19 @@ impl<'a> Walker<'a> {
             Ok(SlotValue::PendingRef(self.putint()?))
         } else if Some(b) == self.opt_tag("kClearedWeakReference") {
             Ok(SlotValue::ClearedWeak)
-        } else if Some(b) == self.opt_tag("kWeakPrefix")
-            || Some(b) == self.opt_tag("kIndirectPointerPrefix")
-            || Some(b) == self.opt_tag("kProtectedPointerPrefix")
-        {
+        } else if Some(b) == self.opt_tag("kWeakPrefix") {
             let inner = self.parse_ref(depth + 1)?;
             Ok(SlotValue::WeakRef(Box::new(inner)))
+        } else if Some(b) == self.opt_tag("kIndirectPointerPrefix")
+            || Some(b) == self.opt_tag("kProtectedPointerPrefix")
+        {
+            // 沙箱构建（Chromium/Electron）用间接指针把可信对象存进普通对象：
+            // 前缀只是"下一个引用要进指针表"，**值仍是那个对象**。早先与 kWeakPrefix
+            // 一起包成 WeakRef，于是 SFI 的 trusted_function_data 看起来不是
+            // BytecodeArray → 所有函数都成了"未编译"（Electron 42+ 全空）。
+            // 反编译不需要指针表本身，透明解引用即可。
+            let inner = self.parse_ref(depth + 1)?;
+            Ok(inner)
         } else if Some(b) == self.opt_tag("kInitializeSelfIndirectPointer") {
             Ok(SlotValue::ClearedWeak)
         } else if Some(b) == self.opt_tag("kAllocateJSDispatchEntry")

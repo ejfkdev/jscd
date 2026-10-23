@@ -307,8 +307,8 @@ impl Identified {
                 "yes"
             } else {
                 crate::bi!(
-                    "no (tables cover Node 8.0.0-26.10.0 / V8 5.8-14.6)",
-                    "否（当前表覆盖 Node 8.0.0-26.10.0 / V8 5.8-14.6）"
+                    "no (tables cover Node 8.0.0-26.12.1 / V8 5.8-14.6)",
+                    "否（当前表覆盖 Node 8.0.0-26.12.1 / V8 5.8-14.6）"
                 )
             }
         );
@@ -364,10 +364,32 @@ pub fn all_tables() -> Vec<VersionTable> {
     out
 }
 
+/// manifest 里的 `node` 字段 → 可比较的版本号（`v26.12.1` → (26,12,1)）。
+/// 非 Node 发布（如 `electron 45.0.0`）解析不出三段数字 → (0,0,0)，排在 Node 之后。
+fn node_version_key(node: &str) -> (u32, u32, u32) {
+    let mut nums = node
+        .trim_start_matches('v')
+        .split(|c: char| !c.is_ascii_digit())
+        .filter(|p| !p.is_empty())
+        .filter_map(|p| p.parse::<u32>().ok());
+    let a = nums.next().unwrap_or(0);
+    let b = nums.next().unwrap_or(0);
+    let c = nums.next().unwrap_or(0);
+    (a, b, c)
+}
+
 /// 按 version_hash 精确查表 → 未命中则爆破。
+///
+/// 同一个版本哈希会对应多个发布（同一 V8 版本的所有 Node 发布共用它）：
+/// 取**最新的那个**来显示 —— `info` 对 14.6 的缓存该说 v26.12.1，而不是最早登记的那条。
 pub fn identify(version_hash: u32) -> Identified {
     if let Some(m) = manifest() {
-        if let Some(v) = m.versions.iter().find(|v| v.hash == version_hash) {
+        let best = m
+            .versions
+            .iter()
+            .filter(|v| v.hash == version_hash)
+            .max_by_key(|v| node_version_key(&v.node));
+        if let Some(v) = best {
             return Identified {
                 node: leaked(v.node.as_str()),
                 v8: leaked(v.v8.as_str()),

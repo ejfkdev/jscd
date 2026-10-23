@@ -91,6 +91,15 @@ fn debug_parse_cmd(file: &Path) -> Result<(), String> {
                 let _ = writeln!(s, "      text = {v:?}");
             }
         }
+        // `JSCD_DUMP_SLOTS=<id>`：打某个对象的槽值（定位布局错位/字段落空用）
+        if std::env::var("JSCD_DUMP_SLOTS")
+            .ok()
+            .is_some_and(|v| v == "1" || v == id.to_string())
+        {
+            for (i, sl) in o.slots.iter().enumerate() {
+                let _ = writeln!(s, "      slot[{i}] = {:?}", sl.value);
+            }
+        }
     }
     if std::env::var("JSCD_LIST_FN").is_ok() {
         for id in 0..cache.objects.len() {
@@ -329,7 +338,12 @@ fn disasm_cmd(file: &Path, common: &Common, filter: Option<&str>, json_flag: boo
 fn t_payload<'a>(data: &'a [u8], table: &crate::tables::VersionTable) -> &'a [u8] {
     let legacy_family = table.serialization.legacy.contains_key("kSpaceMask");
     if !legacy_family {
-        return data;
+        // 现代族的头大小随版本变（12.x+ 加了 ro checksum/checksum，15.x 起 32 字节），
+        // 不能直接返回整份文件 —— 按表的布局切，切不出来再退回去。
+        return match crate::header::Header::parse_with(data, &table.header) {
+            Ok(h) => h.payload(data),
+            Err(_) => data,
+        };
     }
     let hl = &table.header;
     let rd = |off: Option<usize>| -> usize {
@@ -357,9 +371,13 @@ fn parse_cache<'a>(
 > {
     let h0 = crate::header::Header::parse(data)?;
     let ident = crate::tables::identify(h0.version_hash);
-    // 调试：`JSCD_TABLE=6.2.414.78` 强制只用某张表（老族多版本候选混在一起时定位用）
+    // 调试：`JSCD_TABLE=6.2.414.78` 强制只用某张表（老族多版本候选混在一起时定位用）；
+    // 配合 `JSCD_TS=4|8` 还能钉住 tagged size（指针压缩/非压缩构建对比）
     if let Ok(v) = std::env::var("JSCD_TABLE") {
-        if let Some(t) = crate::tables::table_for(&v) {
+        if let Some(mut t) = crate::tables::table_for(&v) {
+            if let Some(ts) = std::env::var("JSCD_TS").ok().and_then(|x| x.parse::<u8>().ok()) {
+                t.tagged_size = ts;
+            }
             return crate::serializer::parse_with(t_payload(data, &t), &t, &[]).map(|c| (h0, t, c));
         }
     }
@@ -492,9 +510,9 @@ fn unsupported_msg(ident: &crate::tables::Identified, hash: u32, errors: &[Strin
     } else {
         bif!(
             "unsupported .jsc: built by V8 {0} (version hash 0x{1:08x}); this build covers \
-             Node 8.0.0–26.10.0 (V8 5.8–14.6) — run `jscd info <file>` for the full header",
+             Node 8.0.0–26.12.1 (V8 5.8–14.6) — run `jscd info <file>` for the full header",
             "不支持的 .jsc：由 V8 {0} 生成（version hash 0x{1:08x}）；当前覆盖 \
-             Node 8.0.0–26.10.0（V8 5.8–14.6）—— 可先跑 `jscd info <文件>` 看完整头信息";
+             Node 8.0.0–26.12.1（V8 5.8–14.6）—— 可先跑 `jscd info <文件>` 看完整头信息";
             ident.v8,
             hash
         )

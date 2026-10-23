@@ -1744,9 +1744,14 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             .clone()
             .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(d.ts));
         let ts = d.ts;
+        // length 的偏移按表取（沙箱构建在 self_indirect_pointer 之后 = +2*ts）
+        let len_off = ba
+            .off("length")
+            .map(|o| d.cache.bca_rt_off(d.table, ts, bca, o))
+            .unwrap_or(ts);
         let bytecode_len = d
             .cache
-            .raw_at_ts(bca, ts, ts, ts)
+            .raw_at_ts(bca, len_off, ts, ts)
             .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
         let hdr = d.cache.bca_rt_off(d.table, ts, bca, ba.header_size);
