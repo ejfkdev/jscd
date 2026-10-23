@@ -60,7 +60,7 @@ fn debug_parse_cmd(file: &Path) -> Result<(), String> {
     let layout = crate::bytecode::FamilyLayout::from_table(&table);
     let d = crate::disasm::Disassembler::new(&cache, &table, layout)
         .with_source_len(h.source_length())
-        .with_ro_map(embedded_ro_map(&table.v8));
+        .with_ro_map(embedded_ro_map(&table.v8, table.tagged_size as usize));
 
     let mut s = String::new();
     let _ = writeln!(
@@ -115,13 +115,24 @@ fn info_cmd(file: &Path, common: &Common, json: bool) -> Result<(), String> {
     let mut text = header.render_text(file, &ident);
     // 只读堆名表是 macOS 探针建的：本平台不套用时把话说明白（info 是给人看的诊断命令，
     // 这里多一行不会破坏 stdout 模式"只有产物"的约定）。
-    if crate::ro_embed::RO_MAPS.iter().any(|(k, _)| *k == ident.v8)
-        && !crate::decompile::embedded_ro_map_applies()
-    {
-        text.push_str(crate::bif!(
-            "ro_map:        embedded table exists but was built on macOS — not applied here\n               (build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)\n",
-            "ro_map:        有内嵌名表，但在 macOS 上提取的 —— 本平台不套用\n               （要真名就在本平台建一张：`jscd ro-map <探针.jsc> -o names.json`）\n"
-        ));
+    if crate::ro_embed::RO_MAPS.iter().any(|(k, _)| *k == ident.v8) {
+        if !crate::decompile::embedded_ro_map_applies() {
+            text.push_str(crate::bif!(
+                "ro_map:        embedded table exists but was built on macOS — not applied here\n               (build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)\n",
+                "ro_map:        有内嵌名表，但在 macOS 上提取的 —— 本平台不套用\n               （要真名就在本平台建一张：`jscd ro-map <探针.jsc> -o names.json`）\n"
+            ));
+        } else if crate::decompile::embedded_ro_map_applies()
+            && parse_cache(&data)
+                .ok()
+                .is_some_and(|(_, t, _)| t.tagged_size != 8)
+        {
+            // 同一段 V8 版本字符串下可能有指针压缩构建（Electron 22 与 Node 19.9 都是
+            // 10.8.168.25）：只读堆坐标完全不同，内嵌表不能套用。
+            text.push_str(crate::bif!(
+                "ro_map:        embedded table is for non-pointer-compressed (Node) builds — not applied\n               to this cache; build one on the same build: `jscd ro-map <probe.jsc> -o names.json`\n",
+                "ro_map:        内嵌名表取自非压缩（Node）构建 —— 这份缓存是指针压缩构建，不套用\n               （要用同构建建表：`jscd ro-map <探针.jsc> -o names.json`）\n"
+            ));
+        }
     }
     emit(common, &text, &header.render_json(file, &ident), json)
 }
@@ -133,7 +144,7 @@ fn strings_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Stri
     let layout = crate::bytecode::FamilyLayout::from_table(&table);
     let d = crate::disasm::Disassembler::new(&cache, &table, layout)
         .with_source_len(h.source_length())
-        .with_ro_map(embedded_ro_map(&table.v8));
+        .with_ro_map(embedded_ro_map(&table.v8, table.tagged_size as usize));
 
     let mut seen = std::collections::HashSet::new();
     let mut values: Vec<String> = Vec::new();
@@ -175,7 +186,7 @@ fn functions_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), St
     let layout = crate::bytecode::FamilyLayout::from_table(&table);
     let d = crate::disasm::Disassembler::new(&cache, &table, layout)
         .with_source_len(h.source_length())
-        .with_ro_map(embedded_ro_map(&table.v8));
+        .with_ro_map(embedded_ro_map(&table.v8, table.tagged_size as usize));
     let ts = table.tagged_size as usize;
     let ba = table
         .bytecode_array
@@ -447,7 +458,7 @@ fn cache_has_code(cache: &crate::serializer::CodeCache, table: &crate::tables::V
     use crate::serializer::{Ref, SlotValue};
     let layout = crate::bytecode::FamilyLayout::from_table(table);
     let d = crate::disasm::Disassembler::new(cache, table, layout)
-        .with_ro_map(embedded_ro_map(&table.v8));
+        .with_ro_map(embedded_ro_map(&table.v8, table.tagged_size as usize));
     let slots = d.sfi_function_data_slots();
     (0..cache.objects.len()).any(|id| {
         cache.obj(id).ty.is(table, "SharedFunctionInfo")
@@ -494,13 +505,13 @@ fn unsupported_msg(ident: &crate::tables::Identified, hash: u32, errors: &[Strin
 ///
 /// 注意：这里**不说话**。stdout 模式只输出产物、不许有诊断（tests/cli.rs 的约定）；
 /// 平台不符这件事在 `jscd info` 里说明（那本来就是给人看的诊断命令）。
-fn embedded_ro_map(v8: &str) -> Option<std::rc::Rc<crate::decompile::RoMap>> {
-    crate::decompile::RoMap::embedded(v8).map(std::rc::Rc::new)
+fn embedded_ro_map(v8: &str, ts: usize) -> Option<std::rc::Rc<crate::decompile::RoMap>> {
+    crate::decompile::RoMap::embedded(v8, ts).map(std::rc::Rc::new)
 }
 
 /// 同上，不过给 `Decompiler`（它收 `Option<RoMap>`）。
-fn embedded_ro_map_plain(v8: &str) -> Option<crate::decompile::RoMap> {
-    crate::decompile::RoMap::embedded(v8)
+fn embedded_ro_map_plain(v8: &str, ts: usize) -> Option<crate::decompile::RoMap> {
+    crate::decompile::RoMap::embedded(v8, ts)
 }
 
 fn json_out(text: &str) -> String {
@@ -519,7 +530,10 @@ pub fn decompile_text(
         Some(p) => Some(crate::decompile::RoMap::load(p)?),
         // 按**文件里识别到的** V8 版本查内嵌表（表的代表版本未必等于文件的版本）；
         // 走 embedded_ro_map 是为了在平台不符时也给出一次提示。
-        None => embedded_ro_map_plain(crate::tables::identify(_h.version_hash).v8),
+        None => embedded_ro_map_plain(
+            crate::tables::identify(_h.version_hash).v8,
+            table.tagged_size as usize,
+        ),
     };
     let d = crate::decompile::Decompiler::new(&cache, &table)
         .with_ro_map(rmap)

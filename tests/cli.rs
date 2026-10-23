@@ -274,6 +274,49 @@ fn electron_pointer_compressed_string_roots_follow_the_build_ro_map() {
 }
 
 #[test]
+fn electron22_pointer_compressed_cache_ignores_node_ro_map() {
+    // Electron 22 与 Node 19.9 共用 V8 10.8.168.25，但 Electron 是指针压缩构建 ——
+    // 只读堆坐标完全不同。内嵌名表（Node 探针建的）**不能**套用：错名字是静默的。
+    let jsc = "tests/fixtures/jsc/electron22-v8_10.8.168.25.jsc";
+    let o = jscd(&[jsc]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(s.contains("<ro0_"), "压缩构建应保留占位而不是套用 Node 的名字：{s}");
+    assert!(s.contains("function tick"), "结构仍要能解：{s}");
+
+    let info = out(&jscd(&["info", jsc]));
+    assert!(
+        info.contains("non-pointer-compressed") || info.contains("指针压缩"),
+        "info 要说明内嵌表为什么不套用：{info}"
+    );
+}
+
+#[test]
+fn electron22_ro_map_resolves_names_and_string_roots() {
+    // 同构建探针建的表要同时修两类坐标：只读堆偏移（entries）与字符串根（roots）。
+    let jsc = "tests/fixtures/jsc/electron22-v8_10.8.168.25.jsc";
+    let ro = "tests/fixtures/jsc/electron22-ro-map.json";
+    let o = jscd(&["--ro-map", ro, jsc]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    // 探针覆盖到的名字都要还原（没探到的字符串常量留占位属于预期）
+    for off in ["16508", "16524", "16540", "35916"] {
+        assert!(!s.contains(&format!("<ro0_{off}>")), "该偏移应已还原：{s}");
+    }
+    assert!(s.contains("a: void 0"), "对象字面量键应还原：{s}");
+    assert!(s.contains("\"c\""), "计算键里的字符串应还原：{s}");
+    assert!(s.contains("\"join\"") || s.contains(".join"), "方法名应还原：{s}");
+
+    // 同一张表里的 roots 段：探针 `p_0` 认领该构建的 `"0"` 根。
+    let probe = "tests/fixtures/jsc/electron22-roots-probe.jsc";
+    let o = jscd(&["ro-map", probe]);
+    assert!(o.status.success(), "{}", err(&o));
+    let v: serde_json::Value = serde_json::from_str(&out(&o)).expect("ro-map 输出应是 JSON");
+    let roots = v.get("roots").and_then(|r| r.as_object()).expect("要有 roots");
+    assert_eq!(roots.get("593").and_then(|s| s.as_str()), Some("0"), "{roots:?}");
+}
+
+#[test]
 fn directory_input_mirrors_tree_into_input_out() {
     let Some(node) = node() else {
         eprintln!("跳过：环境里没有 node");

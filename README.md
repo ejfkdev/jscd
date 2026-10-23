@@ -139,12 +139,14 @@ jscd --help                      # bilingual help (-h, `help`, `help <SUBCOMMAND
   argument writes elsewhere, `-` means stdout.
 - A `.jsc` from an unsupported V8 is **rejected with the detected version and the supported range**
   in the message (`jscd info` prints `supported: yes|no`) — never a silent, runtime-only file.
-- Read-only-heap names (Node 22+) resolve automatically where an embedded table applies (**macOS** —
-  RO indices are platform-specific); elsewhere build one with `jscd ro-map` and pass `--ro-map`
-  (`JSCD_NO_RO_MAP=1` disables the embedded table). The same table also pins **string roots**
-  (`roots`): their indices shift between builds, so a table from your own build turns `"0"` back
-  into `"0"` instead of whatever another build stored at that index. A mismatched table is
-  ignored: you get `<ro0_…>` placeholders, never a wrong name.
+- Read-only-heap names (Node 22+) resolve automatically where an embedded table applies (**macOS**,
+  non-pointer-compressed builds); elsewhere build one with `jscd ro-map` and pass `--ro-map`
+  (`JSCD_NO_RO_MAP=1` disables the embedded table). Embedded tables are **never** applied to
+  pointer-compressed caches (Electron/Chrome): they share the V8 version string with Node but lay
+  the read-only heap out differently. The same table also pins **string roots** (`roots`): their
+  indices shift between builds, so a table from your own build turns `"0"` back into `"0"` instead
+  of whatever another build stored at that index. A mismatched table is ignored: you get
+  `<ro0_…>` placeholders, never a wrong name.
 - The interface language follows `JSCD_LANG` (then `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` /
   `LC_CTYPE`): `zh*` is Chinese, anything else English; `JSCD_LANG=zh|en` forces one.
 

@@ -787,8 +787,12 @@ impl RoMap {
     /// 必须精确匹配：只读堆地址 (chunk/offset) 是按 V8 版本编号的，同 minor 的不同 patch
     /// 都可能不同 —— 错配会**静默给出错误的属性名**，比留 `<ro0_…>` 占位更糟。
     /// 平台不符（表是 macOS 探针建的，见 `EMBEDDED_RO_MAP_PLATFORM`）时同样不套用。
-    pub fn embedded(v8: &str) -> Option<Self> {
-        if !embedded_ro_map_applies() {
+    ///
+    /// 还要卡 **tagged size**：同一段 V8 版本字符串下可能有指针压缩构建（Electron 22 与
+    /// Node 19.9 都是 10.8.168.25），它们的只读堆坐标完全不同。内嵌表都是非压缩构建
+    /// （ts=8）的探针建的 → `tagged_size != 8` 时一律不套用。
+    pub fn embedded(v8: &str, tagged_size: usize) -> Option<Self> {
+        if !embedded_ro_map_applies() || tagged_size != 8 {
             return None;
         }
         let text = crate::ro_embed::RO_MAPS
@@ -9422,9 +9426,13 @@ mod tests {
         {
             return; // 换平台 / 显式关掉时这条不适用
         }
-        let m = RoMap::embedded("11.3.244.8").expect("内嵌表应当能解析");
+        let m = RoMap::embedded("11.3.244.8", 8).expect("内嵌表应当能解析");
         assert_eq!(m.v8, "11.3.244.8");
         assert!(!m.entries.is_empty());
-        assert!(RoMap::embedded("99.9.999.9").is_none(), "没有的表要返回 None");
+        assert!(RoMap::embedded("99.9.999.9", 8).is_none(), "没有的表要返回 None");
+        assert!(
+            RoMap::embedded("11.3.244.8", 4).is_none(),
+            "指针压缩构建的只读堆坐标不同，内嵌表不能套用"
+        );
     }
 }

@@ -1333,3 +1333,12 @@ Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_c
 写进 `roots`（`p_0` → `"571": "0"`），反编译器与反汇编器查表前先看这张覆盖表；`entries`
 （只读堆对象坐标）与 `roots`（根下标）是两套坐标，互不影响。带上同构建名表后
 `string_regex` 转绿。对 Node 各线带 `roots` 的表是空操作（下标本来就对）。
+
+**内嵌名表按 tagged size 卡一道（issue #2 的线索）**：V8 版本哈希只覆盖版本字符串，所以
+**Electron 22 与 Node 19.9 的头部完全同值**（都是 10.8.168.25），可是前者的只读堆是压缩布局
+（ext ref 数 0x5a9、`--no-lazy` 的 flag_hash 0x5cd538b3），后者不是（0x5a4）。早先 `--ro-map`
+缺省时会把 Node 的内嵌表套到 Electron 缓存上 → **静默给错名字**。现在 `RoMap::embedded`
+要求 `tagged_size == 8`，`jscd info` 也会说明"内嵌表取自非压缩构建，不套用"。
+只读堆坐标还随**架构**走：同为 Electron 22/`--no-lazy`，x64 与 arm64 的同一字符串偏移不同
+（探针与目标缓存必须用同一个二进制编译）。Electron 22（x64）用同构建探针：
+36 个行为 fixture **36/36 逐用例一致**（fixture：`tests/fixtures/jsc/electron22-*`）。
