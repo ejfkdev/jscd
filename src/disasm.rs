@@ -985,6 +985,9 @@ impl<'a> Disassembler<'a> {
         //   **digit 存绝对值**（`FromInt64` 里先取 absolute 再 set_64_bits）。
         //   负债就是"绝对值 + 符号位"，不是补码。
         let ts = self.layout.tagged_size;
+        if std::env::var("JSCD_DBG_BIG").is_ok() {
+            eprintln!("[bigint] id={id} ts={ts} size={}", self.cache.obj(id).byte_size);
+        }
         let bf = self.cache.raw_at(id, ts, ts.min(8))?;
         let bf = u32::from_le_bytes(bf[..4].try_into().ok()?);
         let negative = bf & 1 == 1;
@@ -996,6 +999,9 @@ impl<'a> Disassembler<'a> {
         // 也一样。早先按 tagged size 取 digit，压缩构建把每个 digit 读成两半
         // （9007199254740993n → 1n、30 位十进制的大数变成 20 位）。
         const DIGIT: usize = 8;
+        if std::env::var("JSCD_DBG_BIG").is_ok() {
+            eprintln!("[bigint]   bf={bf:#x} neg={negative} len={len}");
+        }
         let bytes = self.cache.raw_at(id, 2 * ts, len * DIGIT)?;
         let mut words: Vec<u64> = Vec::with_capacity(len);
         for chunk in bytes.chunks(DIGIT) {
@@ -1053,11 +1059,15 @@ pub fn decode_string(cache: &CodeCache<'_>, table: &VersionTable, id: ObjId) -> 
     // 字符区从错误位置开始（Electron 的 property 名因此全成空串）。
     // 注意不是整体缩放：字符串里只有 **map 一个 tagged 字段**，hash（uint32）与 length
     // （int32）是 raw —— 所以压缩构建下它们的位置固定减去 (capture - ts) 个字节。
-    let cap = table.slot_unit();
+    // 字符串布局的默认偏移（12/16）永远是 **8 字节基线** 下的值 ——
+    // 它跟表的 `capture_tagged_size` 无关。Electron 表是按 ts=4 抓的（capture=4），
+    // 用 slot_unit() 当基线时 shift=0，长度会从 12 读到 hash 附近（长度变 0、串变空）：
+    // `/(\d+)-(\d+)/` 的 pattern 因此成了空串。基线固定 8。
+    const STR_BASE: usize = 8;
     let ts = table.tagged_size as usize;
-    let shift = cap.saturating_sub(ts);
+    let shift = STR_BASE.saturating_sub(ts);
     let rt = |o: usize| -> usize {
-        if ts == cap {
+        if ts >= STR_BASE {
             o
         } else {
             o.saturating_sub(shift)

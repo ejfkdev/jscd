@@ -2986,15 +2986,43 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         //   老版本：元素序列直接平铺在 description 上
         let mut holder = o;
         let mut len = self.d.cache.array_len(o);
-        if self.d.cache.array_elem(o, 1).is_none() {
-            if let Some(Elem::Ref(Ref::Object(inner))) = self.d.cache.array_elem(o, 0) {
+        // 9.x+ 的 Struct 布局：map | flags(Smi) | constant_elements(FixedArrayBase)。
+        // 早先只看"槽 1 是不是空"来判断老式平铺布局 —— 在压缩构建里槽 1（flags）
+        // 一直是有的，于是从不展开到 constant_elements，`[1.5, ...]` 被渲染成
+        // `[5, 0, void 0…]`（把 boilerplate 自己当成数组）。先按类型认槽 2。
+        let is_abp = self
+            .d
+            .cache
+            .obj(o)
+            .ty
+            .name(self.d.table)
+            .contains("ArrayBoilerplateDescription");
+        let cand = if is_abp { 2 } else { 0 };
+        let mut unwrapped = false;
+        for slot in [cand, 0] {
+            if let Some(Elem::Ref(Ref::Object(inner))) = self.d.cache.array_elem(o, slot) {
                 let n = self.d.cache.obj(inner).ty.name(self.d.table).to_string();
                 // 只认 Fixed*ArrayMap（排除 JSArrayMap / ArrayBoilerplateDescriptionMap 等误判）
-                if n.contains("Fixed") && n.contains("ArrayMap") {
+                if n.contains("Fixed") && n.contains("Array") {
                     holder = inner;
                     len = self.d.cache.array_len(inner);
+                    unwrapped = true;
+                    break;
                 }
             }
+        }
+        if !unwrapped && is_abp {
+            // 兜底：老式平铺布局（元素直接排在 flags 之后）
+            holder = o;
+            len = self.d.cache.array_len(o).saturating_sub(2);
+        }
+        if std::env::var("JSCD_DBG_ARR").is_ok() {
+            eprintln!(
+                "[arr] o={o} ty={} holder={holder} hty={} len={len} double={}",
+                self.d.cache.obj(o).ty.name(self.d.table),
+                self.d.cache.obj(holder).ty.name(self.d.table),
+                self.d.is_double_array(holder)
+            );
         }
         let mut items = Vec::new();
         for i in 0..len.min(64) {
