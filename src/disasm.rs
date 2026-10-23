@@ -827,6 +827,14 @@ impl<'a> Disassembler<'a> {
                 }
             }
             Ref::Root(i) => {
+                // 探针认领过的根：`String:` 段会随构建位移，名表里的下标未必对（见 RoMap::roots）
+                if let Some(n) = self.ro_map.as_deref().and_then(|m| m.root_name(*i)) {
+                    return if n.is_empty() {
+                        "<String[0]: #>".into()
+                    } else {
+                        format!("<String: {n}>")
+                    };
+                }
                 let name = self
                     .table
                     .roots
@@ -984,6 +992,17 @@ pub fn decode_string(cache: &CodeCache<'_>, table: &VersionTable, id: ObjId) -> 
 }
 
 pub fn name_of_ref(cache: &CodeCache<'_>, table: &VersionTable, r: Ref) -> Option<String> {
+    name_of_ref_ro(cache, table, None, r)
+}
+
+/// `name_of_ref` 的"带只读堆名表"版本：`ro-map` 里的 `roots` 会按构建修正
+/// 位移过的字符串根（`String:0` 与 `String:years` 的错位）。
+pub fn name_of_ref_ro(
+    cache: &CodeCache<'_>,
+    table: &VersionTable,
+    ro_map: Option<&crate::decompile::RoMap>,
+    r: Ref,
+) -> Option<String> {
     match r {
         Ref::Object(id) => {
             let o = cache.obj(id);
@@ -993,19 +1012,24 @@ pub fn name_of_ref(cache: &CodeCache<'_>, table: &VersionTable, r: Ref) -> Optio
                 None
             }
         }
-        Ref::Root(i) => table.root_name(i).map(|n| {
-            match n {
-                // 这些 root 作为"名字"出现时应为空（CamelName 形态来自 roots.h 列表）
-                "empty_string" | "EmptyString" | "undefined_value" | "UndefinedValue"
-                | "uninitialized_value" | "UninitializedValue" | "the_hole_value"
-                | "TheHoleValue" => String::new(),
-                other => other
-                    .strip_prefix("String:")
-                    .or_else(|| other.strip_prefix("Symbol:"))
-                    .unwrap_or(other)
-                    .to_string(),
+        Ref::Root(i) => {
+            if let Some(n) = ro_map.and_then(|m| m.root_name(i)) {
+                return Some(n.to_string());
             }
-        }),
+            table.root_name(i).map(|n| {
+                match n {
+                    // 这些 root 作为"名字"出现时应为空（CamelName 形态来自 roots.h 列表）
+                    "empty_string" | "EmptyString" | "undefined_value" | "UndefinedValue"
+                    | "uninitialized_value" | "UninitializedValue" | "the_hole_value"
+                    | "TheHoleValue" => String::new(),
+                    other => other
+                        .strip_prefix("String:")
+                        .or_else(|| other.strip_prefix("Symbol:"))
+                        .unwrap_or(other)
+                        .to_string(),
+                }
+            })
+        }
         _ => None,
     }
 }

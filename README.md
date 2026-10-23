@@ -141,8 +141,10 @@ jscd --help                      # bilingual help (-h, `help`, `help <SUBCOMMAND
   in the message (`jscd info` prints `supported: yes|no`) — never a silent, runtime-only file.
 - Read-only-heap names (Node 22+) resolve automatically where an embedded table applies (**macOS** —
   RO indices are platform-specific); elsewhere build one with `jscd ro-map` and pass `--ro-map`
-  (`JSCD_NO_RO_MAP=1` disables the embedded table). A mismatched table is ignored: you get
-  `<ro0_…>` placeholders, never a wrong name.
+  (`JSCD_NO_RO_MAP=1` disables the embedded table). The same table also pins **string roots**
+  (`roots`): their indices shift between builds, so a table from your own build turns `"0"` back
+  into `"0"` instead of whatever another build stored at that index. A mismatched table is
+  ignored: you get `<ro0_…>` placeholders, never a wrong name.
 - The interface language follows `JSCD_LANG` (then `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` /
   `LC_CTYPE`): `zh*` is Chinese, anything else English; `JSCD_LANG=zh|en` forces one.
 
@@ -170,7 +172,7 @@ Everything the CLI prints for `--help` and `help <SUBCOMMAND>`, verbatim (regene
 
 ```console
 $ jscd --help
-jscd v0.1.0 — V8 code cache → JavaScript
+jscd 0.1.0 — V8 code cache → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 Reconstructs JavaScript from bytenode-compiled .jsc files (V8 code caches).

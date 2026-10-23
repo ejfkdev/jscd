@@ -584,7 +584,7 @@ fn read_scope_with<'a>(
             .map(|i| match cache.array_elem(scope_id, i) {
                 Some(Elem::Smi(v)) => format!("smi{v}"),
                 Some(Elem::Ref(r)) => {
-                    crate::disasm::name_of_ref(cache, table, r).unwrap_or_else(|| format!("{r:?}"))
+                    crate::disasm::name_of_ref_ro(cache, table, ro_map, r).unwrap_or_else(|| format!("{r:?}"))
                 }
                 other => format!("{other:?}"),
             })
@@ -602,7 +602,7 @@ fn read_scope_with<'a>(
                             .and_then(|m| m.get(c, o))
                             .map(|s| s.to_string())
                             .unwrap_or_else(|| format!("<ro{c}_{o}>")),
-                        Some(r) => crate::disasm::name_of_ref(cache, table, r).unwrap_or_default(),
+                        Some(r) => crate::disasm::name_of_ref_ro(cache, table, ro_map, r).unwrap_or_default(),
                         None => String::from("?"),
                     }
                 })
@@ -632,7 +632,7 @@ fn read_scope_with<'a>(
                 }
                 Some(r) => scope
                     .context_locals
-                    .push(crate::disasm::name_of_ref(cache, table, r).unwrap_or_default()),
+                    .push(crate::disasm::name_of_ref_ro(cache, table, ro_map, r).unwrap_or_default()),
                 None => scope.context_locals.push(String::new()),
             }
         }
@@ -668,13 +668,13 @@ fn read_scope_with<'a>(
     }
     if has_function_var {
         if let Some(r) = cache.slot_at(scope_id, cursor / ts).and_then(|v| v.as_ref()) {
-            scope.name = crate::disasm::name_of_ref(cache, table, r).unwrap_or_default();
+            scope.name = crate::disasm::name_of_ref_ro(cache, table, ro_map, r).unwrap_or_default();
         }
         cursor += 2 * ts;
     }
     if has_inferred {
         if let Some(r) = cache.slot_at(scope_id, cursor / ts).and_then(|v| v.as_ref()) {
-            scope.inferred_name = crate::disasm::name_of_ref(cache, table, r).unwrap_or_default();
+            scope.inferred_name = crate::disasm::name_of_ref_ro(cache, table, ro_map, r).unwrap_or_default();
         }
         cursor += ts;
     }
@@ -742,7 +742,19 @@ fn read_scope_with<'a>(
 #[derive(Debug, Default, Clone)]
 pub struct RoMap {
     pub entries: HashMap<String, String>,
+    /// `String:` 段在不同构建里会整体位移：Electron 19 里 `String:0` 是 root 571，
+    /// 而 Node 侧的表把它放在 572（571 是 `String:years`），于是 `"0"` 被读成
+    /// `"years"`。探针里凡是属性名解成 **root**（而不是只读堆对象）的都记在这里，
+    /// 键是 root 下标，值是探针函数名（`p_0` → `"0"`）。
+    pub roots: HashMap<u32, String>,
     pub v8: String,
+}
+
+impl RoMap {
+    /// 该构建下 root `i` 的真名（仅当探针认领过）。
+    pub fn root_name(&self, i: usize) -> Option<&str> {
+        self.roots.get(&(i as u32)).map(|s| s.as_str())
+    }
 }
 
 /// 内嵌只读堆名表适用的平台。这批表是用 **macOS 上的探针编译**提取出来的。
@@ -802,8 +814,17 @@ impl RoMap {
                 }
             }
         }
+        let mut roots = HashMap::new();
+        if let Some(obj) = v.get("roots").and_then(|e| e.as_object()) {
+            for (k, val) in obj {
+                if let (Ok(i), Some(s)) = (k.parse::<u32>(), val.as_str()) {
+                    roots.insert(i, s.to_string());
+                }
+            }
+        }
         Ok(RoMap {
             entries,
+            roots,
             v8: v
                 .get("v8")
                 .and_then(|x| x.as_str())
@@ -1570,7 +1591,7 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
             let key_slot = 3 + 2 * e;
             let val_slot = key_slot + 1;
             let key = match self.cache.slot_at(table_id, key_slot).and_then(|v| v.as_ref()) {
-                Some(r) => crate::disasm::name_of_ref(self.cache, self.table, r),
+                Some(r) => crate::disasm::name_of_ref_ro(self.cache, self.table, self.ro_map.as_deref(), r),
                 None => None,
             };
             let val = self
@@ -2319,6 +2340,11 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// roots 表项 → 表达式（统一去前缀与字面量化）。
     fn root_value(&self, i: usize) -> Expr {
+        // 探针认领过的 root：以该构建为准（`String:` 段会整体位移，见 `RoMap::roots`）。
+        // 探针里这些条目都是字符串常量（属性名），按字面量给出最稳。
+        if let Some(n) = self.d.ro_map.as_deref().and_then(|m| m.root_name(i)) {
+            return Expr::Str(n.to_string());
+        }
         let raw = self.d.table.root_name(i).unwrap_or("");
         let n = raw
             .strip_prefix("String:")
@@ -2591,7 +2617,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| format!("<ro{c}_{off}>")),
             ),
-            Some(Elem::Ref(r)) => crate::disasm::name_of_ref(self.d.cache, self.d.table, r),
+            Some(Elem::Ref(r)) => crate::disasm::name_of_ref_ro(self.d.cache, self.d.table, self.d.ro_map.as_deref(), r),
             _ => None,
         }
     }
@@ -2807,7 +2833,7 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 .and_then(|m| m.get(c, off))
                 .map(|s| s.to_string())?
         } else {
-            crate::disasm::name_of_ref(self.d.cache, self.d.table, r)?
+            crate::disasm::name_of_ref_ro(self.d.cache, self.d.table, self.d.ro_map.as_deref(), r)?
         };
         if s.is_empty() {
             return None;

@@ -795,6 +795,9 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
     let d = crate::decompile::Decompiler::new(&cache, &table);
     let mut entries = serde_json::Map::new();
     let mut conflicted: std::collections::HashSet<String> = std::collections::HashSet::new();
+    // 字符串根（属性名恰好是 root）：`String:` 段随构建位移，必须按构建记下来。
+    let mut roots = serde_json::Map::new();
+    let mut root_conflicted: std::collections::HashSet<u32> = std::collections::HashSet::new();
     for id in 0..cache.objects.len() {
         if !cache.obj(id).ty.is(&table, "SharedFunctionInfo") {
             continue;
@@ -861,12 +864,35 @@ fn ro_map_cmd(file: &Path, common: &Common, json_flag: bool) -> Result<(), Strin
                 }
             }
         }
+        // 属性名是 **root** 的（"0"、"length" 这类常驻字符串）：'p_0' 的 `o["0"]` 编译成
+        // `LdaConstant [0]` + `GetKeyedProperty`，常量池里就是 `Ref::Root(571)`。
+        // 只认"池里只有一个常量"的探针（约定是单表达式 getter），免得把别的根认成名字。
+        if cache.array_len(pool) == 1 {
+            if let Some(crate::serializer::Elem::Ref(crate::serializer::Ref::Root(r))) =
+                cache.array_elem(pool, 0)
+            {
+                let key = r.to_string();
+                let val = serde_json::Value::String(prop.clone());
+                match roots.get(&key) {
+                    Some(v) if v != &val => {
+                        roots.remove(&key);
+                        root_conflicted.insert(r as u32);
+                    }
+                    Some(_) => {}
+                    None if root_conflicted.contains(&(r as u32)) => {}
+                    None => {
+                        roots.insert(key, val);
+                    }
+                }
+            }
+        }
     }
     let out = serde_json::json!({
         "schema": "jscd.ro-map/v1",
         "v8": table.v8,
         "tags": table.v8_tags(),
         "entries": entries,
+        "roots": roots,
     })
     .to_string();
     if json_flag {

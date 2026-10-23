@@ -1325,10 +1325,11 @@ Node 18.20.8（同为 V8 10.2）在 655 → 高位根名整体错一位，`top_c
 - **`DescriptorArray` 打包头**、**ScopeInfo 的 receiver_info**：见上文。
 
 **Electron 侧的验证数字**（V8 10.2.154.15 的缓存 + 同构建探针名表）：
-36 个行为 fixture 里 **35 个逐用例一致**、5 个整脚本 fixture 全一致；唯一不一致的是
-`string_regex`（`padStart(4, "0")` 的 `"0"` 是**字符串根**）—— 见下。
+36 个行为 fixture **36 个逐用例一致**、5 个整脚本 fixture 全一致。
 
-**已知残留（要点名，别让它悄悄错）**：根列表里 `String:` 那一段也是**逐构建**的。Electron 19
-的 `String:0` 在 571，我们表里 571 是 `String:years` → 输出成 `"years"`（**错名字**，不是占位）。
-Node 各线不受影响（表就是按 Node 构建抓的）。彻底修需要"从同构建探针反推 roots 覆盖"
-（`ro-map` 里加 roots 表）或逐构建 roots 列表，暂未实现。
+**字符串根也要按构建修正**：根列表里 `String:` 那一段同样是**逐构建**的 —— Electron 19 的
+`String:0` 在 571，我们的表在 572（571 是 `String:years`），于是 `padStart(4, "0")` 输出成
+`"years"`（**错名字**，不是占位）。修法是让 `jscd ro-map` 顺手把探针里解成 **root** 的属性名
+写进 `roots`（`p_0` → `"571": "0"`），反编译器与反汇编器查表前先看这张覆盖表；`entries`
+（只读堆对象坐标）与 `roots`（根下标）是两套坐标，互不影响。带上同构建名表后
+`string_regex` 转绿。对 Node 各线带 `roots` 的表是空操作（下标本来就对）。

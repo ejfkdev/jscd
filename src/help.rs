@@ -399,11 +399,15 @@ pub fn subcommand_help(name: &str) -> Option<String> {
                 "用法：jscd ro-map [选项] <探针.jsc>"
             ),
             bi!(
-                "Walks a probe cache's read-only heap and writes a name table (root index ->\n\
-                 property name), so decompiled output says `a.length` instead of `<ro0_1120>`.\n\
-                 Build one table per V8 version (see docs/VERSIONS.md for the probe recipe).",
-                "走一遍探针缓存的只读堆，写出「根索引 -> 属性名」的名表，反编译产物里\n\
-                 就会是 `a.length` 而不是 `<ro0_1120>`。每个 V8 版本建一张\n\
+                "Walks a probe cache's read-only heap and writes a name table, so decompiled\n\
+                 output says `a.length` instead of `<ro0_1120>` and `\"0\"` instead of the name\n\
+                 a different build gave that root. Two sections: `entries` (read-only-heap\n\
+                 offset -> name) and `roots` (root index -> name, for string constants whose\n\
+                 indices shift between builds). Build one table per build (see\n\
+                 docs/VERSIONS.md for the probe recipe).",
+                "走一遍探针缓存的只读堆，写出名表：产物里 `a.length` 不再退化成 `<ro0_1120>`，\n\
+                 `\"0\"` 也不会被别的构建的名字顶替。分两段：`entries`（只读堆偏移 -> 名字）\n\
+                 与 `roots`（根下标 -> 名字，修 `String:` 段在构建间的位移）。每个构建建一张\n\
                  （探针构造方法见 docs/VERSIONS.md）。"
             ),
             &[
@@ -412,8 +416,8 @@ pub fn subcommand_help(name: &str) -> Option<String> {
                     "  -o, --output <路径>   把名表写到文件（默认 stdout）",
                 ),
                 (
-                    "      --json            {\"schema\",\"v8\",\"tags\",\"entries\":{\"0/1120\":\"length\"}}",
-                    "      --json            {\"schema\",\"v8\",\"tags\",\"entries\":{\"0/1120\":\"length\"}}",
+                    "      --json            {\"schema\",\"v8\",\"tags\",\"entries\":{\"0/1120\":\"length\"},\"roots\":{\"571\":\"0\"}}",
+                    "      --json            {\"schema\",\"v8\",\"tags\",\"entries\":{\"0/1120\":\"length\"},\"roots\":{\"571\":\"0\"}}",
                 ),
             ],
             &[
@@ -422,12 +426,12 @@ pub fn subcommand_help(name: &str) -> Option<String> {
                     "  jscd ro-map probe.jsc -o names.json    生成一张名表",
                 ),
                 (
-                    "  jscd ro-map probe.jsc | head           peek at root 0's names",
-                    "  jscd ro-map probe.jsc | head           瞄一眼根 0 的名字",
+                    "  jscd ro-map probe.jsc | head           peek at the table",
+                    "  jscd ro-map probe.jsc | head           瞄一眼名表",
                 ),
                 (
-                    "  jscd ro-map --json probe.jsc | jq '.entries'   just the entries",
-                    "  jscd ro-map --json probe.jsc | jq '.entries'   只看 entries",
+                    "  jscd ro-map --json probe.jsc | jq '.roots'   just the string-root overrides",
+                    "  jscd ro-map --json probe.jsc | jq '.roots'   只看字符串根修正",
                 ),
             ],
         ),

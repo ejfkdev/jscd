@@ -241,6 +241,39 @@ fn electron_pointer_compressed_names_resolve_with_a_build_ro_map() {
 }
 
 #[test]
+fn ro_map_reports_build_specific_string_roots() {
+    // 属性名也可能是 **root**（"0"、"length" 这类常驻字符串），而 `String:` 段在不同构建里
+    // 会整体位移：Electron 19 的 `String:0` 是 root 571，Node 侧名表把 571 记成 `years`。
+    // `jscd ro-map` 必须把探针认领到的根一并写出来，否则压缩构建的字符串常量会静默取错值。
+    let probe = "tests/fixtures/jsc/electron19-roots-probe.jsc";
+    let o = jscd(&["ro-map", probe]);
+    assert!(o.status.success(), "{}", err(&o));
+    let v: serde_json::Value = serde_json::from_str(&out(&o)).expect("ro-map 输出应是 JSON");
+    let roots = v
+        .get("roots")
+        .and_then(|r| r.as_object())
+        .expect("ro-map 要有 roots 段");
+    assert_eq!(
+        roots.get("571").and_then(|s| s.as_str()),
+        Some("0"),
+        "探针 p_0 的键就是该构建的 String:0：{roots:?}"
+    );
+}
+
+#[test]
+fn electron_pointer_compressed_string_roots_follow_the_build_ro_map() {
+    // 同一份 `"0"` 字面量：Electron 19 存成 root 571，Node 侧名表在那个下标上写的是
+    // `years`。带上同构建的 --ro-map 后必须还原成 "0"。
+    let jsc = "tests/fixtures/jsc/electron19-string_regex.jsc";
+    let ro = "tests/fixtures/jsc/electron19-ro-map.json";
+    let o = jscd(&["--ro-map", ro, jsc]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(s.contains("padStart(4, \"0\")"), "字符串根应按本构建名表还原：{s}");
+    assert!(!s.contains("\"years\""), "不该套用别的构建的名字：{s}");
+}
+
+#[test]
 fn directory_input_mirrors_tree_into_input_out() {
     let Some(node) = node() else {
         eprintln!("跳过：环境里没有 node");

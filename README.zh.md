@@ -131,8 +131,9 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 - 表范围外的 V8 **直接报错**，报错里点名识别到的版本与支持范围（`jscd info` 的 `supported: yes|no`
   同理），不会静默吐一份只有运行时前导的文件。
 - 只读堆里的内建名（Node 22+）在**内嵌名表适用的平台（macOS）**自动还原（只读堆编号跟平台走）；别的平台用
-  `jscd ro-map` 自己建一张再 `--ro-map` 传入（`JSCD_NO_RO_MAP=1` 可关掉内嵌表）。对不上的表会被忽略：
-  宁可留 `<ro0_…>` 占位，也不给错名字。
+  `jscd ro-map` 自己建一张再 `--ro-map` 传入（`JSCD_NO_RO_MAP=1` 可关掉内嵌表）。同一张表还带
+  **字符串根**修正（`roots`）：根下标在构建之间会位移，用自己构建生成的名表才能把 `"0"` 还原成 `"0"`，
+  而不是别的构建在那个下标上存的名字。对不上的表会被忽略：宁可留 `<ro0_…>` 占位，也不给错名字。
 - 界面语言跟随 `JSCD_LANG`（再依次看 `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` / `LC_CTYPE`）：
   `zh*` 中文、其余英文，`JSCD_LANG=zh|en` 可强制。
 
@@ -160,7 +161,7 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 
 ```console
 $ jscd --help
-jscd v0.1.0 — V8 代码缓存 → JavaScript
+jscd 0.1.0 — V8 代码缓存 → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 把 bytenode 编译的 .jsc（V8 代码缓存）还原成 JavaScript。纯静态解析 ——
