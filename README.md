@@ -4,7 +4,8 @@ Reverse [bytenode](https://github.com/bytenode/bytenode)-compiled `.jsc` files b
 Static parsing only: one pure-Rust binary — no patched V8, no Node runtime, no network.
 
 Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors) and **Electron 19 → 45**
-(V8 10.2 – 15.6, pointer-compressed and sandboxed builds included); **≈ 25k `.jsc` files pass the
+(V8 10.2 – 15.6, pointer-compressed and sandboxed builds included; every major from 20 to 45
+passes the same 9-fixture behavior check, 9/9 each); **≈ 25k `.jsc` files pass the
 tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
 optimization layers (register folding → swc copy propagation) make the decompiled source readable.
 
@@ -606,12 +607,12 @@ Four gates, each reproducible on its own:
 3. **Corpus sweeps** (`scripts/verify_samples.py`) — large sample sets × many versions: compile →
    decompile → `node --check` → load in a `vm` (a `ReferenceError` naming anything we generate —
    `__*`, `_anon_*`, `ctx*`, `phi*` — is a bug).
-4. **Unit tests and static checks** — `cargo test` (58 tests) + `cargo clippy --all-targets`
+4. **Unit tests and static checks** — `cargo test` (65 tests) + `cargo clippy --all-targets`
    (0 warnings) + `cargo build` (0 warnings) + the dependency-free end-to-end smoke
    `scripts/ci_smoke.sh`.
 
 ```sh
-cargo test                                              # 58 unit tests
+cargo test                                              # 65 unit tests
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # corpus; also --offset, --samples
 ```
@@ -624,7 +625,7 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
 | Metric | Value |
 | --- | --- |
 | Supported Node releases | **517** (`v8.0.0` → `v26.12.1`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
-| Version tables / read-only-heap name maps | **36** tables + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
+| Version tables / read-only-heap name maps | **61** tables + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
 | Behavior fixtures | **36** fixtures (**121 assertion cases**) + **5** whole-script fixtures — 41 files / 629 lines |
 | One full matrix run | 31 Node lines × 36 fixtures = **1,116 cells** + 155 script cells ⇒ **3,751 case-by-case comparisons** and **1,271 structural gates** |
 | Standard corpus sweep | **408** real samples × 6 lines (8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10) |

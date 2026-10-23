@@ -169,7 +169,9 @@ V8_TAGGED_SIZE = 8
 V8_SANDBOX = None
 V8_PATCHES = []          # --v8-patches：Electron 的 V8 补丁目录（.patch），只应用命中取数文件的 hunk
 V8_HASHES = {}           # --v8-hash TAG=0x...：真缓存里读到的 version_hash（Electron 会加盐）
-V8_TAG_RE = re.compile(r"^(?:\d+\.\d+\.\d+\.\d+|[0-9a-f]{40})$")
+# V8 旧分支的标签是 3 段（10.4.137），10.x 之后才是 4 段；Node 标签带 `v` 前缀，
+# 不会混进来。
+V8_TAG_RE = re.compile(r"^(?:\d+\.\d+(?:\.\d+){1,2}|[0-9a-f]{40})$")
 
 
 def is_v8_tag(tag):
@@ -868,7 +870,12 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
                 else:
                     args = split_top(inner)
                     if len(args) >= 3:
-                        order.append(args[2])
+                        # `V(String, empty_string, empty_string)`：这是空字符串根，
+                        # 显示成 String:（与 V8 printer 的 <String[0]> 对齐）。
+                        if args[0].strip() == "String" and args[2] == "empty_string":
+                            order.append("String:")
+                        else:
+                            order.append(args[2])
                     elif len(args) == 2:
                         order.append(args[1])
             elif ident == "IF_WASM":
@@ -922,6 +929,13 @@ def extract_roots(text, symbols_text=None, defs_text=None, torque_count=None):
 TABLE_ALIAS: dict[str, str] = {}
 
 TORQUE_MAP_COUNT_BY_VERSION = {
+    "10_6": 25,   # Electron 21：实测 constructor 在 685（同 10.7/10.8 的 25 段）
+    "11_0": 34,   # Electron 23：实测 constructor 在 724（默认 36 → 整体 +2）
+    "11_2": 34,   # Electron 24
+    "11_4": 34,   # Electron 25
+    "11_6": 34,   # Electron 26
+    "12_0": 33,   # Electron 28：实测 constructor 在 729（默认 36 → 整体 +3）
+    "12_2": 33,   # Electron 29：constructor 在 740
     "11_3": 34,
     "10_7": 25,   # node19：实测 delta +11（constructor 根 693，我们 704）
     "10_8": 25,   # node19
@@ -1549,7 +1563,9 @@ def extract_hash_fold(tag):
         if fh and "class Hasher" in fh and "hash_value_unsigned_impl" in fh:
             return "left_fold"
     vv = parse_v8_version(tag)
-    if vv and vv[0] >= 12:
+    # 折叠方式在 12.2 才切到左折叠：12.0（Electron 28）实测仍是右折叠
+    # （12.0.267.19 → 0x6ed61d9d，右折叠结果）。
+    if vv and (vv[0] > 12 or (vv[0] == 12 and vv[1] >= 2)):
         return "left_fold"
     return "right_fold"
 
@@ -1875,7 +1891,7 @@ def main():
             fold = next(
                 (t["hash"]["algorithm"] for t in merged_tables.values()
                  if t.get("v8") == v8 and t.get("hash")),
-                "left_fold" if p4[0] >= 12 else "right_fold",
+                "left_fold" if (p4[0] > 12 or (p4[0] == 12 and p4[1] >= 2)) else "right_fold",
             )
             merged_versions.append({
                 "v8": v8,
@@ -2037,9 +2053,36 @@ def main():
 
         content_key = hashlib.sha1(json.dumps(table, sort_keys=True).encode()).hexdigest()
         if content_key not in file_of_content:
-            fname = f"v{key}.json"
-            if fname in table_files:
-                fname = f"v{key}_{tag.lstrip('v')}.json"
+            # 内容与已登记的同 V8 表一致 → 直接复用那个文件名。否则每重建一次
+            # 就会多出 v11_0 / v11_0_<tag> 一份副本（manifest 只引用其中一张）。
+            same_v8 = [
+                v["table"]
+                for v in merged_versions
+                if v.get("v8") == table["v8"] and v.get("table") in merged_tables
+            ]
+            reused = next(
+                (
+                    n
+                    for n in same_v8
+                    if json.dumps(merged_tables[n], sort_keys=True)
+                    == json.dumps(table, sort_keys=True)
+                ),
+                None,
+            )
+            if reused:
+                fname = reused
+            else:
+                fname = f"v{key}.json"
+                # 同一 minor 的另一种布局（Node 非沙箱 vs Electron 沙箱）不能互相覆盖：
+                # 现有表用历史命名（v14_6_26.10.0.json）时不冲突；恰好同名（v13_6.json）
+                # 就加 tag 后缀，避免把 Node 的表悄悄换成 Electron 的。
+                same_name_differs = (
+                    fname in merged_tables
+                    and json.dumps(merged_tables[fname], sort_keys=True)
+                    != json.dumps(table, sort_keys=True)
+                )
+                if fname in table_files or same_name_differs:
+                    fname = f"v{key}_{tag.lstrip('v')}.json"
             file_of_content[content_key] = fname
             table_files[fname] = table
         fname = file_of_content[content_key]
@@ -2103,7 +2146,10 @@ def main():
             print(f"warn: no table for node {e['version']} (V8 {e_v8})", file=sys.stderr)
             continue
         fold = fold_of_v8.get(e_v8) or (
-            "left_fold" if int(e_v8.split(".")[0]) >= 12 else "right_fold")
+            "left_fold"
+            if (int(e_v8.split(".")[0]) > 12
+                or (int(e_v8.split(".")[0]) == 12 and int(e_v8.split(".")[1]) >= 2))
+            else "right_fold")
         p = [int(x) for x in e_v8.split(".")]
         versions.append({
             "v8": e_v8,

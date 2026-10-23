@@ -1602,22 +1602,26 @@ impl<'a> CodeCache<'a> {
         // 不依赖版本号，也不依赖 trusted/protected 标记。
         let by_ts = size.saturating_sub(2 * ts) / ts.max(1);
         let by_8 = size.saturating_sub(2 * ts) / 8;
+        // 长度字段读错（错表/坏缓存）时会解出天文数字，后续按它遍历会卡死。
+        // 任何对象的元素数都不可能超过整份 payload 的槽数，按这个上界封顶。
+        let max_len = self.payload.len() / ts.max(1) + 2;
+        let clamp = |n: usize| n.min(max_len);
         let smi = self
             .raw_at(id, ts, ts)
             .and_then(decode_smi_bytes)
             .map(|v| v as usize);
         if let Some(n) = smi {
             if n == by_ts || n == by_8 {
-                return n;
+                return clamp(n);
             }
         }
         if raw == by_ts || raw == by_8 {
-            return raw;
+            return clamp(raw);
         }
         if self.objects[id].raw_len {
-            return raw;
+            return clamp(raw);
         }
-        smi.unwrap_or(0)
+        clamp(smi.unwrap_or(0))
     }
 
     /// FixedArray 第 index 个元素（元素从 offset = 2*ts 开始）。

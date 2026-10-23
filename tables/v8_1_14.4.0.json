@@ -1699,7 +1699,7 @@
   "NullValue",
   "TrueValue",
   "FalseValue",
-  "empty_string",
+  "String:",
   "MetaMap",
   "ByteArrayMap",
   "FixedArrayMap",

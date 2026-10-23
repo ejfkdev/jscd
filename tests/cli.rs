@@ -317,14 +317,33 @@ fn electron22_ro_map_resolves_names_and_string_roots() {
 }
 
 #[test]
-fn electron_14_8_to_15_6_closures_decompile() {
-    // Electron 37–45（V8 13.8–15.6，都是指针压缩 + V8 sandbox 构建）：
+fn electron_20_to_45_closures_decompile() {
+    // Electron 20–45（V8 10.4–15.6；28 起带 V8 sandbox，20–26 不带）：
+    // 20–26 的 torque map 段分别是 25/34 条（默认 36 会让 protector 根错位），
+    // 12.0 的版本哈希还是右折叠、ScopeType 新枚举从 12.8 开始 —— 都走这条链。
     // 表按 Chromium DEPS 的 v8_revision + Electron 的补丁集校准，这里锁住闭包这条链 ——
     // 15.x 的 ScopeInfo.has_outer 位（15.0 是 22、15.2+ 是 21）、裸 int32 的数组长度、
     // TDZ hole 重命名、`GeneratorYieldResult` 的 yield 形态都走这一路。
     // Electron 41 与 Node 26 共用 14.6.202.34 的 version_hash 但沙箱布局不同 ——
     // 这条用例同时锁住"多候选表按字节码量打分挑表"。
     for (jsc, ro, label) in [
+        ("electron20-closure.jsc", "electron20-ro-map.json", "electron 20.3.12"),
+        ("electron21-closure.jsc", "electron21-ro-map.json", "electron 21.4.4"),
+        ("electron22-closure.jsc", "electron22-closure-ro-map.json", "electron 22.3.27"),
+        ("electron23-closure.jsc", "electron23-ro-map.json", "electron 23.3.13"),
+        ("electron24-closure.jsc", "electron24-ro-map.json", "electron 24.8.8"),
+        ("electron25-closure.jsc", "electron25-ro-map.json", "electron 25.9.8"),
+        ("electron26-closure.jsc", "electron26-ro-map.json", "electron 26.6.10"),
+        ("electron27-closure.jsc", "electron27-closure-ro-map.json", "electron 27.3.11"),
+        ("electron28-closure.jsc", "electron28-ro-map.json", "electron 28.3.3"),
+        ("electron29-closure.jsc", "electron29-ro-map.json", "electron 29.4.6"),
+        ("electron30-closure.jsc", "electron30-ro-map.json", "electron 30.5.1"),
+        ("electron31-closure.jsc", "electron31-ro-map.json", "electron 31.7.7"),
+        ("electron32-closure.jsc", "electron32-ro-map.json", "electron 32.3.3"),
+        ("electron33-closure.jsc", "electron33-ro-map.json", "electron 33.4.11"),
+        ("electron34-closure.jsc", "electron34-ro-map.json", "electron 34.5.8"),
+        ("electron35-closure.jsc", "electron35-ro-map.json", "electron 35.7.5"),
+        ("electron36-closure.jsc", "electron36-ro-map.json", "electron 36.9.5"),
         (
             "electron37-closure.jsc",
             "electron37-ro-map.json",

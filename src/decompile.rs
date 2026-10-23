@@ -1197,7 +1197,11 @@ impl<'a> Decompiler<'a> {
             .nth(1)
             .and_then(|x| x.parse().ok())
             .unwrap_or(0);
-        if major >= 13 || (major == 12 && minor >= 9) {
+        // 新顺序（SCRIPT=0）实际从 **12.8** 就开始了：12.8 的函数作用域 flags
+        // 低 4 位是 4（FUNCTION），旧枚举里 4 却是 SCRIPT —— 按旧表判会把函数
+        // 作用域当成脚本作用域，槽基准多 1，闭包变量全部解不出来（Electron 32
+        // 的 closure 返回 null）。12.4/12.2 仍是旧顺序（FUNCTION=2）。
+        if major >= 13 || (major == 12 && minor >= 8) {
             t == 0
         } else {
             t == 4

@@ -1471,3 +1471,57 @@ class_basic/generator/async_await/try_catch_after/num_literals），**9/9 全部
 
 最终数字：manifest **526 条**（517 Node 发布 + 9 个 Electron 构建）、**45 张表**；
 Node 侧 216 pass / 0 fail + 30 个整脚本全过；cargo 65 条测试；clippy 零告警。
+
+## 15. Electron 20–36 补齐（2026-10-23，晚于 §14）
+
+§14 补齐 37–45 后，把中间的主版本也全部补上。20–36 里 **19/22 直接复用 Node 表**
+（同一 V8 版本、非沙箱），其余每个主版本都生成了一张 Electron 表：
+
+| Electron | V8 | sandbox | torque map 段 | 备注 |
+| --- | --- | --- | --- | --- |
+| 20 | 10.4.132.25 | 否 | 25 | 官方没有 `10.4.132.25` 标签，用 10.4.137 源码 + 哈希覆盖 |
+| 21 | 10.6.194.27 | 否 | 25 | 源码用 10.6.194.26（差一个 patch） |
+| 23 | 11.0.226.20 | 否 | 34 | |
+| 24 | 11.2.214.22 | 否 | 34 | |
+| 25 | 11.4.183.29 | 否 | 34 | |
+| 26 | 11.6.189.22 | 否 | 34 | 最后一个非沙箱主版本 |
+| 27 | 11.8.172.18 | 否 | 34 | 必须用专属表：Node 11.8 的布局差一点，会让解析器卡住 |
+| 28 | 12.0.267.19 | **是** | 33 | 沙箱从 12.0 开始；12.0 的版本哈希仍是**右折叠** |
+| 29 | 12.2.281.27 | 是 | 33 | 左折叠从 12.2 开始 |
+| 30 | 12.4.254.20 | 是 | 36 | |
+| 31 | 12.6.228.30 | 是 | 36 | |
+| 32 | 12.8.374.38 | 是 | 36 | **ScopeType 新枚举从 12.8 开始**（SCRIPT=0） |
+| 33 | 13.0.245.25 | 是 | 36 | |
+| 34 | 13.2.152.41 | 是 | 36 | |
+| 35 | 13.4.114.21 | 是 | 36 | |
+| 36 | 13.6.233.17 | 是 | 36 | 与 Node 24 共用 version_hash，靠多表打分区分 |
+
+**这一轮新遇到的差异：**
+
+1. **沙箱的起点是 Electron 28（V8 12.0）**，不是 30/32：Electron 27（11.8）还能用
+   非沙箱表，Electron 28 起必须用沙箱布局（否则 `parsed but contains no function`）。
+2. **版本哈希折叠方式在 12.2 才切到左折叠**：12.0（Electron 28）仍是右折叠
+   （12.0.267.19 → `0x6ed61d9d`），codegen 的 `extract_hash_fold` 与 manifest 生成
+   都按 major.minor 修正成 `>= 12.2`。
+3. **ScopeType 的新枚举（SCRIPT=0）从 12.8 就开始了**：12.8 的函数作用域低 4 位是 4，
+   旧枚举里 4 却是 SCRIPT → 槽基准 +1，闭包变量全丢（Electron 32 的 closure 返回 null）。
+   12.4/12.2 仍是旧顺序（FUNCTION=2）。
+4. **torque map 段条数继续按实测校准**：10.6=25；11.0/11.2/11.4/11.6/11.8=34；
+   12.0/12.2=33；12.4–13.6=36。默认 36 会让 10.x/11.x/12.0/12.2 的 protector 根整体
+   后移，`next` 被读成 `AllocationSite`（for-of/generator 直接 TypeError）。
+5. **Electron 27 的 Node 表会卡死**：11.8.172.18 与 Node 21 的 11.8.172.17 只差一个
+   patch，但字段偏移有细微差异，解析进入死循环（`array_len` 读成巨值）。现在：
+   - Electron 27 有专属表；
+   - `array_len` 统一按 payload 长度封顶（任何对象的元素数不可能超过整份 payload）；
+   - decompile 侧的名字数/outer 链此前已加封顶与环检测。
+6. **表文件命名**：同一 minor 的两种布局（Node 非沙箱 / Electron 沙箱）不能互相覆盖；
+   codegen 在 merge 时若同名表内容不同就加 tag 后缀，内容相同时复用已有文件名。
+
+**验证**：20–36 每个主版本都跑了同一套 9 个 fixture（call_once/arith/closure/string_regex/
+class_basic/generator/async_await/try_catch_after/num_literals），**全部 9/9 逐用例一致**；
+opcode/根表对每个构建用 `--print-bytecode` / `--trace-serializer` 逐条校验（只剩
+`FixedArrayMap`/`FixedCOWArrayMap` 同型误报）。20/21/23/24/25/26/28/29/31–36 各自有专属表，
+22 复用 Node 10.8 表，27 有专属表。
+
+最终：manifest **544 条**（517 Node + 26 个 Electron 构建）、**61 张表**；
+Node 矩阵 216 pass / 0 fail + 30 整脚本；cargo 65 条测试；clippy 零告警。

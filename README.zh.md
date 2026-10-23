@@ -4,7 +4,8 @@
 纯 Rust 单二进制，不需要打过补丁的 V8，也不需要 Node 运行时、不联网。
 
 支持 **Node 8.0.0 → 26.12.1**（517 个发布 / 36 个 V8 minor）与 **Electron 19 → 45**
-（V8 10.2 – 15.6，含指针压缩与 V8 sandbox 构建），**≈ 25k 份 `.jsc` 通过测试、0 失败**
+（V8 10.2 – 15.6，含指针压缩与 V8 sandbox 构建；20–45 每个主版本都跑同一套 9 个行为 fixture，
+逐用例 9/9），**≈ 25k 份 `.jsc` 通过测试、0 失败**
 （31 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → swc 复制传播）
 提升反编译源码的可读性。
 
@@ -570,11 +571,11 @@ python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-
    只有 const / 只有 class / async"这些 `target` 型用例照不到的形态）。
 3. **语料扫描**（`scripts/verify_samples.py`）—— 大样本 × 多版本：编译 → 反编译 → `node --check` → 在 vm 里
    加载（我们自己生成的名字若 `ReferenceError` 即判为 bug）。
-4. **单元测试与静态检查** —— `cargo test`（58 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
+4. **单元测试与静态检查** —— `cargo test`（65 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
    （0 告警）+ 零依赖端到端冒烟 `scripts/ci_smoke.sh`。
 
 ```sh
-cargo test                                              # 58 条单测
+cargo test                                              # 65 条单测
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # 语料；另有 --offset、--samples
 ```
@@ -587,7 +588,7 @@ fixture 的编译方式与 bytenode 完全同参（同样的旗标 + `createCach
 | 指标 | 数量 |
 | --- | --- |
 | 支持的 Node 发布 | **517 个**（`v8.0.0` → `v26.12.1`），覆盖 **90 个 V8 版本**（`5.8.283.41` → `14.6.202.34`） |
-| 版本表 / 只读堆名表 | **36 张**版本表 + **29 张** `ro-map` 表（`tables/manifest.json` 逐发布索引） |
+| 版本表 / 只读堆名表 | **61 张**版本表 + **29 张** `ro-map` 表（`tables/manifest.json` 逐发布索引） |
 | 行为 fixture | **36 个**（合计 **121 条断言用例**）+ **5 个**整脚本 fixture —— 41 份源码 / 629 行 |
 | 一次全矩阵 | 31 条 Node 线 × 36 = **1,116 格** + 155 格整脚本 ⇒ **3,751 次逐用例比对** + **1,271 次结构门禁** |
 | 标准语料扫描 | **408 份**真实样本 × 6 条线（8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10） |
