@@ -127,25 +127,39 @@ fn info_cmd(file: &Path, common: &Common, json: bool) -> Result<(), String> {
     // 只读堆名表是 macOS 探针建的：本平台不套用时把话说明白（info 是给人看的诊断命令，
     // 这里多一行不会破坏 stdout 模式"只有产物"的约定）。
     if crate::ro_embed::RO_MAPS.iter().any(|(k, _)| *k == ident.v8) {
-        if !crate::decompile::embedded_ro_map_applies() {
-            text.push_str(crate::bif!(
-                "ro_map:        embedded table exists but was built on macOS — not applied here\n               (build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)\n",
-                "ro_map:        有内嵌名表，但在 macOS 上提取的 —— 本平台不套用\n               （要真名就在本平台建一张：`jscd ro-map <探针.jsc> -o names.json`）\n"
-            ));
-        } else if crate::decompile::embedded_ro_map_applies()
-            && parse_cache(&data)
-                .ok()
-                .is_some_and(|(_, t, _)| t.tagged_size != 8)
-        {
-            // 同一段 V8 版本字符串下可能有指针压缩构建（Electron 22 与 Node 19.9 都是
-            // 10.8.168.25）：只读堆坐标完全不同，内嵌表不能套用。
-            text.push_str(crate::bif!(
-                "ro_map:        embedded table is for non-pointer-compressed (Node) builds — not applied\n               to this cache; build one on the same build: `jscd ro-map <probe.jsc> -o names.json`\n",
-                "ro_map:        内嵌名表取自非压缩（Node）构建 —— 这份缓存是指针压缩构建，不套用\n               （要用同构建建表：`jscd ro-map <探针.jsc> -o names.json`）\n"
-            ));
-        }
+        let compressed = parse_cache(&data)
+            .ok()
+            .is_some_and(|(_, t, _)| t.tagged_size != 8);
+        text.push_str(&ro_map_notes(
+            crate::decompile::embedded_ro_map_applies(),
+            compressed,
+        ));
     }
     emit(common, &text, &header.render_json(file, &ident), json)
+}
+
+/// `info` 里解释"为什么没用内嵌只读堆名表"的几行。
+///
+/// 两个原因互相独立：平台不对（表在 macOS 上提取）与缓存是指针压缩构建
+/// （只读堆坐标完全不同）。早先写成 else-if，Linux 上的 Electron 缓存只看到
+/// 平台原因，用户会以为把表搬过去就能用。抽成纯函数便于在任意平台单测。
+fn ro_map_notes(applies: bool, compressed: bool) -> String {
+    let mut out = String::new();
+    if !applies {
+        out.push_str(crate::bif!(
+            "ro_map:        embedded table exists but was built on macOS — not applied here\n               (build one for this platform: `jscd ro-map <probe.jsc> -o names.json`)\n",
+            "ro_map:        有内嵌名表，但在 macOS 上提取的 —— 本平台不套用\n               （要真名就在本平台建一张：`jscd ro-map <探针.jsc> -o names.json`）\n"
+        ));
+    }
+    if compressed {
+        // 同一段 V8 版本字符串下可能有指针压缩构建（Electron 22 与 Node 19.9 都是
+        // 10.8.168.25）：只读堆坐标完全不同，内嵌表不能套用。
+        out.push_str(crate::bif!(
+            "ro_map:        embedded table is for non-pointer-compressed (Node) builds — not applied\n               to this cache; build one on the same build: `jscd ro-map <probe.jsc> -o names.json`\n",
+            "ro_map:        内嵌名表取自非压缩（Node）构建 —— 这份缓存是指针压缩构建，不套用\n               （要用同构建建表：`jscd ro-map <探针.jsc> -o names.json`）\n"
+        ));
+    }
+    out
 }
 
 /// 常量池字符串提取：遍历对象图取全部字符串字面量（去重保序）。
@@ -1280,5 +1294,25 @@ mod tests {
         assert!(m.contains("13.6.233.17"), "{m}");
         assert!(m.contains("truncated or corrupted"), "{m}");
         assert!(m.contains("unexpected end of payload"), "{m}");
+    }
+
+    /// Linux 上的 Electron 缓存同时满足"平台不对"与"指针压缩"两个原因；
+    /// 两条说明都必须出现（早先的 else-if 只打平台原因，CI 的 Linux 测试因此挂掉）。
+    #[test]
+    fn ro_map_notes_explain_both_reasons_independently() {
+        let both = ro_map_notes(false, true);
+        assert!(both.contains("macOS"), "{both}");
+        assert!(both.contains("Node"), "应说明是 Node 非压缩表：{both}");
+        assert!(both.matches("ro_map:").count() >= 2, "{both}");
+
+        let compressed_only = ro_map_notes(true, true);
+        assert!(!compressed_only.contains("macOS"), "{compressed_only}");
+        assert!(compressed_only.contains("Node"), "{compressed_only}");
+
+        let platform_only = ro_map_notes(false, false);
+        assert!(platform_only.contains("macOS"), "{platform_only}");
+        assert!(!platform_only.contains("Node"), "{platform_only}");
+
+        assert!(ro_map_notes(true, false).is_empty());
     }
 }

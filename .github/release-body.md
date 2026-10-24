@@ -1,7 +1,7 @@
 **jscd @VERSION@** — reverse bytenode-compiled `.jsc` (V8 code cache) back to JavaScript.
 Static parsing: no patched V8, no Node runtime, no subprocesses.
 
-### What's new in 0.2.0
+### What's new in 0.2.x
 
 - **Electron 19 → 45** (V8 10.2 – 15.6) is now covered, including pointer-compressed and
   V8-sandboxed builds. Every major from 20 to 45 has a table calibrated against that build's
@@ -13,6 +13,9 @@ Static parsing: no patched V8, no Node runtime, no subprocesses.
 - Robustness: malformed or mismatched caches now fail with an error instead of looping —
   array/scope name counts are bounded by the payload size and context chains detect cycles.
 - 543 manifest entries (517 Node + 26 Electron), 61 version tables.
+- **0.2.1** fixes a Linux-only `info` diagnostic: a pointer-compressed cache now gets both the
+  platform note and the "embedded table is for non-compressed builds" note, instead of only the
+  platform one.
 
 ### Install
 

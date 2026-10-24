@@ -176,7 +176,7 @@ Everything the CLI prints for `--help` and `help <SUBCOMMAND>`, verbatim (regene
 
 ```console
 $ jscd --help
-jscd 0.2.0 — V8 code cache → JavaScript
+jscd 0.2.1 — V8 code cache → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 Reconstructs JavaScript from bytenode-compiled .jsc files (V8 code caches).
@@ -611,12 +611,12 @@ Four gates, each reproducible on its own:
 3. **Corpus sweeps** (`scripts/verify_samples.py`) — large sample sets × many versions: compile →
    decompile → `node --check` → load in a `vm` (a `ReferenceError` naming anything we generate —
    `__*`, `_anon_*`, `ctx*`, `phi*` — is a bug).
-4. **Unit tests and static checks** — `cargo test` (65 tests) + `cargo clippy --all-targets`
+4. **Unit tests and static checks** — `cargo test` (66 tests) + `cargo clippy --all-targets`
    (0 warnings) + `cargo build` (0 warnings) + the dependency-free end-to-end smoke
    `scripts/ci_smoke.sh`.
 
 ```sh
-cargo test                                              # 65 unit tests
+cargo test                                              # 66 unit tests
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # corpus; also --offset, --samples
 ```
