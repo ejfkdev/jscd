@@ -176,7 +176,7 @@ Everything the CLI prints for `--help` and `help <SUBCOMMAND>`, verbatim (regene
 
 ```console
 $ jscd --help
-jscd 0.1.0 — V8 code cache → JavaScript
+jscd 0.2.0 — V8 code cache → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 Reconstructs JavaScript from bytenode-compiled .jsc files (V8 code caches).
@@ -488,8 +488,12 @@ supported:     yes
 
 Version tables are generated from Node sources by `scripts/codegen.py` and embedded at build time.
 Selection is keyed on the V8 version hash; every Node release from 8.0.0 on is listed in
-`tables/manifest.json` (517 entries), and one table covers each V8 minor — identical tables are
-stored once.
+`tables/manifest.json` (517 Node releases + 26 Electron builds), and one table covers each
+V8 minor — identical tables are stored once.
+
+Electron is covered the same way: **19 → 45** (V8 10.2 – 15.6), with a dedicated table for
+every major 20–45 (22 shares Node's 10.8 table) and **9/9 fixtures per build** verified against
+that build's own bytecode/root traces.
 
 **Every Node release from 8.0.0 through 26.12.1 is identified** (517 releases, 90 V8 versions),
 and **29 of the 36 V8 minors pass the full behavior matrix** — 31 Node lines, all green
@@ -503,7 +507,7 @@ instead of emitting garbage.
 | 5.8, 6.0, 6.1, 6.6, 6.7, 7.0, 7.4 | 8.0–8.9, 10.0–10.8, 11.x, 12.0 (partial releases) | identified; payload **explicitly rejected** |
 
 <details>
-<summary>Full mapping: 36 version tables → 517 Node releases</summary>
+<summary>Node mapping: 36 version tables → 517 releases</summary>
 
 | Node releases | V8 (newest) | table |
 | --- | --- | --- |
@@ -625,7 +629,7 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
 | Metric | Value |
 | --- | --- |
 | Supported Node releases | **517** (`v8.0.0` → `v26.12.1`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
-| Version tables / read-only-heap name maps | **61** tables + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
+| Version tables / read-only-heap name maps | **61** tables (**36** Node + **25** Electron) + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
 | Behavior fixtures | **36** fixtures (**121 assertion cases**) + **5** whole-script fixtures — 41 files / 629 lines |
 | One full matrix run | 31 Node lines × 36 fixtures = **1,116 cells** + 155 script cells ⇒ **3,751 case-by-case comparisons** and **1,271 structural gates** |
 | Standard corpus sweep | **408** real samples × 6 lines (8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10) |

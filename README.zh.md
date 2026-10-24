@@ -165,7 +165,7 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 
 ```console
 $ jscd --help
-jscd 0.1.0 — V8 代码缓存 → JavaScript
+jscd 0.2.0 — V8 代码缓存 → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 把 bytenode 编译的 .jsc（V8 代码缓存）还原成 JavaScript。纯静态解析 ——
@@ -464,7 +464,11 @@ supported:     yes
 ## 支持的版本
 
 版本表由 `scripts/codegen.py` 从 Node 源码生成、编译期嵌入；识别按 V8 版本哈希走。8.0.0 起的每个
-Node 发布都在 `tables/manifest.json` 里（517 条），每个 V8 minor 一张表 —— 内容相同的表只存一份。
+Node 发布都在 `tables/manifest.json` 里（517 条 Node + 26 条 Electron），每个 V8 minor 一张表 ——
+内容相同的表只存一份。
+
+Electron 走同一套机制：**19 → 45**（V8 10.2 – 15.6），20–45 每个主版本都有专属表
+（22 复用 Node 10.8 表），每个构建都用它自己的字节码/根表 trace 校验过，**9 个 fixture 全过**。
 
 **8.0.0 到 26.12.1 的每个 Node 发布都能识别**（517 个发布、90 个 V8 版本），其中 **36 个 V8 minor
 里的 29 个跑完整行为矩阵**（31 条 Node 线全绿：1,108 pass / 0 fail / 8 skip / 0 known-fail）。
@@ -477,7 +481,7 @@ Node 发布都在 `tables/manifest.json` 里（517 条），每个 V8 minor 一�
 | 5.8、6.0、6.1、6.6、6.7、7.0、7.4 | 8.0–8.9、10.0–10.8、11.x、12.0 的部分发布 | 能识别；payload **显式拒绝** |
 
 <details>
-<summary>完整映射：36 张版本表 → 517 个 Node 发布</summary>
+<summary>Node 映射：36 张版本表 → 517 个发布</summary>
 
 | Node 发布 | V8（该线最新） | 表 |
 | --- | --- | --- |
@@ -588,7 +592,7 @@ fixture 的编译方式与 bytenode 完全同参（同样的旗标 + `createCach
 | 指标 | 数量 |
 | --- | --- |
 | 支持的 Node 发布 | **517 个**（`v8.0.0` → `v26.12.1`），覆盖 **90 个 V8 版本**（`5.8.283.41` → `14.6.202.34`） |
-| 版本表 / 只读堆名表 | **61 张**版本表 + **29 张** `ro-map` 表（`tables/manifest.json` 逐发布索引） |
+| 版本表 / 只读堆名表 | **61 张**版本表（**36** Node + **25** Electron）+ **29 张** `ro-map` 表（`tables/manifest.json` 逐发布索引） |
 | 行为 fixture | **36 个**（合计 **121 条断言用例**）+ **5 个**整脚本 fixture —— 41 份源码 / 629 行 |
 | 一次全矩阵 | 31 条 Node 线 × 36 = **1,116 格** + 155 格整脚本 ⇒ **3,751 次逐用例比对** + **1,271 次结构门禁** |
 | 标准语料扫描 | **408 份**真实样本 × 6 条线（8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10） |

@@ -1,6 +1,19 @@
 **jscd @VERSION@** — reverse bytenode-compiled `.jsc` (V8 code cache) back to JavaScript.
 Static parsing: no patched V8, no Node runtime, no subprocesses.
 
+### What's new in 0.2.0
+
+- **Electron 19 → 45** (V8 10.2 – 15.6) is now covered, including pointer-compressed and
+  V8-sandboxed builds. Every major from 20 to 45 has a table calibrated against that build's
+  own `--print-bytecode` / `--trace-serializer` output and passes the 9-fixture behavior
+  check 9/9.
+- Newer Node releases through **26.12.1** (V8 14.6) are covered; version hashes that collide
+  between Node and Electron builds (14.6.202.34, 13.6.233.17, 12.4.254.20, …) are resolved
+  by trying every table for the V8 minor and scoring the parsed bytecode.
+- Robustness: malformed or mismatched caches now fail with an error instead of looping —
+  array/scope name counts are bounded by the payload size and context chains detect cycles.
+- 543 manifest entries (517 Node + 26 Electron), 61 version tables.
+
 ### Install
 
 ```sh
@@ -42,7 +55,7 @@ chmod +x jscd-@VERSION@-linux-amd64
 ```
 
 Supported Node/V8 versions, the fixture list and how the test numbers are produced
-(31 Node.js lines × 36 behavior fixtures, whole-script diffs, the sample corpus) are
+(31 Node.js lines × 36 behavior fixtures, whole-script diffs, the sample corpus, Electron 20–45) are
 documented in the README's **Verification** section.
 
 <!-- GitHub's automatically generated release notes are appended below this description. -->

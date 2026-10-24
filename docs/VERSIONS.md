@@ -1523,5 +1523,5 @@ opcode/根表对每个构建用 `--print-bytecode` / `--trace-serializer` 逐条
 `FixedArrayMap`/`FixedCOWArrayMap` 同型误报）。20/21/23/24/25/26/28/29/31–36 各自有专属表，
 22 复用 Node 10.8 表，27 有专属表。
 
-最终：manifest **544 条**（517 Node + 26 个 Electron 构建）、**61 张表**；
+最终：manifest **543 条**（517 Node + 26 个 Electron 构建）、**61 张表**；
 Node 矩阵 216 pass / 0 fail + 30 整脚本；cargo 65 条测试；clippy 零告警。
