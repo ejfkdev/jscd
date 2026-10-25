@@ -661,21 +661,23 @@ fn read_scope_with<'a>(
     let has_inferred = (flags >> cfg.has_inferred_bit) & 1 == 1;
     let has_saved = (flags >> cfg.saved_class_bit) & 1 == 1;
     let receiver_var = (flags >> cfg.receiver_bits[0]) & 0b11;
-    // `receiver_info` **只在 V8 9.x 存在**：9.4 的 scope-info.tq 是
-    //   `receiver_info?[flags.receiver_variable == STACK || CONTEXT]: Smi;`
-    // 10.x 起这个字段被删掉了（只剩 flag 本身），字段序列变成
+    // `receiver_info` 在 V8 10 之前都存在（6.8/7.x/8.x/9.4 的 scope-info.tq：
+    //   `receiver_info?[flags.receiver_variable == STACK || CONTEXT]: Smi;`），
+    // 10.x 起删掉（只剩 flag 本身），字段序列变成
     //   saved_class_variable_info → function_variable_info → inferred →
     //   position_info → outer_scope_info。
+    // 8.x/6.8 也要算上：Electron 11（8.7）的 `target`、node10 的类方法 receiver
+    // 都分配在栈/上下文里；漏掉这一格函数名会丢
+    // 漏掉这一格会把函数名读成空 → `_anon_N`（闭包 fixture 直接 target-missing）。
     // 早先无条件 `if has_receiver { cursor += ts }`：10.2 里参数名整体后移一格，
-    // 读到的是 `context_local_infos` 的 Raw 块 → 函数名全丢（Electron 的
-    // `target` 因此变成 `_anon_N`）。
+    // 读到的是 `context_local_infos` 的 Raw 块 → 函数名全丢。
     let v8_major: u32 = table
         .v8
         .split('.')
         .next()
         .and_then(|s| s.parse().ok())
         .unwrap_or(0);
-    let has_receiver = v8_major == 9 && matches!(receiver_var, 1 | 2);
+    let has_receiver = v8_major < 10 && matches!(receiver_var, 1 | 2);
     let mut cursor = off + n * ts; // infos[n]
     if has_saved {
         cursor += ts;
@@ -1627,7 +1629,9 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                 scope.as_ref().map(|s| s.flags).unwrap_or(0),
             );
         }
-        let mut ctx = FnCtx::new(self, sfi, bca, scope, scope_id)?;
+        // FnCtx 很大（寄存器/指令缓存都在里面）；放栈上时递归 emit_range 每层
+        // 都在复制它，深函数容易栈溢出。装箱后每层只是一个指针。
+        let mut ctx = Box::new(FnCtx::new(self, sfi, bca, scope, scope_id)?);
         if ctx.wrapper_factory {
             // 闭包工厂只是"把包装函数交出去"，没有可执行的顶层语句
             return Ok(String::new());
@@ -5849,7 +5853,15 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         }
         // ── 发射 ──
         self.flush_acc_before("SwitchOnSmiNoFeedback");
-        self.line(&format!("switch ({var_name}) {{"));
+        // 操作数可能是 `<this>`/`<context>` 这种寄存器拼写（String.prototype 方法里
+        // `switch (this)` 就被 V8 省成寄存器）——直接拼进 JS 是非法语法。
+        let subject = if var_name.starts_with('<') {
+            let e = self.operand_expr(&var_name);
+            Self::render_stmt(&e)
+        } else {
+            var_name.clone()
+        };
+        self.line(&format!("switch ({subject}) {{"));
         self.indent += 1;
         // 按目标体归组：同一个体的所有 case 标签要挤在体之前
         // （V8 的派发链顺序是 1→体A、2→体A、3→体B，直接顺序输出会把 case 2 挂到体 B 上）
@@ -7248,7 +7260,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             else {
                 continue;
             };
-            if t == head && (ins.name.starts_with("JumpLoop") || t <= ins.offset) {
+            // 严格回跳：`t == ins.offset` 是自环，会造出零长度区间让 emit_range 递归不终止
+            if t == head && (ins.name.starts_with("JumpLoop") || t < ins.offset) {
                 back = Some(j);
             }
         }

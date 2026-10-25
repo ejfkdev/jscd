@@ -317,8 +317,8 @@ fn electron22_ro_map_resolves_names_and_string_roots() {
 }
 
 #[test]
-fn electron_20_to_45_closures_decompile() {
-    // Electron 20–45（V8 10.4–15.6；28 起带 V8 sandbox，20–26 不带）：
+fn electron_11_to_45_closures_decompile() {
+    // Electron 11 与 20–45（V8 8.7–15.6；28 起带 V8 sandbox，20–26 不带）：
     // 20–26 的 torque map 段分别是 25/34 条（默认 36 会让 protector 根错位），
     // 12.0 的版本哈希还是右折叠、ScopeType 新枚举从 12.8 开始 —— 都走这条链。
     // 表按 Chromium DEPS 的 v8_revision + Electron 的补丁集校准，这里锁住闭包这条链 ——
@@ -327,6 +327,7 @@ fn electron_20_to_45_closures_decompile() {
     // Electron 41 与 Node 26 共用 14.6.202.34 的 version_hash 但沙箱布局不同 ——
     // 这条用例同时锁住"多候选表按字节码量打分挑表"。
     for (jsc, ro, label) in [
+        ("electron11-closure.jsc", "electron11-closure-ro-map.json", "electron 11.5.0"),
         ("electron20-closure.jsc", "electron20-ro-map.json", "electron 20.3.12"),
         ("electron21-closure.jsc", "electron21-ro-map.json", "electron 21.4.4"),
         ("electron22-closure.jsc", "electron22-closure-ro-map.json", "electron 22.3.27"),

@@ -1,7 +1,13 @@
 {
- "generated_at": "2026-10-23T12:35:21+00:00",
+ "generated_at": "2026-10-25T01:21:00+00:00",
  "schema_version": 1,
  "versions": [
+  {
+   "hash": 49877269,
+   "node": "electron 11.5.0",
+   "table": "v8_7_8.7.220.31.json",
+   "v8": "8.7.220.31"
+  },
   {
    "hash": 2048476285,
    "node": "electron 27.3.11",

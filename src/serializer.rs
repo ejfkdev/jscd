@@ -241,6 +241,9 @@ struct Walker<'a> {
     objects: Vec<Object>,
     hot: HotRing,
     pending: std::collections::HashMap<u32, Vec<(ObjId, usize)>>,
+    /// 下一个 `kRegisterPendingForwardRef` 的隐式编号（V8 按注册顺序入表；
+    /// 全部 resolve 后 V8 清空该表，编号随之从 0 重来）。
+    pending_next: u32,
     /// 6.x 的 `*WithSkip` 前缀读到的待跳过字节数：值落在跳过之后的位置，
     /// 由对象内容循环统一记账（槽指针 += skip，再写值）。
     extra_skip: usize,
@@ -619,7 +622,12 @@ impl<'a> Walker<'a> {
             let i = self.putint()? as usize;
             Ok(SlotValue::Ref(Ref::RoRef(u32::MAX, i as u32)))
         } else if Some(b) == self.opt_tag("kRegisterPendingForwardRef") {
-            Ok(SlotValue::PendingRef(self.putint()?))
+            // V8 8.7+（deserializer.cc）：只把当前槽登记进 unresolved_forward_refs_，
+            // **不从流里读编号**（resolve 侧才读 `GetInt()` 的 index）。早先 putint()
+            // 会多吃 1–4 字节，32K 对象后整段反序列化错位。
+            let pid = self.pending_next;
+            self.pending_next += 1;
+            Ok(SlotValue::PendingRef(pid))
         } else if Some(b) == self.opt_tag("kClearedWeakReference") {
             Ok(SlotValue::ClearedWeak)
         } else if Some(b) == self.opt_tag("kWeakPrefix") {
@@ -857,8 +865,55 @@ impl<'a> Walker<'a> {
             slots: Vec::with_capacity(size_words.min(64)),
             raw_len: false,
         });
+        // V8 8.7（带 kNewMetaMap 的老族构建）把 **map 序列化在分配之前**：
+        //   size | map | [kAlignmentPrefix] | [kNextChunk <space>] | slots
+        // 旧实现先 allocate 再读 map，于是每个 chunk 的第一个对象被记到上一个
+        // chunk 的尾部，后续所有 backref 偏移整体漂移（大文件里能漂出“对象指向
+        // 自己”的假引用，引发无限递归）。更老的 7.x/8.4 是 next-chunk 在
+        // kNewObject 之前，不受这里影响。
+        let map_first = self.legacy.is_some() && self.opt_tag("kNewMetaMap").is_some();
+        let mut allocated = false;
+        let map;
+        if map_first {
+            // map 自身也在 map space 分配；它不应继承本对象的对齐提示
+            let saved_align = self.legacy.as_ref().map(|l| l.align).unwrap_or(0);
+            let m = self.parse_ref(depth + 1)?;
+            if let Some(l) = self.legacy.as_mut() {
+                l.align = saved_align;
+            }
+            if let Some(align) = self.opt_tag("kAlignmentPrefix") {
+                if let Some(b) = self.peek() {
+                    if (align..align + 3).contains(&b) {
+                        self.byte()?;
+                        if let Some(l) = self.legacy.as_mut() {
+                            l.align = (b - align + 1) as u32;
+                        }
+                    }
+                }
+            }
+            if let Some(t_next) = self.opt_tag("kNextChunk") {
+                while self.peek() == Some(t_next)
+                    && self.data.get(self.pos + 1).copied() == Some(space)
+                {
+                    self.byte()?;
+                    self.byte()?;
+                    if let Some(l) = self.legacy.as_mut() {
+                        l.next_chunk(space);
+                    }
+                }
+            }
+            if let Some(l) = self.legacy.as_mut() {
+                l.allocate(space, byte_size as u32, id);
+            }
+            allocated = true;
+            map = m;
+        } else {
+            map = self.parse_ref(depth + 1)?;
+        }
         if let Some(l) = self.legacy.as_mut() {
-            l.allocate(space, byte_size as u32, id);
+            if !allocated {
+                l.allocate(space, byte_size as u32, id);
+            }
             if std::env::var("JSCD_DBG_LEGACY").is_ok() && (id >= 18) {
                 let ctx = self.data.get(tag_offset..(tag_offset + 12).min(self.data.len())).unwrap_or(&[]);
                 eprintln!(
@@ -867,7 +922,6 @@ impl<'a> Walker<'a> {
                 );
             }
         }
-        let map = self.parse_ref(depth + 1)?;
         // 沙箱构建的 trusted/protected 数组用裸 int32 计数（见 Object::raw_len）
         if let SlotValue::Ref(Ref::Root(ri)) = &map {
             if let Some(n) = self.table.root_name(*ri) {
@@ -893,6 +947,11 @@ impl<'a> Walker<'a> {
                             }
                         }
                         self.pending.remove(&pid);
+                        if self.pending.is_empty() {
+                            // V8 在 num_unresolved_forward_refs_ == 0 时 clear() 整个
+                            // vector，后续注册的 index 又从 0 开始。
+                            self.pending_next = 0;
+                        }
                     }
                     _ => break,
                 }
@@ -1199,6 +1258,7 @@ pub fn parse_with<'a>(
         objects: Vec::new(),
         hot: HotRing::default(),
         pending: std::collections::HashMap::new(),
+        pending_next: 0,
         extra_skip: 0,
         table,
     };
@@ -1263,7 +1323,11 @@ pub fn parse_with<'a>(
                     }
                     let t_new = w.tag("kNewObject")?;
                     let n_sp = w.n_spaces();
-                    if legacy_tolerant && (t_new..t_new + n_sp).contains(&b) {
+                    // 8.7（kNewMetaMap）不再预分配 deferred 对象：引用槽先登记
+                    // pending forward ref，这里就是普通 kNewObject，map 后紧跟
+                    // kResolvePendingForwardRef。只有更老的老族才用 backref+size 特例。
+                    let map_first = w.opt_tag("kNewMetaMap").is_some();
+                    if legacy_tolerant && !map_first && (t_new..t_new + n_sp).contains(&b) {
                         // 老族 deferred 条目（V8 `DeserializeDeferredObjects`）：
                         //   kNewObject+space | backref | size | 剩余槽
                         // backref 的**编码随版本**：6.x 是一个位域 uint32（空间号在标签里），
@@ -1331,6 +1395,12 @@ pub fn parse_with<'a>(
     let t_nop = w.tag("kNop")?;
     while let Some(b) = w.peek() {
         if b != t_nop {
+            if legacy_tolerant {
+                // 8.7 的尾部可能有我们还没建模的段；主 payload 已经完整，
+                // 这里丢掉剩余字节并明确告警（stdout 产物不受影响）。
+                eprintln!("jscd: 老族尾段出现非 Nop 字节 0x{b:02x} at {}（跳过剩余）", w.pos);
+                break;
+            }
             return Err(format!(
                 "unexpected byte 0x{b:02x} after kSynchronize at {}",
                 w.pos

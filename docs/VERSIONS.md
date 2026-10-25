@@ -1523,5 +1523,53 @@ opcode/根表对每个构建用 `--print-bytecode` / `--trace-serializer` 逐条
 `FixedArrayMap`/`FixedCOWArrayMap` 同型误报）。20/21/23/24/25/26/28/29/31–36 各自有专属表，
 22 复用 Node 10.8 表，27 有专属表。
 
-最终：manifest **543 条**（517 Node + 26 个 Electron 构建）、**61 张表**；
+最终：manifest **544 条**（517 Node + 27 个 Electron 构建）、**62 张表**；
 Node 矩阵 216 pass / 0 fail + 30 整脚本；cargo 65 条测试；clippy 零告警。
+
+## 16. Electron 11（V8 8.7.220.31）支持（PR #3，2026-10-25）
+
+PR #3（@hadamrd）带来了 Electron 11 的完整调查与一张 8.7 表。分支与 main 冲突较多，
+这里在最新 main 上重新落地并实测；结论与原始 PR 一致的部分都保留了，另外补了两处
+main 侧的回归修复。
+
+**新增**：`tables/v8_7_8.7.220.31.json`（由 V8 8.7.220.31 + Electron 11.5.0 的
+`patches/v8` 生成，ts=4、非沙箱、右折叠哈希 `0x02f91115`），manifest 标签
+`electron 11.5.0`。9 个行为 fixture 全部逐用例一致；大缓存（1.5 MB / 4000 函数、
+978 KB / 1500 个类）完整反编译，无栈溢出。
+
+**V8 8.7 的序列化差异（都已按 `deserializer.cc` 源码实现）**：
+
+1. `kRegisterPendingForwardRef` **不读流**：V8 只把当前槽登记进
+   `unresolved_forward_refs_`，隐式编号 = 注册顺序；全部 resolve 后 V8 `clear()`
+   整个 vector，编号从 0 重来（serializer.cc 的 `next_forward_ref_id_`）。
+   旧实现 `putint()` 每次多吃 1–4 字节，32K 对象后整段错位。
+2. **map 先于分配**：8.7 的 `ReadObject(space)` 顺序是
+   `size | map | [alignment] | [nextchunk] | slots`。旧实现先 allocate 再读 map，
+   每个 chunk 的第一个对象被记到上一个 chunk 尾部，后续 backref 偏移整体漂移。
+3. **deferred 段**：带 `kNewMetaMap` 的构建不再预分配 deferred 对象，改为普通
+   `kNewObject` + map 后的 `kResolvePendingForwardRef`；旧的 `backref|size` 特例只
+   留给更老的 7.x/8.4。
+4. **帧布局**：Chromium 87 打开了 `v8_enable_reverse_jsargs`，参数寄存器按
+   `first_param` 反序编号。实测 `Star 0xfa→r0`、`Mov 0xff→<context>`、
+   `Mov 0xfe→<closure>`、`a0=3/a1=4`，对应
+   `reg_file_start=-6 / context=-5 / closure=-4 / first_param=-8`。codegen 里加了
+   按版本号的 `FRAME_OVERRIDES`（8.7.220.31），不影响 Node 15（非 reverse）。
+5. **旧族数值域是 Smi**：8.x 的 ScopeInfo `set(kFlags, Smi::FromInt(v))`，表里的
+   `flags_smi` 会被新式 accessor 误标 false；disasm 的 legacy 路径现在强制按 Smi 解。
+
+**main 侧顺带修复的两个回归**（PR 分支上没有）：
+
+- `receiver_info` 槽不是"9.x 专有"：6.8/7.x/8.x/9.x 都有，10.x 才删。之前的
+  `major == 9` 门限让 node10 的类方法名整体丢一格（`function bump` 变成
+  `_anon_22`，`class_basic`/`twoclasses`/`call_args3`/`top_class` 全挂）。
+  改为 `major < 10` 后 **8.17–26.12 共 11 条线 × 41 用例 = 392 pass / 0 fail**。
+- switch 的被测表达式是 `<this>`/`<context>` 寄存器拼写时，直接拼进 `switch (…)`
+  不是合法 JS；改用 `operand_expr` 渲染。`find_loop` 的回边判定从 `<=` 收紧到
+  `<`（自环会产生零长度区间让 `emit_range` 递归不终止）；`FnCtx` 装箱降低递归栈占用。
+
+**没有采用**：PR 里的 4 GiB 线程栈绕法。本机两档大缓存都不需要它；先保留默认栈，
+堆栈问题用上面的严格回跳 + 装箱 + 解析器修正处理。若以后拿到真正触发深递归的
+样本，再按"visited 区间 + 有界栈"处理，而不是无条件放大 4 GiB。
+
+原始 PR 还带了一份详细的 `ARCHITECTURE_TRAPS.md` / `STACK_OVERFLOW_BUG.md` /
+`cases/electron11-v8_7_220_31/` 调查记录，思路与上面的 1–5 一致，可到 PR #3 查阅。

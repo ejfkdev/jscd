@@ -3,9 +3,9 @@
 Reverse [bytenode](https://github.com/bytenode/bytenode)-compiled `.jsc` files back to JavaScript.
 Static parsing only: one pure-Rust binary — no patched V8, no Node runtime, no network.
 
-Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors) and **Electron 19 → 45**
-(V8 10.2 – 15.6, pointer-compressed and sandboxed builds included; every major from 20 to 45
-passes the same 9-fixture behavior check, 9/9 each); **≈ 25k `.jsc` files pass the
+Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors) and **Electron 11 and 19 → 45**
+(V8 8.7 – 15.6, pointer-compressed and sandboxed builds included; Electron 11 and every
+major from 20 to 45 pass the same 9-fixture behavior check, 9/9 each); **≈ 25k `.jsc` files pass the
 tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
 optimization layers (register folding → swc copy propagation) make the decompiled source readable.
 
@@ -491,9 +491,9 @@ Selection is keyed on the V8 version hash; every Node release from 8.0.0 on is l
 `tables/manifest.json` (517 Node releases + 26 Electron builds), and one table covers each
 V8 minor — identical tables are stored once.
 
-Electron is covered the same way: **19 → 45** (V8 10.2 – 15.6), with a dedicated table for
-every major 20–45 (22 shares Node's 10.8 table) and **9/9 fixtures per build** verified against
-that build's own bytecode/root traces.
+Electron is covered the same way: **11 and 19 → 45** (V8 8.7 – 15.6), with a dedicated table
+for 11 and every major 20–45 (22 shares Node's 10.8 table) and **9/9 fixtures per build**
+verified against that build's own bytecode/root traces.
 
 **Every Node release from 8.0.0 through 26.12.1 is identified** (517 releases, 90 V8 versions),
 and **29 of the 36 V8 minors pass the full behavior matrix** — 31 Node lines, all green
@@ -629,7 +629,7 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
 | Metric | Value |
 | --- | --- |
 | Supported Node releases | **517** (`v8.0.0` → `v26.12.1`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
-| Version tables / read-only-heap name maps | **61** tables (**36** Node + **25** Electron) + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
+| Version tables / read-only-heap name maps | **62** tables (**36** Node + **26** Electron) + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
 | Behavior fixtures | **36** fixtures (**121 assertion cases**) + **5** whole-script fixtures — 41 files / 629 lines |
 | One full matrix run | 31 Node lines × 36 fixtures = **1,116 cells** + 155 script cells ⇒ **3,751 case-by-case comparisons** and **1,271 structural gates** |
 | Standard corpus sweep | **408** real samples × 6 lines (8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10) |

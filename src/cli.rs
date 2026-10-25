@@ -574,10 +574,10 @@ fn unsupported_msg(ident: &crate::tables::Identified, hash: u32, errors: &[Strin
     } else {
         bif!(
             "unsupported .jsc: built by V8 {0} (version hash 0x{1:08x}); this build covers \
-             Node 8.0.0–26.12.1 and Electron 19–45 (V8 5.8–15.6) — run `jscd info <file>` \
+             Node 8.0.0–26.12.1 and Electron 11, 19–45 (V8 5.8–15.6) — run `jscd info <file>` \
              for the full header",
             "不支持的 .jsc：由 V8 {0} 生成（version hash 0x{1:08x}）；当前覆盖 \
-             Node 8.0.0–26.12.1 与 Electron 19–45（V8 5.8–15.6）—— 可先跑 \
+             Node 8.0.0–26.12.1 与 Electron 11、19–45（V8 5.8–15.6）—— 可先跑 \
              `jscd info <文件>` 看完整头信息";
             ident.v8,
             hash

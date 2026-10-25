@@ -307,8 +307,8 @@ impl Identified {
                 "yes"
             } else {
                 crate::bi!(
-                    "no (tables cover Node 8.0.0-26.12.1 and Electron 19-45 / V8 5.8-15.6)",
-                    "否（当前表覆盖 Node 8.0.0-26.12.1 与 Electron 19–45 / V8 5.8–15.6）"
+                    "no (tables cover Node 8.0.0-26.12.1 and Electron 11, 19-45 / V8 5.8-15.6)",
+                    "否（当前表覆盖 Node 8.0.0-26.12.1 与 Electron 11、19–45 / V8 5.8–15.6）"
                 )
             }
         );

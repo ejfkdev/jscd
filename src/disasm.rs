@@ -399,7 +399,18 @@ impl<'a> Disassembler<'a> {
         // 数值域的存储形态随版本变：7.8 及更早是 **Smi**（`set(kFlags, Smi::FromInt(v))`），
         // 8.x 是裸 int32，9.x–12.x 又是 Smi，13.x 裸 int32 —— 有版本表就听表的
         // （flags_smi），没有表（6.x 之前）再退回"老族=裸 int32"的老经验。
-        let flags_smi = if self.table.scope_info.is_some() { cfg.flags_smi } else { legacy };
+        // legacy（base=2，≤8.x 的 FixedArray 布局）的数值域一律是 Smi：
+        // `set(kFlags, Smi::FromInt(v))`（8.7 的 scope-info.cc 仍是这个写法）。
+        // 表里的 flags_smi 是从新式 accessor 推的，8.x 会误标 false；照抄会让
+        // flags 读成 2 倍值 → function_variable 位错、ScopeInfo 函数名读不出来
+        // （Electron 11 的 target 变成 `_anon_4`）。
+        let flags_smi = if legacy {
+            true
+        } else if self.table.scope_info.is_some() {
+            cfg.flags_smi
+        } else {
+            false
+        };
         let flags = self.num_field(id, base, flags_smi).unwrap_or(0) as u64;
 
         let has_saved = (flags >> cfg.saved_class_bit) & 1 == 1;
@@ -419,7 +430,7 @@ impl<'a> Disassembler<'a> {
             .next()
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
-        let has_receiver = v8_major == 9 && matches!(receiver_var, 1 | 2);
+        let has_receiver = v8_major < 10 && matches!(receiver_var, 1 | 2);
 
         if std::env::var("JSCD_DBG_SFI").is_ok() {
             eprintln!(

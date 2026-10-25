@@ -15,4 +15,8 @@ fn main() {
     println!("cargo:rustc-env=JSCD_VERSION={version}");
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-changed=build.rs");
+    // 版本表/清单会在 codegen 后更新；不跟踪的话 debug 构建会继续用旧清单，
+    // 表现为 "unsupported .jsc" 而 release 却正常。
+    println!("cargo:rerun-if-changed=tables/manifest.json");
+    println!("cargo:rerun-if-changed=tables");
 }

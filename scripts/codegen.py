@@ -1392,6 +1392,36 @@ def bytecode_array_layout(sources, tagged_size, sandbox):
     return tq_layout(sources, "BytecodeArray", tagged_size, sandbox)
 
 
+# 个别构建的帧参数与"源码公式 + Node 默认 args"不一致，按 V8 版本校准。
+# 8.7.220.31 的 Electron 11 构建打开了 v8_enable_reverse_jsargs（Chromium 默认），
+# 参数寄存器按 first_param 反序编号，且 register file 起点比 legacy 公式低一格：
+# 实测 operands a0=3 / a1=4 / r0=0xfa，对应 reg_file_start=-6、first_param=-8。
+FRAME_OVERRIDES = {
+    # 8.7 Electron 11 实测：Star 0xfa→r0、Mov 0xff→<context>、Mov 0xfe→<closure>，
+    # 即 reg_file_start=-6、context=-5、closure=-4、first_param=-8（reverse jsargs）。
+    "8.7.220.31": {
+        "reg_file_start": -6,
+        "context_index": -5,
+        "closure_index": -4,
+        "first_param": -8,
+        "drop_param_base": True,
+    },
+}
+
+
+def apply_frame_override(tag, frame):
+    ov = FRAME_OVERRIDES.get(tag)
+    if not ov or frame is None:
+        return frame
+    frame = dict(frame)
+    for k in ("reg_file_start", "context_index", "closure_index", "first_param"):
+        if k in ov:
+            frame[k] = ov[k]
+    if ov.get("drop_param_base"):
+        frame.pop("param_base", None)
+    return frame
+
+
 def extract_frame_layout(text):
     """解释器帧常量 → 寄存器命名基址（随版本变：9.x–11.x = -6，12.x+ = -7）。
 
@@ -2007,7 +2037,7 @@ def main():
             # 实测校正在表首补一个占位即可对齐（依据：真实 .jsc 里 ":"→377、"-"→364、
             # "target"→849，与补位后的表逐一对上）。12.x 及更早无需补。
             "roots_shift": 0,
-            "frame": extract_frame_layout(src_frame),
+            "frame": apply_frame_override(tag, extract_frame_layout(src_frame)),
             "scope_info": extract_scope_info(src_scope, src_globals),
             "parameter_count": extract_parameter_count_semantics(src_ba_inl),
             "shared_function_info": tq_layout(
