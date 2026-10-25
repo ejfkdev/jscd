@@ -3,16 +3,19 @@ Static parsing: no patched V8, no Node runtime, no subprocesses.
 
 ### What's new in 0.2.x
 
-- **Electron 19 → 45** (V8 10.2 – 15.6) is now covered, including pointer-compressed and
-  V8-sandboxed builds. Every major from 20 to 45 has a table calibrated against that build's
-  own `--print-bytecode` / `--trace-serializer` output and passes the 9-fixture behavior
-  check 9/9.
+- **Electron 11 and 19 → 45** (V8 8.7 – 15.6) is now covered, including pointer-compressed
+  and V8-sandboxed builds. Electron 11 (contributed via PR #3) and every major from 20 to 45
+  have a table calibrated against that build's own bytecode/root traces and pass the
+  9-fixture behavior check 9/9.
+- **Node 10 class regression fixed** (`function bump` came out as `_anon_22`): the
+  `receiver_info` ScopeInfo slot exists before V8 10, not only in 9.x. The full
+  8.17–26.12 matrix is 392 pass / 0 fail plus 55 whole scripts.
 - Newer Node releases through **26.12.1** (V8 14.6) are covered; version hashes that collide
   between Node and Electron builds (14.6.202.34, 13.6.233.17, 12.4.254.20, …) are resolved
   by trying every table for the V8 minor and scoring the parsed bytecode.
 - Robustness: malformed or mismatched caches now fail with an error instead of looping —
   array/scope name counts are bounded by the payload size and context chains detect cycles.
-- 543 manifest entries (517 Node + 26 Electron), 61 version tables.
+- 544 manifest entries (517 Node + 27 Electron), 62 version tables.
 - **0.2.1** fixes a Linux-only `info` diagnostic: a pointer-compressed cache now gets both the
   platform note and the "embedded table is for non-compressed builds" note, instead of only the
   platform one.
