@@ -6,7 +6,7 @@
 支持 **Node 8.0.0 → 26.12.1**（517 个发布 / 36 个 V8 minor）与 **Electron 11、19 → 45**
 （V8 8.7 – 15.6，含指针压缩与 V8 sandbox 构建；Electron 11 与 20–45 每个主版本都跑同一套 9 个
 行为 fixture，逐用例 9/9），**≈ 25k 份 `.jsc` 通过测试、0 失败**
-（31 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → swc 复制传播）
+（31 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → cure 简化）
 提升反编译源码的可读性。
 
 [English](README.md) · **中文**
@@ -27,7 +27,7 @@
 - **覆盖全** —— Node 8.0.0 → 26.12.1（517 个发布 / 36 个 V8 minor）都能识别；表范围外的 V8 明确报错，不猜。
 - **产物能跑** —— `--runtime` 补上 `__runtime` 桩，反编译结果直接 `node` 可跑；`--verify` 再过一遍
   `node --check`。
-- **产物能读** —— 两层优化把字节码的寄存器搬运折回表达式（寄存器折叠 → swc 复制传播）；
+- **产物能读** —— 两层优化把字节码的寄存器搬运折回表达式（寄存器折叠 → cure 简化）；
   `JSCD_NO_OPT=1` 可对照原样。
 - **名字尽量还原** —— 作用域槽名反推、内建名查只读堆名表；绝不输出会抛 `ReferenceError` 的标识符。
 - **单文件零依赖** —— 纯 Rust：不需要 Node、不联网、不打补丁；Linux 静态二进制压完约 2.8 MB。
@@ -99,7 +99,7 @@ cargo build --release        # -> target/release/jscd
 cargo install --path .       # ……或把这份构建装进 ~/.cargo/bin
 ```
 
-需要 Rust 1.96+（swc 优化器要求较新的 rustc），无系统依赖。
+需要 Rust 1.96+（工作区工具链版本；cure 本身要求 1.74），无系统依赖。
 
 <details>
 <summary>发版（维护者）</summary>
@@ -165,7 +165,7 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 
 ```console
 $ jscd --help
-jscd 0.2.2 — V8 代码缓存 → JavaScript
+jscd 0.3.0 — V8 代码缓存 → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 把 bytenode 编译的 .jsc（V8 代码缓存）还原成 JavaScript。纯静态解析 ——
@@ -445,21 +445,20 @@ supported:     yes
    存储删掉、没人再用的寄存器声明与 `DeclareGlobals` 这类簿记清掉、`let r0; … r0 = E;` 并成声明器初始化，
    并把**接收者/实参的装载在调用点按 JS 求值顺序重建**（接收者 → 属性 → 实参），不换序。判不准的一律不并：
    跨块、循环头、无括号控制体、以及之后还要用的值（含 `r2 = new r2(a0)` 这种自引用写）。
-2. **AST 层**（`src/opt_js.rs`）：文本再过一遍 [swc](https://swc.rs)（terser 的 Rust 移植）——
-   **复制传播**、无用变量删除、常量折叠：
+2. **AST 层**（`src/opt_js.rs`）：文本再过一遍 [cure](https://github.com/ejfkdev/cure) 的
+   TypeScript/JavaScript 后端 —— 面向反编译产物的容错、语义保持简化器。它做常量/纯表达式折叠、
+   死存储与空语句清理、控制流简化、对象/数组/类字面量规范化，并**一条语句一行**地打印（不合并成
+   逗号序列、不改名）：
 
    ```js
-   let r0, r1, r2, r3;        // 反编译原样             // 两层跑完
-   r0 = greet;                console.log(greet("world"));
-   r2 = console;       →      function greet(a0) {
-   r1 = r2.log;                 return "hello " + a0;
-   r3 = r0("world");          }
-   r2.log(r3);
+   // 两层跑完
+   let r0 = console.log('hello world');
+   function greet(a0) {
+       return 'hello ' + a0;
+   }
    ```
 
-   管线 `paren_remover → resolver → optimize → hygiene → fixer`（少 `paren_remover` 会误编译）；优化前包一层
-   函数（swc 只在函数作用域做复制传播，而产物在真实运行时本来就是 `Module.wrap` 的函数体），压完剥壳。
-   不改名、不合语句、不转箭头函数；产物不合法或可疑 → 保留文本级结果。
+   解析失败、含不可见原文区域或结果为空 → 原样保留文本级结果，不认识这个缓存的写法也不会比原来差。
 
 ## 支持的版本
 
@@ -575,11 +574,11 @@ python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-
    只有 const / 只有 class / async"这些 `target` 型用例照不到的形态）。
 3. **语料扫描**（`scripts/verify_samples.py`）—— 大样本 × 多版本：编译 → 反编译 → `node --check` → 在 vm 里
    加载（我们自己生成的名字若 `ReferenceError` 即判为 bug）。
-4. **单元测试与静态检查** —— `cargo test`（66 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
+4. **单元测试与静态检查** —— `cargo test`（65 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
    （0 告警）+ 零依赖端到端冒烟 `scripts/ci_smoke.sh`。
 
 ```sh
-cargo test                                              # 66 条单测
+cargo test                                              # 65 条单测
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # 语料；另有 --offset、--samples
 ```
@@ -675,4 +674,4 @@ MIT，见 [LICENSE](LICENSE)。
 
 [bytenode](https://github.com/bytenode/bytenode)（本工具针对的打包方式）；
 [View8](https://github.com/suleram/View8)（反汇编格式沿用其约定）；
-[swc](https://swc.rs)（AST 级清理：terser 复制传播的 Rust 移植）。
+[cure](https://github.com/ejfkdev/cure)（AST 级简化与格式化）。

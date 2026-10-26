@@ -819,6 +819,8 @@ V8 minor 中的 30 个）。老族只剩 7.5/7.6（各 20/25）与八条解析�
 
 ### 11.9 AST 级优化：接 swc（terser 的 Rust 移植）
 
+> 0.3.0 起 AST 层已换成 cure，见 §17。以下保留为历史记录。
+
 用户要求：产物里像 `r0 = greet; … r3 = r0("world")` 这种"只用一次的变量"该有**算法**消掉，
 （"是不是有些 JS 优化工具能自动处理这种问题？有 Rust 实现更好"）。
 
@@ -1573,3 +1575,43 @@ main 侧的回归修复。
 
 原始 PR 还带了一份详细的 `ARCHITECTURE_TRAPS.md` / `STACK_OVERFLOW_BUG.md` /
 `cases/electron11-v8_7_220_31/` 调查记录，思路与上面的 1–5 一致，可到 PR #3 查阅。
+
+## 17. AST 优化层：swc → cure（0.3.0）
+
+### 背景
+
+从 11.9 起 AST 层用 swc（terser 的 Rust 移植）做复制传播。两轮 Electron 支持下来，
+jscd 需要的其实是"反编译产物 → 人能读的代码"，而 swc 是面向生产 bundle 的压缩器：
+
+- 它会把语句合成逗号序列（`return a.bump(1), x + a.value;`），可读性反而下降；
+- 它把 `void 0`、`Error(...)` 等形态改写成自己的偏好，测试要额外容忍；
+- 它是 jscd 二进制里最大的依赖（12 MB → 6.4 MB 的差距主要来自它）。
+
+同作者的 [cure](https://github.com/ejfkdev/cure) 0.2.0 正好是面向反编译产物：容错解析、
+语义保持规则、语句级打印、不改名。0.1.11 修掉了两个在 jscd 输出上高频触发的读分析
+bug（赋值目标读、`yield` 原文 RHS），0.2.0 默认规则在 jscd fixture 上已全部通过。
+
+### 改动
+
+- `Cargo.toml`：移除 `swc_core`，改用 `cure-engine` / `cure-ts-parser` /
+  `cure-ts-simplify` / `cure-ts-print` 0.2.0。
+- `src/opt_js.rs`：`parse_js` → `Config::default()` + `simplify_unit` → `print_module`。
+  解析有恢复性错误或结果为空时返回 `None`，保留文本层结果（与 swc 时期的降级策略一致）。
+- `JSCD_NO_OPT=1` 仍然完全跳过 AST 层；`--runtime` 仍然不跑 AST 层。
+
+### 验证
+
+- 行为矩阵：8.17–26.12 共 11 条线 × 36 fixture = **392 pass / 0 fail** + **55 个整脚本**；
+- Electron 11 / 22 / 30 / 36 / 42 / 45 各 9/9；
+- 默认输出（非 `--runtime`）语料：Node 26.12.1 与 16.20.2 各 120 份，全部 `node --check` 通过；
+- `cargo test` 65 条、clippy 零告警、`ci_smoke.sh` 通过；
+- **二进制约 12 MB → 6.4 MB**（release，macOS arm64），编译时间也明显缩短。
+
+### 输出差异（有意为之）
+
+- 更"一条语句一行"，不合并逗号序列；寄存器搬运用文本层先折，剩下的按语句保留；
+- 体积略大（lodash 226 KB → 332 KB 产物），换来更直白的控制流；
+- 默认输出本来就不保留注释（AST 层会去掉结构性注释），这一点与 swc 时期一致；
+- cure 不做跨函数的激进内联，遇到不认识/不可见区域保守保留。
+
+历史 §11.9 记录的是 swc 时期的取舍，已被本节取代；`JSCD_NO_OPT=1` 仍可看文本层之前的原始形态。

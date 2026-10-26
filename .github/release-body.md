@@ -1,8 +1,14 @@
 **jscd @VERSION@** — reverse bytenode-compiled `.jsc` (V8 code cache) back to JavaScript.
 Static parsing: no patched V8, no Node runtime, no subprocesses.
 
-### What's new in 0.2.x
+### What's new in 0.3.x
 
+- **AST layer: swc → cure 0.2.0.** The optimizer is now cure's TypeScript/JavaScript
+  backend, which is built for decompiled code: semantic-preserving folding, dead-store
+  cleanup and statement-per-line printing (no comma-sequence merging, no renaming).
+  Output is somewhat larger but more direct; unparseable input still falls back to the
+  text-layer result. The release binary shrank from ~12 MB to ~6.4 MB, and the same
+  behavior matrix passes: 392 fixture checks + 55 whole scripts, plus Electron 11/22/30/36/42/45 9/9.
 - **Electron 11 and 19 → 45** (V8 8.7 – 15.6) is now covered, including pointer-compressed
   and V8-sandboxed builds. Electron 11 (contributed via PR #3) and every major from 20 to 45
   have a table calibrated against that build's own bytecode/root traces and pass the

@@ -9,7 +9,7 @@ cargo build --release        # -> target/release/jscd
 cargo test                   # unit + integration tests (56)
 ```
 
-Rust **1.96+** (the swc-based AST layer needs a recent `rustc`). `cargo fmt` is **not**
+Rust **1.96+** (the workspace toolchain pin; the cure-based AST layer itself needs 1.74). `cargo fmt` is **not**
 enforced: the code is hand-formatted (long explanatory comments, aligned tables) — please match
 the surrounding style rather than reformatting wholesale.
 

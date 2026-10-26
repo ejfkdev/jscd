@@ -7,7 +7,7 @@ Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors) and **Electron
 (V8 8.7 – 15.6, pointer-compressed and sandboxed builds included; Electron 11 and every
 major from 20 to 45 pass the same 9-fixture behavior check, 9/9 each); **≈ 25k `.jsc` files pass the
 tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
-optimization layers (register folding → swc copy propagation) make the decompiled source readable.
+optimization layers (register folding → cure simplification) make the decompiled source readable.
 
 **English** · [中文](README.zh.md)
 
@@ -30,7 +30,7 @@ optimization layers (register folding → swc copy propagation) make the decompi
 - **Runnable output** — `--runtime` adds the `__runtime` stubs so the result runs under `node`;
   `--verify` puts it through `node --check`.
 - **Readable output** — two optimization layers fold bytecode register shuffling back into
-  expressions (register folding → swc copy propagation); `JSCD_NO_OPT=1` shows the raw form.
+  expressions (register folding → cure simplification); `JSCD_NO_OPT=1` shows the raw form.
 - **Names recovered** — scope slots are named, builtins resolved through a read-only-heap name
   table; never an identifier that throws `ReferenceError`.
 - **One dependency-free binary** — pure Rust: no Node, no network, no patched V8; the Linux build
@@ -105,7 +105,7 @@ cargo build --release        # -> target/release/jscd
 cargo install --path .       # ...or install that build into ~/.cargo/bin
 ```
 
-Requires Rust 1.96+ (swc, the JS optimizer, needs a recent rustc). No system dependencies.
+Requires Rust 1.96+ (the workspace toolchain pin; cure itself needs 1.74). No system dependencies.
 
 <details>
 <summary>Releasing (maintainers)</summary>
@@ -176,7 +176,7 @@ Everything the CLI prints for `--help` and `help <SUBCOMMAND>`, verbatim (regene
 
 ```console
 $ jscd --help
-jscd 0.2.2 — V8 code cache → JavaScript
+jscd 0.3.0 — V8 code cache → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 Reconstructs JavaScript from bytenode-compiled .jsc files (V8 code caches).
@@ -466,23 +466,22 @@ supported:     yes
    evaluation order** (receiver → property → arguments), so nothing is reordered. It refuses to
    cross blocks, loop headers, braceless control bodies, or a value that is still used later
    (including the self-referencing write `r2 = new r2(a0)`).
-2. **AST layer** (`src/opt_js.rs`): the text then goes through [swc](https://swc.rs) — terser's Rust
-   port — for **copy propagation**, unused-variable elimination and constant folding:
+2. **AST layer** (`src/opt_js.rs`): the text then goes through [cure](https://github.com/ejfkdev/cure)'s
+   TypeScript/JavaScript backend — a fault-tolerant, semantic-preserving simplifier built for
+   decompiled code. It folds constants and pure expressions, removes dead stores and no-op
+   statements, simplifies control flow, normalizes object/array/class literals, and prints
+   statement-per-line (it does **not** merge statements into comma sequences or rename anything):
 
    ```js
-   let r0, r1, r2, r3;        // as decompiled            // after both layers
-   r0 = greet;                console.log(greet("world"));
-   r2 = console;       →      function greet(a0) {
-   r1 = r2.log;                 return "hello " + a0;
-   r3 = r0("world");          }
-   r2.log(r3);
+   // after both layers
+   let r0 = console.log('hello world');
+   function greet(a0) {
+       return 'hello ' + a0;
+   }
    ```
 
-   Pipeline: `paren_remover → resolver → optimize → hygiene → fixer` (skipping `paren_remover`
-   miscompiles); the snippet is wrapped in a function first (swc only propagates copies inside a
-   function scope — and the payload *is* a `Module.wrap` body at runtime) and the wrapper is
-   stripped afterwards. No renaming, no statement merging, no arrow conversion; unparseable or
-   suspicious output → the text-layer result is kept.
+   Parse errors, opaque regions or an empty result → the text-layer result is kept unchanged,
+   so a cache the simplifier does not understand still produces the previous output.
 
 ## Supported versions
 
@@ -611,12 +610,12 @@ Four gates, each reproducible on its own:
 3. **Corpus sweeps** (`scripts/verify_samples.py`) — large sample sets × many versions: compile →
    decompile → `node --check` → load in a `vm` (a `ReferenceError` naming anything we generate —
    `__*`, `_anon_*`, `ctx*`, `phi*` — is a bug).
-4. **Unit tests and static checks** — `cargo test` (66 tests) + `cargo clippy --all-targets`
+4. **Unit tests and static checks** — `cargo test` (65 tests) + `cargo clippy --all-targets`
    (0 warnings) + `cargo build` (0 warnings) + the dependency-free end-to-end smoke
    `scripts/ci_smoke.sh`.
 
 ```sh
-cargo test                                              # 66 unit tests
+cargo test                                              # 65 unit tests
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # corpus; also --offset, --samples
 ```
@@ -716,6 +715,6 @@ MIT — see [LICENSE](LICENSE).
 
 [bytenode](https://github.com/bytenode/bytenode) for the packaging this tool targets;
 [View8](https://github.com/suleram/View8) for the disassembly format conventions;
-[swc](https://swc.rs) for the AST-level cleanup (a Rust port of terser's copy propagation).
+[cure](https://github.com/ejfkdev/cure) for the AST-level simplification/formatting.
 
 <div align="center"><sub><a href="README.zh.md"> 简体中文</a> · 友情链接 https://linux.do</sub></div>
