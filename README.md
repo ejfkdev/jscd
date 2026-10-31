@@ -16,7 +16,12 @@ optimization layers (register folding → cure simplification) make the decompil
 [![Node 8.0 – 26.13](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.13-green.svg)](#supported-versions)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#supported-versions)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/ejfkdev/jscd.svg)](https://github.com/ejfkdev/jscd/releases)
+[![release downloads](https://img.shields.io/github/downloads/ejfkdev/jscd/total.svg)](https://github.com/ejfkdev/jscd/releases)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
+[![crates.io downloads](https://img.shields.io/crates/d/jscd.svg)](https://crates.io/crates/jscd)
+[![docs.rs](https://docs.rs/jscd/badge.svg)](https://docs.rs/jscd)
+[![GitHub stars](https://img.shields.io/github/stars/ejfkdev/jscd.svg)](https://github.com/ejfkdev/jscd/stargazers)
 
 **Contents:** [Highlights](#highlights) · [Quick start](#quick-start) · [Install](#install) ·
 [Usage](#usage) · [CLI reference](#cli-reference) · [Supported versions](#supported-versions) ·
