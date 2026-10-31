@@ -82,8 +82,8 @@ jobs:
             apt: gcc-aarch64-linux-gnu
             linker_env: CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
             linker: aarch64-linux-gnu-gcc
-          # macOS arm64：原生构建；UPX 不支持 Mach-O → 不压
-          - os: macos-14
+          # macOS arm64：原生构建（macos-15；macos-14 于 2026-11-02 退役）；UPX 不支持 Mach-O → 不压
+          - os: macos-15
             target: aarch64-apple-darwin
             asset: macos-arm64
             ext: ""
@@ -92,7 +92,7 @@ jobs:
             linker_env: ""
             linker: ""
           # macOS x64：在 arm64 runner 上交叉到 x86_64（Apple SDK 双向可用）；同样不压
-          - os: macos-14
+          - os: macos-15
             target: x86_64-apple-darwin
             asset: macos-amd64
             ext: ""
