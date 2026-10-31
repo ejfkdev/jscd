@@ -1901,6 +1901,10 @@ def main():
             v8 = e.get("v8")
             if not v8:
                 continue
+            # 预发布（alpha/beta/rc）不进 manifest：它们不是"已发布版本"，哈希/布局也
+            # 可能在正式版前再变，登记进去会让 supported 的版本区间失真。
+            if any(x in e["version"] for x in ("-alpha", "-beta", "-rc")):
+                continue
             mk = ".".join(v8.split(".")[:2])
             fname = None
             for t in merged_tables.values():

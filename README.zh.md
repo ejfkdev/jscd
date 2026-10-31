@@ -3,17 +3,17 @@
 把 [bytenode](https://github.com/bytenode/bytenode) 编译的 `.jsc` 还原成 JavaScript。纯静态解析：
 纯 Rust 单二进制，不需要打过补丁的 V8，也不需要 Node 运行时、不联网。
 
-支持 **Node 8.0.0 → 26.12.1**（517 个发布 / 36 个 V8 minor）与 **Electron 11、19 → 45**
+支持 **Node 8.0.0 → 26.13.0**（519 个发布 / 36 个 V8 minor）与 **Electron 11、19 → 45.2**
 （V8 8.7 – 15.6，含指针压缩与 V8 sandbox 构建；Electron 11 与 20–45 每个主版本都跑同一套 9 个
 行为 fixture，逐用例 9/9），**≈ 25k 份 `.jsc` 通过测试、0 失败**
-（31 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → cure 简化）
+（32 条版本线 × 41 份用例，按 bytenode 1.7.0 的编译参数）；两层优化（寄存器折叠 → cure 简化）
 提升反编译源码的可读性。
 
 [English](README.md) · **中文**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.96+](https://img.shields.io/badge/rust-1.96%2B-orange.svg)](Cargo.toml)
-[![Node 8.0 – 26.12](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.12-green.svg)](#支持的版本)
+[![Node 8.0 – 26.13](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.13-green.svg)](#支持的版本)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#支持的版本)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
@@ -24,14 +24,14 @@
 
 ## 特性
 
-- **覆盖全** —— Node 8.0.0 → 26.12.1（517 个发布 / 36 个 V8 minor）都能识别；表范围外的 V8 明确报错，不猜。
+- **覆盖全** —— Node 8.0.0 → 26.13.0（519 个发布 / 36 个 V8 minor）都能识别；表范围外的 V8 明确报错，不猜。
 - **产物能跑** —— `--runtime` 补上 `__runtime` 桩，反编译结果直接 `node` 可跑；`--verify` 再过一遍
   `node --check`。
 - **产物能读** —— 两层优化把字节码的寄存器搬运折回表达式（寄存器折叠 → cure 简化）；
   `JSCD_NO_OPT=1` 可对照原样。
 - **名字尽量还原** —— 作用域槽名反推、内建名查只读堆名表；绝不输出会抛 `ReferenceError` 的标识符。
 - **单文件零依赖** —— 纯 Rust：不需要 Node、不联网、不打补丁；Linux 静态二进制压完约 2.8 MB。
-- **验证可复现** —— 31 条版本线 × 41 份用例逐用例对拍 + 语料扫描，每个数字都能自己复跑（见[验证](#验证)）。
+- **验证可复现** —— 32 条版本线 × 41 份用例逐用例对拍 + 语料扫描，每个数字都能自己复跑（见[验证](#验证)）。
 
 ## 快速上手
 
@@ -136,8 +136,9 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
   构建与架构走）；别的平台/构建用 `jscd ro-map` 自己建一张再 `--ro-map` 传入（`JSCD_NO_RO_MAP=1`
   可关掉内嵌表）。**指针压缩构建（Electron/Chrome）永远不套用**内嵌表：它们与 Node 共用同一段 V8
   版本字符串，只读堆布局却不同。同一张表还带**字符串根**修正（`roots`）：根下标在构建之间会位移，
-  用自己构建生成的名表才能把 `"0"` 还原成 `"0"`，而不是别的构建在那个下标上存的名字。对不上的表会
-  被忽略：宁可留 `<ro0_…>` 占位，也不给错名字。
+  用自己构建生成的名表才能把 `"0"` 还原成 `"0"`，而不是别的构建在那个下标上存的名字。平台/tagged
+  size 对不上的表会被忽略；**同一个 V8 版本字符串**也可能来自不同的 Node 补丁构建（`-node.NN`），
+  只读堆地址照样会位移 —— 看到 `<ro…>` 占位就用自己构建的探针重建一张。
 - 界面语言跟随 `JSCD_LANG`（再依次看 `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` / `LC_CTYPE`）：
   `zh*` 中文、其余英文，`JSCD_LANG=zh|en` 可强制。
 
@@ -165,7 +166,7 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 
 ```console
 $ jscd --help
-jscd 0.3.0 — V8 代码缓存 → JavaScript
+jscd 0.3.1 — V8 代码缓存 → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 把 bytenode 编译的 .jsc（V8 代码缓存）还原成 JavaScript。纯静态解析 ——
@@ -463,24 +464,27 @@ supported:     yes
 ## 支持的版本
 
 版本表由 `scripts/codegen.py` 从 Node 源码生成、编译期嵌入；识别按 V8 版本哈希走。8.0.0 起的每个
-Node 发布都在 `tables/manifest.json` 里（517 条 Node + 26 条 Electron），每个 V8 minor 一张表 ——
+Node 发布都在 `tables/manifest.json` 里（519 条 Node + 30 条 Electron），每个 V8 minor 一张表 ——
 内容相同的表只存一份。
 
-Electron 走同一套机制：**11、19 → 45**（V8 8.7 – 15.6），11 与 20–45 每个主版本都有专属表
+Electron 走同一套机制：**11、19 → 45.2**（V8 8.7 – 15.6），11 与 20–45 每个主版本都有专属表
 （22 复用 Node 10.8 表），每个构建都用它自己的字节码/根表 trace 校验过，**9 个 fixture 全过**。
+在 Electron 主进程/渲染进程里编译的字节码（`compileElectronMainCode` /
+`compileElectronRendererCode`，bytenode 2.x）与 `ELECTRON_RUN_AS_NODE` 产物布局、version_hash
+相同，只有只读快照校验和不同 —— 该校验和不参与结构匹配。
 
-**8.0.0 到 26.12.1 的每个 Node 发布都能识别**（517 个发布、90 个 V8 版本），其中 **36 个 V8 minor
-里的 29 个跑完整行为矩阵**（31 条 Node 线全绿：1,108 pass / 0 fail / 8 skip / 0 known-fail）。
+**8.0.0 到 26.13.0 的每个 Node 发布都能识别**（519 个发布、90 个 V8 版本），其中 **36 个 V8 minor
+里的 29 个跑完整行为矩阵**（32 条 Node 线全绿：1,144 pass / 0 fail / 8 skip / 0 known-fail）。
 剩下 7 个 minor（5.8、6.0、6.1、6.6、6.7、7.0、7.4）`jscd info` 能识别，但 payload 反序列化
 **显式报错**，不会输出垃圾。
 
 | V8 minor | Node 线 | 结果 |
 | --- | --- | --- |
-| 6.2 → 14.6，**36 个里的 29 个** | 31 条线，8.17 → 26.10 | **全绿** —— 1,108 pass / 0 fail / 8 skip |
+| 6.2 → 14.6，**36 个里的 29 个** | 32 条线，8.17 → 26.13 | **全绿** —— 1,144 pass / 0 fail / 8 skip |
 | 5.8、6.0、6.1、6.6、6.7、7.0、7.4 | 8.0–8.9、10.0–10.8、11.x、12.0 的部分发布 | 能识别；payload **显式拒绝** |
 
 <details>
-<summary>Node 映射：36 张版本表 → 517 个发布</summary>
+<summary>Node 映射：36 张版本表 → 519 个发布</summary>
 
 | Node 发布 | V8（该线最新） | 表 |
 | --- | --- | --- |
@@ -515,20 +519,20 @@ Electron 走同一套机制：**11、19 → 45**（V8 8.7 – 15.6），11 与 2
 | 19.2.0–19.9.0 | 10.8.168.25 | `tables/v10_8_19.9.0.json` |
 | 20.0.0–20.20.2 | 11.3.244.8 | `tables/v11_3.json` |
 | 21.0.0–21.7.3 | 11.8.172.17 | `tables/v11_8_21.7.3.json` |
-| 22.0.0–22.23.3 | 12.4.254.21 | `tables/v12_4.json` |
+| 22.0.0–22.23.4 | 12.4.254.21 | `tables/v12_4.json` |
 | 23.0.0–23.11.1 | 12.9.202.28 | `tables/v12_9_23.11.1.json` |
-| 24.0.0–24.21.0 | 13.6.233.17 | `tables/v13_6.json` |
+| 24.0.0–24.22.2 | 13.6.233.17 | `tables/v13_6.json` |
 | 25.0.0–25.9.0 | 14.1.146.11 | `tables/v14_1.json` |
-| 26.0.0–26.12.1 | 14.6.202.34 | `tables/v14_6_26.10.0.json` |
+| 26.0.0–26.13.0 | 14.6.202.34 | `tables/v14_6_26.10.0.json` |
 
 </details>
 
 <details>
-<summary>跑完整矩阵的 31 条 Node 线</summary>
+<summary>跑完整矩阵的 32 条 Node 线</summary>
 
 `8.17` `10.24` `12.5` `12.9` `12.15` `12.22` `13.14` `14.0` `14.4` `14.5` `14.6` `14.21` `15.14`
 `16.3` `16.5` `16.8` `16.9` `16.20` `17.1` `17.9` `18.2` `18.20` `19.1` `19.9` `20.20` `21.7`
-`22.12` `23.11` `24.12` `25.9` `26.10`
+`22.12` `23.11` `24.12` `25.9` `26.10` `26.13`
 
 </details>
 
@@ -590,16 +594,16 @@ fixture 的编译方式与 bytenode 完全同参（同样的旗标 + `createCach
 
 | 指标 | 数量 |
 | --- | --- |
-| 支持的 Node 发布 | **517 个**（`v8.0.0` → `v26.12.1`），覆盖 **90 个 V8 版本**（`5.8.283.41` → `14.6.202.34`） |
+| 支持的 Node 发布 | **519 个**（`v8.0.0` → `v26.13.0`），覆盖 **90 个 V8 版本**（`5.8.283.41` → `14.6.202.34`） |
 | 版本表 / 只读堆名表 | **62 张**版本表（**36** Node + **26** Electron）+ **29 张** `ro-map` 表（`tables/manifest.json` 逐发布索引） |
 | 行为 fixture | **36 个**（合计 **121 条断言用例**）+ **5 个**整脚本 fixture —— 41 份源码 / 629 行 |
-| 一次全矩阵 | 31 条 Node 线 × 36 = **1,116 格** + 155 格整脚本 ⇒ **3,751 次逐用例比对** + **1,271 次结构门禁** |
+| 一次全矩阵 | 32 条 Node 线 × 36 = **1,152 格** + 160 格整脚本 ⇒ **3,872 次逐用例比对** + **1,312 次结构门禁** |
 | 标准语料扫描 | **408 份**真实样本 × 6 条线（8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10） |
 | 全语料扫描（累计） | **2,446 份 × 10 条线 ≈ 2.5 万次**"编译 → 反编译 → 语法 / 加载"检查 |
 | 处理过的输入代码 | **2.40 MB / 76,246 行 / 240 万字符** |
 | 产出的反编译代码 | **25,029 份 / 301 MB / 627 万行** |
 | 真实文件 | Node 自带 `duplexpair.js`、`event_target.js`、`test-abortcontroller.js` × 9 条线 |
-| 结果 | **1,108 pass / 0 fail / 8 skip / 0 known-fail** + **155 script pass / 0 fail** |
+| 结果 | **1,144 pass / 0 fail / 8 skip / 0 known-fail** + **160 script pass / 0 fail** |
 
 <details>
 <summary>矩阵为什么可信</summary>
@@ -612,7 +616,7 @@ fixture 的编译方式与 bytenode 完全同参（同样的旗标 + `createCach
 - **已无 known-fail。** `iter_no_extra_close` 覆盖一个**原生语义随版本变**的用例
   （`for (const v of [1,1,2]) { if (v === 2) continue; }`：6.2/6.8 耗尽时会调一次
   `iterator.return()`，7.8+ 不调）。这类 fixture 在 `tests/fixtures/behav/cases.json` 里标 `same_node_original`：原函数
-  改用**与被编译产物相同的 Node 版本**去跑 —— 产物要忠实复现**它自己那个版本**的行为，31 条线现在
+  改用**与被编译产物相同的 Node 版本**去跑 —— 产物要忠实复现**它自己那个版本**的行为，32 条线现在
   都做到了。
 - 曾**吞掉**循环体异常的 IteratorClose 收尾、以及 try/finally 的两处完成码缺口均已修 ——
   `iter_close` 与 `finally_return` 通过。
@@ -622,7 +626,7 @@ fixture 的编译方式与 bytenode 完全同参（同样的旗标 + `createCach
 <details>
 <summary>41 份 fixture 源码</summary>
 
-行为 fixture（每个都在 31 条线上跑）：`arith` `branch` `loop_for` `loop_while` `strings`
+行为 fixture（每个都在 32 条线上跑）：`arith` `branch` `loop_for` `loop_while` `strings`
 `array_ops` `object_ops` `switch_case` `try_catch` `recursion` `closure` `class_basic`
 `destructure` `template` `spread_rest` `for_of_in` `arrow_opt` `generator` `operators`
 `string_regex` `yield_expr` `async_await` `async_try` `optional_chain` `twoclasses` `call_args3`
@@ -640,7 +644,7 @@ fixture 的编译方式与 bytenode 完全同参（同样的旗标 + `createCach
 mise install node@8.17.0 node@12.5.0 node@12.9.0 node@12.15.0 node@13.14.0 node@14.0.0 \
   node@14.4.0 node@14.5.0 node@14.6.0 node@15.14.0 node@16.3.0 node@16.5.0 node@16.8.0 \
   node@16.9.0 node@17.1.0 node@17.9.1 node@18.2.0 node@19.1.0 node@19.9.0 node@21.7.3 \
-  node@23.11.1 node@25.9.0 node@26.12.1
+  node@23.11.1 node@25.9.0 node@26.13.0
 ```
 
 </details>

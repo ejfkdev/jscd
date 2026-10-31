@@ -390,6 +390,19 @@ fn electron_11_to_45_closures_decompile() {
             "electron45-ro-map.json",
             "electron 45.0.0",
         ),
+        // 42+ 起 bytenode 的真实构建方式是在 Electron 主进程里编译（v8_context_snapshot
+        // 的只读堆校验和与 run-as-node 不同）；这两个是 2.1.0 的 compileElectronMainCode
+        // 产物，布局相同、version_hash 随 V8 patch 变。
+        (
+            "electron44-main-v8_15.2.124.45.jsc",
+            "electron44-ro-map.json",
+            "electron 44.10.1",
+        ),
+        (
+            "electron45-main-v8_15.6.75.25.jsc",
+            "electron45-ro-map.json",
+            "electron 45.2.1",
+        ),
     ] {
         let j = format!("tests/fixtures/jsc/{jsc}");
         let r = format!("tests/fixtures/jsc/{ro}");

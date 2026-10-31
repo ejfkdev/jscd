@@ -3,17 +3,17 @@
 Reverse [bytenode](https://github.com/bytenode/bytenode)-compiled `.jsc` files back to JavaScript.
 Static parsing only: one pure-Rust binary — no patched V8, no Node runtime, no network.
 
-Supports **Node 8.0.0 → 26.12.1** (517 releases / 36 V8 minors) and **Electron 11 and 19 → 45**
+Supports **Node 8.0.0 → 26.13.0** (519 releases / 36 V8 minors) and **Electron 11 and 19 → 45.2**
 (V8 8.7 – 15.6, pointer-compressed and sandboxed builds included; Electron 11 and every
 major from 20 to 45 pass the same 9-fixture behavior check, 9/9 each); **≈ 25k `.jsc` files pass the
-tests with 0 failures** (31 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
+tests with 0 failures** (32 Node lines × 41 fixtures, compiled with bytenode 1.7.0's flags); two
 optimization layers (register folding → cure simplification) make the decompiled source readable.
 
 **English** · [中文](README.zh.md)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Rust 1.96+](https://img.shields.io/badge/rust-1.96%2B-orange.svg)](Cargo.toml)
-[![Node 8.0 – 26.12](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.12-green.svg)](#supported-versions)
+[![Node 8.0 – 26.13](https://img.shields.io/badge/Node-8.0%20%E2%80%93%2026.13-green.svg)](#supported-versions)
 [![V8 5.8 – 14.6](https://img.shields.io/badge/V8-5.8%20%E2%80%93%2014.6-green.svg)](#supported-versions)
 [![release](https://github.com/ejfkdev/jscd/actions/workflows/release.yml/badge.svg)](https://github.com/ejfkdev/jscd/actions/workflows/release.yml)
 [![crates.io](https://img.shields.io/crates/v/jscd.svg)](https://crates.io/crates/jscd)
@@ -25,7 +25,7 @@ optimization layers (register folding → cure simplification) make the decompil
 
 ## Highlights
 
-- **Coverage** — every Node release from 8.0.0 → 26.12.1 (517 releases / 36 V8 minors) is
+- **Coverage** — every Node release from 8.0.0 → 26.13.0 (519 releases / 36 V8 minors) is
   identified; a V8 outside the tables is a clear error, not a guess.
 - **Runnable output** — `--runtime` adds the `__runtime` stubs so the result runs under `node`;
   `--verify` puts it through `node --check`.
@@ -35,7 +35,7 @@ optimization layers (register folding → cure simplification) make the decompil
   table; never an identifier that throws `ReferenceError`.
 - **One dependency-free binary** — pure Rust: no Node, no network, no patched V8; the Linux build
   is a 2.8 MB static binary (UPX).
-- **Reproducible verification** — 31 Node lines × 41 fixtures compared case by case, plus corpus
+- **Reproducible verification** — 32 Node lines × 41 fixtures compared case by case, plus corpus
   sweeps; every number rerunnable (see [Verification](#verification)).
 
 ## Quick start
@@ -147,8 +147,10 @@ jscd --help                      # bilingual help (-h, `help`, `help <SUBCOMMAND
   pointer-compressed caches (Electron/Chrome): they share the V8 version string with Node but lay
   the read-only heap out differently. The same table also pins **string roots** (`roots`): their
   indices shift between builds, so a table from your own build turns `"0"` back into `"0"` instead
-  of whatever another build stored at that index. A mismatched table is ignored: you get
-  `<ro0_…>` placeholders, never a wrong name.
+  of whatever another build stored at that index. Platform / tagged-size mismatches are ignored;
+  even the **same V8 version string** can come from a different Node patch build (`-node.NN`) with
+  shifted read-only-heap addresses, so if names show up as `<ro…>` placeholders, build a table with
+  your own probe.
 - The interface language follows `JSCD_LANG` (then `LC_ALL` / `LC_MESSAGES` / `LANGUAGE` / `LANG` /
   `LC_CTYPE`): `zh*` is Chinese, anything else English; `JSCD_LANG=zh|en` forces one.
 
@@ -176,7 +178,7 @@ Everything the CLI prints for `--help` and `help <SUBCOMMAND>`, verbatim (regene
 
 ```console
 $ jscd --help
-jscd 0.3.0 — V8 code cache → JavaScript
+jscd 0.3.1 — V8 code cache → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 Reconstructs JavaScript from bytenode-compiled .jsc files (V8 code caches).
@@ -487,26 +489,29 @@ supported:     yes
 
 Version tables are generated from Node sources by `scripts/codegen.py` and embedded at build time.
 Selection is keyed on the V8 version hash; every Node release from 8.0.0 on is listed in
-`tables/manifest.json` (517 Node releases + 26 Electron builds), and one table covers each
+`tables/manifest.json` (519 Node releases + 30 Electron builds), and one table covers each
 V8 minor — identical tables are stored once.
 
-Electron is covered the same way: **11 and 19 → 45** (V8 8.7 – 15.6), with a dedicated table
+Electron is covered the same way: **11 and 19 → 45.2** (V8 8.7 – 15.6), with a dedicated table
 for 11 and every major 20–45 (22 shares Node's 10.8 table) and **9/9 fixtures per build**
-verified against that build's own bytecode/root traces.
+verified against that build's own bytecode/root traces. Bytecode produced inside an Electron
+main or renderer process (`compileElectronMainCode` / `compileElectronRendererCode`, bytenode 2.x)
+uses the same layout and version hash as `ELECTRON_RUN_AS_NODE` output; only the read-only-snapshot
+checksum differs, and that checksum is not part of the structural match.
 
-**Every Node release from 8.0.0 through 26.12.1 is identified** (517 releases, 90 V8 versions),
-and **29 of the 36 V8 minors pass the full behavior matrix** — 31 Node lines, all green
-(1,108 pass / 0 fail / 8 skip / 0 known-fail). The remaining 7 minors (5.8, 6.0, 6.1, 6.6, 6.7,
+**Every Node release from 8.0.0 through 26.13.0 is identified** (519 releases, 90 V8 versions),
+and **29 of the 36 V8 minors pass the full behavior matrix** — 32 Node lines, all green
+(1,144 pass / 0 fail / 8 skip / 0 known-fail). The remaining 7 minors (5.8, 6.0, 6.1, 6.6, 6.7,
 7.0, 7.4) are identified by `jscd info` but their payload deserialization **errors out loudly**
 instead of emitting garbage.
 
 | V8 minors | Node lines | Result |
 | --- | --- | --- |
-| 6.2 → 14.6, **29 of 36** | 31 lines, 8.17 → 26.10 | **all green** — 1,108 pass / 0 fail / 8 skip |
+| 6.2 → 14.6, **29 of 36** | 32 lines, 8.17 → 26.13 | **all green** — 1,144 pass / 0 fail / 8 skip |
 | 5.8, 6.0, 6.1, 6.6, 6.7, 7.0, 7.4 | 8.0–8.9, 10.0–10.8, 11.x, 12.0 (partial releases) | identified; payload **explicitly rejected** |
 
 <details>
-<summary>Node mapping: 36 version tables → 517 releases</summary>
+<summary>Node mapping: 36 version tables → 519 releases</summary>
 
 | Node releases | V8 (newest) | table |
 | --- | --- | --- |
@@ -541,20 +546,20 @@ instead of emitting garbage.
 | 19.2.0–19.9.0 | 10.8.168.25 | `tables/v10_8_19.9.0.json` |
 | 20.0.0–20.20.2 | 11.3.244.8 | `tables/v11_3.json` |
 | 21.0.0–21.7.3 | 11.8.172.17 | `tables/v11_8_21.7.3.json` |
-| 22.0.0–22.23.3 | 12.4.254.21 | `tables/v12_4.json` |
+| 22.0.0–22.23.4 | 12.4.254.21 | `tables/v12_4.json` |
 | 23.0.0–23.11.1 | 12.9.202.28 | `tables/v12_9_23.11.1.json` |
-| 24.0.0–24.21.0 | 13.6.233.17 | `tables/v13_6.json` |
+| 24.0.0–24.22.2 | 13.6.233.17 | `tables/v13_6.json` |
 | 25.0.0–25.9.0 | 14.1.146.11 | `tables/v14_1.json` |
-| 26.0.0–26.12.1 | 14.6.202.34 | `tables/v14_6_26.10.0.json` |
+| 26.0.0–26.13.0 | 14.6.202.34 | `tables/v14_6_26.10.0.json` |
 
 </details>
 
 <details>
-<summary>The 31 Node lines running the full matrix</summary>
+<summary>The 32 Node lines running the full matrix</summary>
 
 `8.17` `10.24` `12.5` `12.9` `12.15` `12.22` `13.14` `14.0` `14.4` `14.5` `14.6` `14.21` `15.14`
 `16.3` `16.5` `16.8` `16.9` `16.20` `17.1` `17.9` `18.2` `18.20` `19.1` `19.9` `20.20` `21.7`
-`22.12` `23.11` `24.12` `25.9` `26.10`
+`22.12` `23.11` `24.12` `25.9` `26.10` `26.13`
 
 </details>
 
@@ -627,16 +632,16 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
 
 | Metric | Value |
 | --- | --- |
-| Supported Node releases | **517** (`v8.0.0` → `v26.12.1`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
+| Supported Node releases | **519** (`v8.0.0` → `v26.13.0`), spanning **90 V8 versions** (`5.8.283.41` → `14.6.202.34`) |
 | Version tables / read-only-heap name maps | **62** tables (**36** Node + **26** Electron) + **29** `ro-map` tables, indexed per release in `tables/manifest.json` |
 | Behavior fixtures | **36** fixtures (**121 assertion cases**) + **5** whole-script fixtures — 41 files / 629 lines |
-| One full matrix run | 31 Node lines × 36 fixtures = **1,116 cells** + 155 script cells ⇒ **3,751 case-by-case comparisons** and **1,271 structural gates** |
+| One full matrix run | 32 Node lines × 36 fixtures = **1,152 cells** + 160 script cells ⇒ **3,872 case-by-case comparisons** and **1,312 structural gates** |
 | Standard corpus sweep | **408** real samples × 6 lines (8.17 / 12.22 / 16.20 / 20.20 / 24.12 / 26.10) |
 | Full corpus sweep (cumulative) | **2,446 samples × 10 lines ≈ 25,000** compile → decompile → syntax/load checks |
 | Input JavaScript processed | **2.40 MB / 76,246 lines / 2.4 M characters** |
 | Decompiled output produced | **25,029 files / 301 MB / 6.27 M lines** |
 | Real-world files | Node's own `duplexpair.js`, `event_target.js`, `test-abortcontroller.js` × 9 lines |
-| Result | **1,108 pass / 0 fail / 8 skip / 0 known-fail** + **155 script-pass / 0 fail** |
+| Result | **1,144 pass / 0 fail / 8 skip / 0 known-fail** + **160 script-pass / 0 fail** |
 
 <details>
 <summary>How the matrix stays honest</summary>
@@ -651,7 +656,7 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
   `iterator.return()` once on 6.2/6.8 and never on 7.8+): such fixtures are marked
   `same_node_original` in `cases.json`, so the original is run with **the same Node version** the
   artifact was compiled with — the product must reproduce *its own* version's behavior, which it
-  does on all 31 lines.
+  does on all 32 lines.
 - The IteratorClose epilogue that used to **swallow** loop-body exceptions, and both `try/finally`
   completion-code gaps, are fixed — `iter_close` and `finally_return` pass.
 
@@ -660,7 +665,7 @@ Fixtures are compiled the same way bytenode does it (same flags, `createCachedDa
 <details>
 <summary>The 41 fixture sources</summary>
 
-Behavior fixtures (each runs on all 31 lines): `arith` `branch` `loop_for` `loop_while` `strings`
+Behavior fixtures (each runs on all 32 lines): `arith` `branch` `loop_for` `loop_while` `strings`
 `array_ops` `object_ops` `switch_case` `try_catch` `recursion` `closure` `class_basic`
 `destructure` `template` `spread_rest` `for_of_in` `arrow_opt` `generator` `operators`
 `string_regex` `yield_expr` `async_await` `async_try` `optional_chain` `twoclasses` `call_args3`
@@ -679,7 +684,7 @@ also uses older and newer lines — install the remaining 23 with:
 mise install node@8.17.0 node@12.5.0 node@12.9.0 node@12.15.0 node@13.14.0 node@14.0.0 \
   node@14.4.0 node@14.5.0 node@14.6.0 node@15.14.0 node@16.3.0 node@16.5.0 node@16.8.0 \
   node@16.9.0 node@17.1.0 node@17.9.1 node@18.2.0 node@19.1.0 node@19.9.0 node@21.7.3 \
-  node@23.11.1 node@25.9.0 node@26.12.1
+  node@23.11.1 node@25.9.0 node@26.13.0
 ```
 
 </details>

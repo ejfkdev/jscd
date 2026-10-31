@@ -456,6 +456,16 @@ fn parse_cache<'a>(
                 None => rd(Some(16)),
             };
             let num_keys = rd(hl.num_stub_keys);
+            // 拿老族表试现代缓存时，num_reservations/num_stub_keys 会从 ro_checksum 等
+            // 字段读出上亿的垃圾值：不仅 Vec 预分配会吃光内存，随后的槽循环也会长时间
+            // 空转。预留表 + 桩键必须落在文件内，否则这张表直接不可能匹配。
+            if hl.header_size + 4 * num_res + 4 * num_keys > data.len() {
+                errors.push(format!(
+                    "{}: reservation table ({} + {} entries) overruns the file",
+                    table.v8, num_res, num_keys
+                ));
+                continue;
+            }
             let mut res = Vec::with_capacity(num_res);
             for i in 0..num_res {
                 let at = hl.header_size + i * 4;

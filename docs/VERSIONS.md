@@ -1615,3 +1615,55 @@ bug（赋值目标读、`yield` 原文 RHS），0.2.0 默认规则在 jscd fixtu
 - cure 不做跨函数的激进内联，遇到不认识/不可见区域保守保留。
 
 历史 §11.9 记录的是 swc 时期的取舍，已被本节取代；`JSCD_NO_OPT=1` 仍可看文本层之前的原始形态。
+
+## 18. 依赖更新 + 版本盘点（0.3.1，2026-11-01）
+
+### 依赖
+
+- **cure 0.2.0 → 0.4.2**：API 不变，仍是 `parse_js` → `simplify_unit` → `print_module`。
+  0.4.x 对 jscd 有用的变化是 TS/JS 新增 `ts_iife_inline`（零参单表达式 IIFE 内联）与
+  行级指令注释冻结（`@ts-ignore`、`/*#__PURE__*/`、`eslint-disable-next-line` 等）。
+  32 条线全矩阵与 396 份默认产物语法扫描均无回归。
+- clap 4.6.7、serde 1.0.229、serde_json 1.0.154、brotli **9.1.1**（API 不变）、
+  windows-sys **0.61.2**（`Win32_Globalization` 用法不变）。
+
+### 新版本
+
+- **Node 26.13.0**（V8 14.6.202.34，与 26.10–26.12 同表）：36 fixture + 5 整脚本全过。
+- **Node 24.22.2**（13.6.233.17）：36 + 5 全过。
+- **Node 22.23.4**（12.4.254.21）：版本哈希与 22.12.0 相同，但 Node 分支的 `-node.NN`
+  补丁不同，只读堆地址整体偏移（`join` 从 0/41856 → 0/41904，`toUpperCase` 从
+  0/55264 → 0/55312）。这正是"内嵌 ro-map 只按 V8 版本号匹配"的边界：同一 V8
+  数值版本的不同构建仍可能错位。用该构建自己的探针生成 ro-map 后 36 + 5 全过；
+  未提供时只是 `<ro…>` 占位，不会给错名字（地址对不上，查不到）。
+  `tables/manifest.json` 现登记 **519 个 Node 发布**（原 517）。
+- **Electron 45.2.1**（V8 15.6.75.25，hash `0x97bbe488`）与
+  **Electron 44.10.1**（15.2.124.45，hash `0x7a2052d8`）：布局与上一个补丁
+  （15.6.75.19 / 15.2.124.43）相同，直接复用 `v15_6.json` / `v15_2.json`，
+  manifest 里各加一条真实缓存中读到的 version_hash。
+  **Electron 43.8.6** 与 43.8.3 同为 15.0.245.31，只补标签。
+- **bytenode 2.1.0** 新增的 `compileElectronMainCode` / `compileElectronRendererCode`：
+  Electron 42+（V8 ≥ 14.8）起，主进程/渲染进程的只读快照校验和与
+  `ELECTRON_RUN_AS_NODE` 不同（E45.2.1 实测 main/run-as-node `0x074ba1e2`、
+  renderer `0xd38e5d6c`），但 **payload 布局与 version_hash 相同**。三种模式
+  编译出的缓存都能被同一张表反编译并跑通；`ro_checksum` 不参与结构判定。
+  新增 `tests/fixtures/jsc/electron44-main-v8_15.2.124.45.jsc` 与
+  `electron45-main-v8_15.6.75.25.jsc` 作为回归。
+
+### 健壮性
+
+- **老族预留表越界检查**：未知 version_hash 会退化为"逐个试 62 张表"。现代缓存
+  撞上 ≤8.4 的表时，`num_reservations` / `num_stub_keys` 会从 `ro_checksum` 等字段
+  读出上亿的垃圾值，`Vec::with_capacity` 直接吃光内存、槽循环长时间空转
+  （Electron 45.2.1 renderer 缓存实测 120 s+/1.4 GB）。现在预留表 + 桩键必须落在
+  文件内，否则该候选表立即跳过：同一文件 **120 s → 0.28 s**。7 条老族线
+  （8.17 / 10.24 / 12.5 / 12.9 / 12.15 / 13.14 / 14.0）复跑 245 pass / 0 fail / 7 skip。
+
+### 验证
+
+- 全矩阵：32 条 Node 线 × 36 fixture = **1,144 pass / 0 fail / 8 skip**，
+  整脚本 **160 pass / 0 fail**；
+- 新版本单跑：26.13.0、24.22.2、22.23.4（带自建 ro-map）均 36 + 5 全过；
+- Electron 45.2.1 / 44.10.1 各 main / renderer / run-as-node 三模式反编译并执行通过；
+  cargo 65 条测试、clippy 零告警；
+- 默认产物语法扫描：396 份样本（Node 26.13.0）0 失败。
