@@ -79,6 +79,27 @@ raw, pre-optimization form instead.
 brew install ejfkdev/tap/jscd
 ```
 
+**Any platform — npm** (Node.js 18+)
+
+```sh
+npm install -g @ejfkdev/jscd
+```
+
+The package downloads the matching release binary and verifies its SHA-256, so no Rust toolchain is
+needed. Set `JSCD_BINARY_PATH` to use a local binary instead.
+
+**Windows — WinGet**
+
+```powershell
+winget install --id ejfkdev.jscd -e
+winget upgrade --id ejfkdev.jscd -e
+```
+
+The manifest lives in [ejfkdev/release-automation](https://github.com/ejfkdev/release-automation);
+the current manifest submission is awaiting review in
+[microsoft/winget-pkgs#453064](https://github.com/microsoft/winget-pkgs/pull/453064). Until it is
+merged, use Scoop, npm, or the release binary.
+
 **Windows — Scoop**
 
 ```powershell

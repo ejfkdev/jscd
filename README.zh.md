@@ -73,6 +73,26 @@ hello world
 brew install ejfkdev/tap/jscd
 ```
 
+**全平台 —— npm**（需要 Node.js 18+）
+
+```sh
+npm install -g @ejfkdev/jscd
+```
+
+安装脚本会下载对应平台的 release 二进制并校验 SHA-256，不需要 Rust 工具链。也可以用
+`JSCD_BINARY_PATH` 指向本地已有的二进制。
+
+**Windows —— WinGet**
+
+```powershell
+winget install --id ejfkdev.jscd -e
+winget upgrade --id ejfkdev.jscd -e
+```
+
+清单在 [ejfkdev/release-automation](https://github.com/ejfkdev/release-automation)；当前清单提交正在
+[microsoft/winget-pkgs#453064](https://github.com/microsoft/winget-pkgs/pull/453064) 排队审核。
+合并前请用 Scoop、npm 或直接下载 release 产物。
+
 **Windows —— Scoop**
 
 ```powershell

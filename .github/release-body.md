@@ -34,6 +34,8 @@ Static parsing: no patched V8, no Node runtime, no subprocesses.
 brew install ejfkdev/tap/jscd                                        # macOS / Linux
 scoop bucket add ejfkdev https://github.com/ejfkdev/scoop-bucket && scoop install jscd   # Windows
 cargo binstall jscd                                                  # anywhere with Rust (cargo-binstall)
+npm install -g @ejfkdev/jscd                                         # any platform with Node 18+
+winget install --id ejfkdev.jscd -e                                  # Windows (once the manifest is merged)
 ```
 
 Or take a bare binary straight from this release (no archive, no installer — the file *is* the
