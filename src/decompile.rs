@@ -6462,8 +6462,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// 分发起点：finally 之后第一个 `SwitchOnSmiNoFeedback` 的取值指令。
     fn find_completion_dispatch(&self, start: usize, limit: usize) -> Option<usize> {
-        for k in start..limit.min(self.instrs.len()) {
-            let b = self.instrs[k].name.split('.').next().unwrap_or(&self.instrs[k].name);
+        let end = limit.min(self.instrs.len());
+        for (k, ins) in self.instrs.iter().enumerate().take(end).skip(start) {
+            let b = ins.name.split('.').next().unwrap_or(&ins.name);
             if b == "SwitchOnSmiNoFeedback" {
                 return Some(k.saturating_sub(1));
             }
