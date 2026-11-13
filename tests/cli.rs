@@ -420,6 +420,31 @@ fn electron_11_to_45_closures_decompile() {
 }
 
 #[test]
+fn oversized_and_failed_functions_can_be_skipped() {
+    // 大函数降级：只发占位函数，不让整个文件被拖垮（issue #4）。
+    let valid = "tests/fixtures/jsc/electron45-main-v8_15.6.75.25.jsc";
+    let o = jscd(&[
+        "decompile",
+        valid,
+        "--runtime",
+        "--skip-oversized",
+        "1",
+    ]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(s.contains("skipped: exceeds --skip-oversized 1"), "{s}");
+
+    // 单函数解码失败：默认整个文件报错；`--continue-on-error` 保留其余产物。
+    let bad = "tests/fixtures/jsc/corrupt-opcode.jsc";
+    let o = jscd(&["decompile", bad, "--runtime"]);
+    assert!(!o.status.success(), "坏字节码应该报错");
+    let o = jscd(&["decompile", bad, "--runtime", "--continue-on-error"]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(s.contains("decompile failed"), "{s}");
+}
+
+#[test]
 fn directory_input_mirrors_tree_into_input_out() {
     let Some(node) = node() else {
         eprintln!("跳过：环境里没有 node");

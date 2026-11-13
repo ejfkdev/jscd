@@ -18,6 +18,7 @@ use crate::bytecode::{Decoder, FamilyLayout, Instr, Operand};
 use crate::disasm::Disassembler;
 use crate::serializer::{CodeCache, Elem, ObjId, Ref, SlotValue};
 use crate::tables::VersionTable;
+use std::cell::OnceCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write as FmtWrite;
 
@@ -931,6 +932,10 @@ pub struct Decompiler<'a> {
     /// 里内外层箭头都叫 `nest`）—— 同名两条 `function nest()` 声明会互相覆盖，
     /// 引用（DeclareGlobals/闭包常量）也就指向错的那个（arrow_opt 的 `nest(2)(3)` = NaN）。
     emit_names: std::cell::RefCell<Option<HashMap<ObjId, String>>>,
+    /// 超过这个字节码长度的函数只发占位注释，不再结构化（`--skip-oversized`）。
+    skip_oversized: Option<usize>,
+    /// 单个函数反编译失败时发占位注释并继续（`--continue-on-error`）。
+    continue_on_error: bool,
 }
 
 /// V8 14 起脚本上下文不再用 cell：`LdaCurrentScriptContextSlot` 等六条被
@@ -1080,6 +1085,11 @@ struct FnCtx<'a, 'b> {
     gen_yields: HashMap<usize, Option<String>>,
     /// 生成器重写：GetIterator 下标 → (被委托的迭代器操作数文本, 委托结果寄存器文本)
     gen_delegates: HashMap<usize, (String, String)>,
+    /// 跳转目标偏移 → 指向它的全部后向回边（回边下标, 回边后一条指令的偏移）。
+    /// 循环头检测在每条指令上都会问一次，必须一次算好，否则大函数是 O(n²)。
+    back_edges: OnceCell<HashMap<usize, Vec<(usize, usize)>>>,
+    /// 全部跳转目标偏移集合（冷块边界判定用），首次访问时一次算好。
+    jump_targets_cache: OnceCell<HashSet<usize>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1129,6 +1139,8 @@ impl<'a> Decompiler<'a> {
             lit_ctx: std::cell::Cell::new(false),
             lit_kind: std::cell::Cell::new(0),
             emit_names: std::cell::RefCell::new(None),
+            skip_oversized: None,
+            continue_on_error: false,
             runtime: std::cell::Cell::new(false),
 
             wrapper_sfi: std::cell::Cell::new(None),
@@ -1162,6 +1174,42 @@ impl<'a> Decompiler<'a> {
     pub fn with_runtime(self, on: bool) -> Self {
         self.runtime.set(on);
         self
+    }
+
+    /// 大函数/失败函数的降级策略。
+    pub fn with_limits(mut self, skip_oversized: Option<usize>, continue_on_error: bool) -> Self {
+        self.skip_oversized = skip_oversized;
+        self.continue_on_error = continue_on_error;
+        self
+    }
+
+    /// 某个 SFI 的字节码长度（没有 BytecodeArray 时返回 None）。
+    fn sfi_bytecode_len(&self, sfi: ObjId) -> Option<usize> {
+        let bca = self
+            .dis
+            .sfi_function_data_slots()
+            .iter()
+            .find_map(|slot| match self.cache.slot_at(sfi, *slot) {
+                Some(SlotValue::Ref(Ref::Object(b)))
+                    if self.cache.obj(*b).ty.is(self.table, "BytecodeArray") =>
+                {
+                    Some(*b)
+                }
+                _ => None,
+            })?;
+        let ba = self
+            .table
+            .bytecode_array
+            .clone()
+            .unwrap_or_else(|| crate::tables::BytecodeArrayLayout::fallback(self.ts));
+        let len_off = ba
+            .off("length")
+            .map(|o| self.cache.bca_rt_off(self.table, self.ts, bca, o))
+            .unwrap_or(self.ts);
+        self.cache
+            .raw_at_ts(bca, len_off, self.ts, self.ts)
+            .and_then(crate::serializer::decode_smi_bytes)
+            .map(|v| v as usize)
     }
 
     pub fn layout(&self) -> FamilyLayout {
@@ -1539,7 +1587,32 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
                     continue;
                 }
             }
-            let text = self.decompile_function(id)?;
+            if let Some(limit) = self.skip_oversized {
+                if let Some(len) = self.sfi_bytecode_len(id) {
+                    if len > limit {
+                        let emit = self.function_emit_name(id);
+                        let stub = format!(
+                            "function {emit}() {{ /* [jscd] {name} (id={id}, bytecode={len}) skipped: exceeds --skip-oversized {limit} */ }}\n"
+                        );
+                        w.write_str(&stub).map_err(|_| "write failed".to_string())?;
+                        continue;
+                    }
+                }
+            }
+            let dbg_time = std::env::var("JSCD_TIME").is_ok();
+            let t = std::time::Instant::now();
+            let text = match self.decompile_function(id) {
+                Ok(text) => text,
+                Err(e) if self.continue_on_error => {
+                    let emit = self.function_emit_name(id);
+                    let e = e.replace("*/", "* /").replace('\n', " ");
+                    format!("function {emit}() {{ /* [jscd] {name} (id={id}) decompile failed: {e} */ }}\n")
+                }
+                Err(e) => return Err(e),
+            };
+            if dbg_time && t.elapsed().as_secs_f32() > 0.25 {
+                eprintln!("[time] function id={id} name={name:?} elapsed={:?}", t.elapsed());
+            }
             w.write_str(&text).map_err(|_| "write failed".to_string())?;
         }
         Ok(())
@@ -2081,6 +2154,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
             is_generator: false,
             gen_yields: HashMap::new(),
             gen_delegates: HashMap::new(),
+            back_edges: OnceCell::new(),
+            jump_targets_cache: OnceCell::new(),
         })
     }
 
@@ -7211,17 +7286,19 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     }
 
     /// 全部跳转目标偏移集合（冷块边界判定用）。
-    fn jump_targets(&self) -> std::collections::HashSet<usize> {
-        let mut s = std::collections::HashSet::new();
-        for ins in &self.instrs {
-            if let Some(t) = self
-                .uncond_jump_target(ins)
-                .or_else(|| self.cond_jump_target(ins))
-            {
-                s.insert(t);
+    fn jump_targets(&self) -> &HashSet<usize> {
+        self.jump_targets_cache.get_or_init(|| {
+            let mut s = HashSet::new();
+            for ins in &self.instrs {
+                if let Some(t) = self
+                    .uncond_jump_target(ins)
+                    .or_else(|| self.cond_jump_target(ins))
+                {
+                    s.insert(t);
+                }
             }
-        }
-        s
+            s
+        })
     }
 
     /// 区间 [start, end) 是否"自包含"：内部没有跳向区间外的跳转。
@@ -7248,31 +7325,44 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     }
 
     /// 循环检测：本指令（i）是否为某个后向跳转的目标；返回 (回边下标, 循环退出目标)。
+    ///
+    /// 回边表按函数只建一次（`back_edges`）：旧实现每问一次就从 i+1 扫到 end，
+    /// 大函数（模块打包器那种十几万字节、几万条指令的顶层）会退化成 O(n²)。
     fn find_loop(&self, i: usize, end: usize) -> Option<(usize, usize)> {
         let head = self.instrs[i].offset;
-        let mut back = None;
-        for j in i + 1..end.min(self.instrs.len()) {
-            let ins = &self.instrs[j];
-            // 注意：非跳转指令必须 continue，不能提前 return（旧实现用 `?` 导致循环几乎检测不到）
-            let Some(t) = self
-                .uncond_jump_target(ins)
-                .or_else(|| self.cond_jump_target(ins))
-            else {
-                continue;
-            };
-            // 严格回跳：`t == ins.offset` 是自环，会造出零长度区间让 emit_range 递归不终止
-            if t == head && (ins.name.starts_with("JumpLoop") || t < ins.offset) {
-                back = Some(j);
+        let end = end.min(self.instrs.len());
+        let (back, exit) = self
+            .back_edges()
+            .get(&head)?
+            .iter()
+            .rev()
+            .find(|(b, _)| *b > i && *b < end)?;
+        Some((*back, *exit))
+    }
+
+    /// 全部后向回边：目标偏移 → [(回边下标, 回边后一条指令的偏移)]，按指令顺序。
+    fn back_edges(&self) -> &HashMap<usize, Vec<(usize, usize)>> {
+        self.back_edges.get_or_init(|| {
+            let mut m: HashMap<usize, Vec<(usize, usize)>> = HashMap::new();
+            for (j, ins) in self.instrs.iter().enumerate() {
+                let Some(t) = self
+                    .uncond_jump_target(ins)
+                    .or_else(|| self.cond_jump_target(ins))
+                else {
+                    continue;
+                };
+                // 与旧扫描版一致：JumpLoop 一律算回边；其它跳转只有向后才算。
+                if ins.name.starts_with("JumpLoop") || t < ins.offset {
+                    let exit = self
+                        .instrs
+                        .get(j + 1)
+                        .map(|x| x.offset)
+                        .unwrap_or(usize::MAX);
+                    m.entry(t).or_default().push((j, exit));
+                }
             }
-        }
-        let back = back?;
-        // 退出目标 = 回边之后第一条指令的偏移（V8 通常把退出标签放在 JumpLoop 之后）
-        let exit = self
-            .instrs
-            .get(back + 1)
-            .map(|x| x.offset)
-            .unwrap_or(usize::MAX);
-        Some((back, exit))
+            m
+        })
     }
 
     fn uncond_jump_target(&self, ins: &Instr) -> Option<usize> {

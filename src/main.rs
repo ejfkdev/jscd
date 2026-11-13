@@ -67,11 +67,15 @@ fn main() {
     exit(run(cli::decompile_path(
         &direct.input,
         output.as_deref(),
-        direct.quiet,
         direct.ro_map.as_deref(),
-        direct.verify,
-        direct.json,
-        direct.runtime,
+        cli::DecompileOpts {
+            quiet: direct.quiet,
+            verify: direct.verify,
+            json: direct.json,
+            runtime: direct.runtime,
+            skip_oversized: direct.skip_oversized,
+            continue_on_error: direct.continue_on_error,
+        },
     )));
 }
 

@@ -176,6 +176,8 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 | `--ro-map <路径>` | `decompile` | 只读堆名表，由 `jscd ro-map` 生成 |
 | `--verify` | `decompile` | 语法门禁：产物过一遍 `node --check`（需要 PATH 里有 `node`） |
 | `--runtime` | `decompile` | 保留可运行前导（`__runtime` 占位实现 + 上下文变量提升 + 别名块）。**默认不带**；想让产物能 `node` 跑就加上 |
+| `--skip-oversized <N>` | `decompile` | 字节码超过 N 字节的函数只发占位注释，不再结构化 |
+| `--continue-on-error` | `decompile` | 单个函数反编译失败时发占位注释并继续 |
 | `-h, --help` | 全部形态 | 打印帮助（`jscd help <子命令>` 看单个命令） |
 | `-v, -V, --version` | 全部形态 | 打印名字、版本与仓库地址 |
 
@@ -191,7 +193,7 @@ jscd --help                      # 双语帮助（-h、`help`、`help <子命令
 
 ```console
 $ jscd --help
-jscd 0.3.1 — V8 代码缓存 → JavaScript
+jscd 0.3.2 — V8 代码缓存 → JavaScript
 https://github.com/ejfkdev/jscd  (MIT license)
 
 把 bytenode 编译的 .jsc（V8 代码缓存）还原成 JavaScript。纯静态解析 ——
@@ -213,6 +215,10 @@ https://github.com/ejfkdev/jscd  (MIT license)
       --verify          用 `node --check` 实编译校验产物（decompile）
       --runtime         保留可运行前导（`__runtime` 占位实现），产物能直接 `node` 跑；
                         默认**不带**，只输出还原出来的代码本身
+      --skip-oversized <N>
+                        字节码超过 N 字节的函数只发占位注释，不再结构化（decompile）
+      --continue-on-error
+                        单个函数反编译失败时发占位注释并继续（decompile）
       --filter <子串>   只输出名字含该子串的函数（disasm）
       --json            机器可读输出（info/strings/functions/disasm/ro-map）
       --quiet           不打印逐文件进度（目录输入时）
@@ -263,6 +269,10 @@ https://github.com/ejfkdev/jscd  (MIT license)
       --verify          用 `node --check` 实编译校验产物
       --runtime         保留可运行前导（`__runtime` 占位实现），产物能直接跑；
                         默认不带，只输出还原出来的代码
+      --skip-oversized <N>
+                        字节码超过 N 字节的函数只发占位注释，不再结构化
+      --continue-on-error
+                        单个函数反编译失败时发占位注释并继续
       --quiet           不打印逐文件进度（目录输入时）
 
 示例：
@@ -603,11 +613,11 @@ python3 scripts/codegen.py --all-from 8.0.0 --donors tables/ --per-minor --keep-
    只有 const / 只有 class / async"这些 `target` 型用例照不到的形态）。
 3. **语料扫描**（`scripts/verify_samples.py`）—— 大样本 × 多版本：编译 → 反编译 → `node --check` → 在 vm 里
    加载（我们自己生成的名字若 `ReferenceError` 即判为 bug）。
-4. **单元测试与静态检查** —— `cargo test`（65 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
+4. **单元测试与静态检查** —— `cargo test`（66 条）+ `cargo clippy --all-targets`（0 告警）+ `cargo build`
    （0 告警）+ 零依赖端到端冒烟 `scripts/ci_smoke.sh`。
 
 ```sh
-cargo test                                              # 65 条单测
+cargo test                                              # 66 条单测
 bash scripts/verify_behavior.sh 8.17.0 10.24.1 12.22.12 14.21.3 16.20.2 18.20.8 20.20.2 22.12.0 24.12.0
 python3 scripts/verify_samples.py 20.20.2 --limit 200    # 语料；另有 --offset、--samples
 ```

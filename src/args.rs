@@ -126,7 +126,7 @@ pub enum Cmd {
     Decompile {
         file: PathBuf,
         /// 输出文件 / 目录 / `-`
-        output: Option<PathBuf>,
+        dest: Option<PathBuf>,
         #[command(flatten)]
         common: Common,
         /// 只读堆名表（`jscd ro-map` 生成）
@@ -138,6 +138,12 @@ pub enum Cmd {
         /// 带上"可运行前导"（`__runtime` 占位实现），产物能直接 `node` 跑
         #[arg(long)]
         runtime: bool,
+        /// 超过该字节码长度的函数只发占位注释（不结构化）
+        #[arg(long = "skip-oversized", value_name = "BYTES")]
+        skip_oversized: Option<usize>,
+        /// 单个函数失败时发占位注释并继续
+        #[arg(long = "continue-on-error")]
+        continue_on_error: bool,
     },
     /// 从探针缓存生成只读堆引用名表
     RoMap {
@@ -176,6 +182,12 @@ pub struct Direct {
     /// 带上"可运行前导"（`__runtime` 占位实现）
     #[arg(long)]
     pub runtime: bool,
+    /// 超过该字节码长度的函数只发占位注释（不结构化）
+    #[arg(long = "skip-oversized", value_name = "BYTES")]
+    pub skip_oversized: Option<usize>,
+    /// 单个函数失败时发占位注释并继续
+    #[arg(long = "continue-on-error")]
+    pub continue_on_error: bool,
     #[arg(long)]
     pub quiet: bool,
     /// 输入：`.jsc` 文件，或含 `.jsc` 的目录（递归）

@@ -1667,3 +1667,42 @@ bug（赋值目标读、`yield` 原文 RHS），0.2.0 默认规则在 jscd fixtu
 - Electron 45.2.1 / 44.10.1 各 main / renderer / run-as-node 三模式反编译并执行通过；
   cargo 65 条测试、clippy 零告警；
 - 默认产物语法扫描：396 份样本（Node 26.13.0）0 失败。
+
+## 19. issue #4：超大函数导致 decompile 长时间无输出（0.3.2，2026-11-13）
+
+### 根因
+
+`emit_range_inner` 对**每条指令**都调用 `find_loop`，而 `find_loop` 从当前指令向后扫到
+区间末尾找回边；没有循环的函数就是纯 O(n²)。另外 `detached_extent` 每次都会重算
+`jump_targets()`（全函数一遍）。合成压测：一个 **465,305 字节**的函数 + 5,000 个闭包，
+`--runtime` 反编译 **35.2 s**，采样栈 96% 在 `cond_jump_target` / `uncond_jump_target`。
+
+### 修复
+
+- `FnCtx` 增加两个 `OnceCell`：`back_edges`（目标偏移 → 全部后向回边）与
+  `jump_targets_cache`（全部跳转目标集合），**按函数只建一次**，之后 O(1) 查询；
+  `find_loop` 保留原来的"取区间内最后一条回边"语义。
+- 同一 465 KB 函数 **35.2 s → 2.34 s**，产物逐字节一致；3.4 MB / 12,002 个函数的合成包
+  **3.50 s** 完成。issue 里 145,655 字节的模块装配函数属于同一条路径。
+- `opt::optimize` 现在是剩余大头（3.4 MB 包约 3 s），但已是线性量级。
+
+### 容错选项（issue 直接要求）
+
+- `--skip-oversized <N>`：字节码超过 N 字节的函数只发
+  `function name() { /* [jscd] … skipped: exceeds --skip-oversized N */ }`，不再结构化；
+- `--continue-on-error`：单函数反编译失败时发同样形态的占位函数并继续。
+- 占位是**函数声明 + 注释**：默认 AST 层会把注释剥掉，函数名仍在；`--runtime` 保留完整注释。
+- 新增 `tests/fixtures/jsc/corrupt-opcode.jsc`（人为改坏一个 opcode）：不加旗标退出 1，
+  加 `--continue-on-error` 退出 0 且带 `decompile failed` 占位；`--skip-oversized 1` 全量跳过。
+
+### 顺手修掉的潜在 CLI bug
+
+`decompile` 子命令的位置参数 `OUTPUT` 与 `Common.output`（`-o/--output`）重名，debug 构建下
+clap 的 debug_assert 直接 panic（默认 `jscd <INPUT>` 形态绕过了它）。位置参数改名 `dest`，
+`-o` 行为不变；新增的子命令集成测试覆盖这条路径。
+
+### 验证
+
+- 32 条 Node 线 × 36 fixture = **1,144 pass / 0 fail / 8 skip** + **160 整脚本**；
+- `cargo test` **66 条**、clippy 零告警；
+- 大函数产物在修复前后 `cmp` 完全一致。

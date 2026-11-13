@@ -19,13 +19,15 @@ pub fn run_cmd(cli: crate::args::Cli) -> Result<(), String> {
         } => disasm_cmd(&file, &common, filter.as_deref(), json),
         Cmd::Decompile {
             file,
-            output,
+            dest,
             common,
             ro_map,
             verify,
             runtime,
+            skip_oversized,
+            continue_on_error,
         } => {
-            let dest = match (output, common.output) {
+            let dest = match (dest, common.output) {
                 (Some(a), Some(b)) if a != b => {
                     return Err(bif!(
                         "-o {0} conflicts with the OUTPUT argument {1}",
@@ -40,11 +42,15 @@ pub fn run_cmd(cli: crate::args::Cli) -> Result<(), String> {
             decompile_path(
                 &file,
                 dest.as_deref(),
-                common.quiet,
                 ro_map.as_deref(),
-                verify,
-                json,
-                runtime,
+                DecompileOpts {
+                    quiet: common.quiet,
+                    verify,
+                    json,
+                    runtime,
+                    skip_oversized,
+                    continue_on_error,
+                },
             )
         }
         Cmd::RoMap { file, common, names } => {
@@ -617,9 +623,16 @@ pub fn decompile_text(
     file: &Path,
     ro_map: Option<&Path>,
     runtime: bool,
+    skip_oversized: Option<usize>,
+    continue_on_error: bool,
 ) -> Result<String, String> {
+    let dbg_time = std::env::var("JSCD_TIME").is_ok();
+    let t0 = std::time::Instant::now();
     let data = load_input(file)?;
     let (_h, table, cache) = parse_cache(&data)?;
+    if dbg_time {
+        eprintln!("[time] parse_cache: {:?}", t0.elapsed());
+    }
     let rmap = match ro_map {
         Some(p) => Some(crate::decompile::RoMap::load(p)?),
         // 按**文件里识别到的** V8 版本查内嵌表（表的代表版本未必等于文件的版本）；
@@ -631,11 +644,20 @@ pub fn decompile_text(
     };
     let d = crate::decompile::Decompiler::new(&cache, &table)
         .with_ro_map(rmap)
-        .with_runtime(runtime);
+        .with_runtime(runtime)
+        .with_limits(skip_oversized, continue_on_error);
+    let t1 = std::time::Instant::now();
     let mut text = String::new();
     d.render_all(&mut text, None)?;
+    if dbg_time {
+        eprintln!("[time] render_all: {:?} ({} bytes)", t1.elapsed(), text.len());
+    }
     // 摊平后的函数是文件级定义 → 把 `__uncompiled.<name>` 占位换成真名字
+    let t2 = std::time::Instant::now();
     let text = crate::decompile::link_flat_functions(text);
+    if dbg_time {
+        eprintln!("[time] link_flat_functions: {:?}", t2.elapsed());
+    }
     // 优化分两层：
     //   ① 文本级（`opt`）：删字节码特有的簿记与搬运、把"空声明 + 单次赋值"并成声明器
     //      —— 便宜、对形态敏感；
@@ -643,14 +665,26 @@ pub fn decompile_text(
     //      控制流与作用域信息，才能真正消掉"只读一次的变量"这类冗余。
     //      产物不是合法 JS 时它返回 None，这里就保持文本级结果。
     //   ② 只跑在"纯代码"输出上：`--runtime` 的前导是手写基础设施，压缩器只会帮倒忙。
+    let t3 = std::time::Instant::now();
     let text = crate::opt::optimize(&text);
+    if dbg_time {
+        eprintln!("[time] opt::optimize: {:?} ({} bytes)", t3.elapsed(), text.len());
+    }
+    let t4 = std::time::Instant::now();
     let text = if runtime {
         text
     } else {
         crate::opt_js::optimize(&text).unwrap_or(text)
     };
+    if dbg_time {
+        eprintln!("[time] opt_js: {:?}", t4.elapsed());
+    }
     // 内置门禁：括号/花括号配平（保证不会输出结构性语法错误）
+    let t5 = std::time::Instant::now();
     syntax_check(&text)?;
+    if dbg_time {
+        eprintln!("[time] syntax_check: {:?}", t5.elapsed());
+    }
     Ok(text)
 }
 
@@ -665,26 +699,42 @@ fn verify_text(src: &str) -> Result<(), String> {
     }
 }
 
+/// 反编译路径的选项集合（避免一长串位置参数）。
+#[derive(Clone, Copy, Default)]
+pub struct DecompileOpts {
+    pub quiet: bool,
+    pub verify: bool,
+    pub json: bool,
+    pub runtime: bool,
+    pub skip_oversized: Option<usize>,
+    pub continue_on_error: bool,
+}
+
 /// `jscd <输入> [输出]`：输入是文件 → 反编译该文件；是目录 → 递归反编译并保持层级。
 ///
 /// 输出缺省：文件 → stdout；目录 → 与输入同级的 `<输入名>-out/`。
 pub fn decompile_path(
     input: &Path,
     output: Option<&Path>,
-    quiet: bool,
     ro_map: Option<&Path>,
-    verify: bool,
-    json: bool,
-    runtime: bool,
+    opts: DecompileOpts,
 ) -> Result<(), String> {
+    let DecompileOpts {
+        quiet,
+        verify,
+        json,
+        runtime,
+        skip_oversized,
+        continue_on_error,
+    } = opts;
     let meta = fs::metadata(input).map_err(|e| {
         bif!("cannot read {0}: {1}", "读不了 {0}：{1}"; input.display(), e)
     })?;
     if meta.is_dir() {
-        return decompile_dir(input, output, quiet, ro_map, verify, json, runtime);
+        return decompile_dir(input, output, ro_map, opts);
     }
     // 单文件：`-` 或缺省 → stdout；给了现成目录 → 目录/<同名>.js；否则当文件路径写
-    let text = decompile_text(input, ro_map, runtime)?;
+    let text = decompile_text(input, ro_map, runtime, skip_oversized, continue_on_error)?;
     if verify {
         verify_text(&text)?;
     }
@@ -724,12 +774,17 @@ pub fn decompile_path(
 fn decompile_dir(
     input: &Path,
     output: Option<&Path>,
-    quiet: bool,
     ro_map: Option<&Path>,
-    verify: bool,
-    json: bool,
-    runtime: bool,
+    opts: DecompileOpts,
 ) -> Result<(), String> {
+    let DecompileOpts {
+        quiet,
+        verify,
+        json,
+        runtime,
+        skip_oversized,
+        continue_on_error,
+    } = opts;
     let out_root = match output {
         Some(p) if p == Path::new("-") => {
             return Err(bi!(
@@ -762,7 +817,7 @@ fn decompile_dir(
         let rel = f.strip_prefix(input).unwrap_or(f.as_path());
         let mut dest = out_root.join(rel);
         dest.set_extension("js");
-        let r = decompile_text(f, ro_map, runtime)
+        let r = decompile_text(f, ro_map, runtime, skip_oversized, continue_on_error)
             .and_then(|t| {
                 if verify {
                     verify_text(&t)?;

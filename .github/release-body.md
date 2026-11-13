@@ -1,32 +1,22 @@
 **jscd @VERSION@** — reverse bytenode-compiled `.jsc` (V8 code cache) back to JavaScript.
 Static parsing: no patched V8, no Node runtime, no subprocesses.
 
-### What's new in 0.3.1
+### What's new in 0.3.2
 
-- **Dependencies refreshed.** cure 0.2.0 → **0.4.2** (same `parse_js` → `simplify_unit` →
-  `print_module` pipeline; TS/JS gains IIFE inlining and freezes line-level directives such as
-  `@ts-ignore` / `/*#__PURE__*/`). clap 4.6.7, serde 1.0.229, serde_json 1.0.154, brotli 9.1.1,
-  windows-sys 0.61.2. No output regressions: **1,144 pass / 0 fail / 8 skip** across 32 Node
-  lines × 36 fixtures, plus **160 whole scripts**.
-- **Node 26.13.0** (V8 14.6.202.34), **24.22.2** (13.6.233.17) and **22.23.4** (12.4.254.21)
-  are recognised; the manifest now lists **519 Node releases**. 26.13.0 and 24.22.2 pass
-  36/36 + 5/5 out of the box. 22.23.4 shares its V8 version string with 22.12.0 but comes from a
-  different `-node.NN` V8 build, so read-only-heap addresses shift; generate a table with
-  `jscd ro-map` for that build (with it, 36/36 + 5/5 pass).
-- **Electron 45.2.1** (V8 15.6.75.25) and **44.10.1** (15.2.124.45) are covered using hashes read
-  from real caches; the layout is unchanged from 45.0.0/44.9.3, so the existing tables apply.
-  **Electron 43.8.6** is labelled (same V8 as 43.8.3).
-- **bytenode 2.1 Electron modes.** Caches produced inside an Electron **main** or **renderer**
-  process (`compileElectronMainCode` / `compileElectronRendererCode`, required by bytenode for
-  Electron ≥ 42) use the same payload layout and version hash as `ELECTRON_RUN_AS_NODE` output;
-  only the read-only-snapshot checksum differs. All three modes decompile and run; two new
-  fixtures pin this.
-- **Robustness:** when an unknown version hash falls back to trying every table, a legacy
-  (≤ V8 8.4) candidate used to trust a bogus reservation count read out of the modern header,
-  allocating gigabytes and looping for minutes. Reservation tables are now bounds-checked:
-  the Electron 45.2.1 renderer case went from **120 s / 1.4 GB to 0.28 s**.
-- 0.3.0's **swc → cure** swap remains: statement-per-line output, no renaming, ~6.4 MB binary.
-- Manifest: **549 entries (519 Node + 30 Electron), 62 version tables**.
+- **Huge functions no longer stall `decompile`.** Loop detection used to rescan the whole function
+  for every instruction (O(n²)); back edges and jump targets are now computed once per function.
+  A synthetic 465 KB function went from **35.2 s to 2.34 s** with byte-identical output; a 3.4 MB /
+  12,002-function bundle finishes in **3.5 s**. This addresses
+  [issue #4](https://github.com/ejfkdev/jscd/issues/4).
+- **`--skip-oversized <N>`** emits a stub for functions whose bytecode is longer than N bytes, and
+  **`--continue-on-error`** emits a stub and keeps going when a single function fails, so one
+  pathological function no longer costs the whole file. Stubs are `function name() { /* [jscd] … */ }`;
+  `--runtime` keeps the full comment, the default output keeps the function shell.
+- Fixed a latent clap debug assertion in the `decompile` subcommand: the positional `OUTPUT`
+  argument and `-o/--output` shared the same id (the positional is now `dest`).
+- 0.3.1's dependency refresh remains: cure 0.4.2, brotli 9.1.1, windows-sys 0.61.2, clap 4.6.7.
+- Verified: **1,144 pass / 0 fail / 8 skip** across 32 Node lines × 36 fixtures plus **160 whole
+  scripts**, 66 cargo tests, clippy clean.
 
 ### Install
 

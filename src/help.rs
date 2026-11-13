@@ -100,6 +100,20 @@ pub fn help_text() -> String {
              \x20                       默认**不带**，只输出还原出来的代码本身",
         ),
         (
+            "      --skip-oversized <N>\n\
+             \x20                       emit a stub for functions whose bytecode is longer than N\n\
+             \x20                       bytes (decompile)",
+            "      --skip-oversized <N>\n\
+             \x20                       字节码超过 N 字节的函数只发占位注释，不再结构化（decompile）",
+        ),
+        (
+            "      --continue-on-error\n\
+             \x20                       emit a stub and keep going when one function fails\n\
+             \x20                       (decompile)",
+            "      --continue-on-error\n\
+             \x20                       单个函数反编译失败时发占位注释并继续（decompile）",
+        ),
+        (
             "      --filter <substr> only functions whose name contains substr (disasm)",
             "      --filter <子串>   只输出名字含该子串的函数（disasm）",
         ),
@@ -222,6 +236,19 @@ pub fn subcommand_help(name: &str) -> Option<String> {
                      \x20                       output runs under node; off by default",
                     "      --runtime         保留可运行前导（`__runtime` 占位实现），产物能直接跑；\n\
                      \x20                       默认不带，只输出还原出来的代码",
+                ),
+                (
+                    "      --skip-oversized <N>\n\
+                     \x20                       emit a stub for functions whose bytecode is longer\n\
+                     \x20                       than N bytes",
+                    "      --skip-oversized <N>\n\
+                     \x20                       字节码超过 N 字节的函数只发占位注释，不再结构化",
+                ),
+                (
+                    "      --continue-on-error\n\
+                     \x20                       emit a stub and keep going when one function fails",
+                    "      --continue-on-error\n\
+                     \x20                       单个函数反编译失败时发占位注释并继续",
                 ),
                 (
                     "      --quiet           suppress per-file progress (directory input)",
