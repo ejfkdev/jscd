@@ -3712,10 +3712,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 }
                 self.regs[r as usize] = Some(Expr::Ident(param.clone()));
             }
-            for j in k..=join_idx {
-                if j != join_idx {
-                    self.instrs[j].name = "__gskip".into();
-                }
+            for ins in self.instrs.iter_mut().take(join_idx).skip(k) {
+                ins.name = "__gskip".into();
             }
             self.instrs[join_idx].name = "__pregs".into();
             k = join_idx + 1;
@@ -4821,8 +4819,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                     for st in inner_starts {
                         self.used_handler_starts.push(st as usize);
                     }
-                    for k in catch_idx..disp {
-                        self.instrs[k].name = "__gskip".into();
+                    for ins in self.instrs.iter_mut().take(disp).skip(catch_idx) {
+                        ins.name = "__gskip".into();
                     }
                     if std::env::var("JSCD_DBG_GEN").is_ok() {
                         eprintln!("[async6] 跳过 catch 处理器 {catch_idx}..{disp}");
@@ -4981,8 +4979,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                         self.instrs[*k].name = "__greturn".into();
                     }
                     if !cand.is_empty() {
-                        for k in disp..n {
-                            self.instrs[k].name = "__gskip".into();
+                        for ins in self.instrs.iter_mut().take(n).skip(disp) {
+                            ins.name = "__gskip".into();
                         }
                     }
                     if std::env::var("JSCD_DBG_ASYNC").is_ok() {
@@ -5028,8 +5026,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
                 }
                 if is_reject {
                     consume.push(h.start);
-                    for j in ti..=block_end {
-                        self.instrs[j].name = "__gskip".into();
+                    for ins in self.instrs.iter_mut().take(block_end + 1).skip(ti) {
+                        ins.name = "__gskip".into();
                     }
                     if std::env::var("JSCD_DBG_ASYNC").is_ok() {
                         eprintln!("[async-rej] 消费隐式 reject handler ({},{},{}) 块={ti}..={block_end}", h.start, h.end, h.target);
@@ -5746,9 +5744,10 @@ impl<'a, 'b> FnCtx<'a, 'b> {
         let body_real = body_start + 1;
         self.acc = Some(Expr::Reg(var_reg));
         if std::env::var("JSCD_DBG_FORIN").is_ok() {
-            for k in j..(back_idx + 1).min(self.instrs.len()) {
-                let b = self.instrs[k].name.split('.').next().unwrap_or("").to_string();
-                eprintln!("[forin] idx={k} off={} {b}", self.instrs[k].offset);
+            let end = (back_idx + 1).min(self.instrs.len());
+            for (k, ins) in self.instrs.iter().enumerate().take(end).skip(j) {
+                let b = ins.name.split('.').next().unwrap_or("").to_string();
+                eprintln!("[forin] idx={k} off={} {b}", ins.offset);
             }
             eprintln!("[forin] body_real={body_real} step_idx={step_idx} back_idx={back_idx} exit={exit_idx}");
         }
@@ -5780,8 +5779,8 @@ impl<'a, 'b> FnCtx<'a, 'b> {
 
     /// `ForInNext` 之后承载键的那个寄存器（Star 序列里的第一个）。
     fn loop_var_reg(&self, k: usize) -> Option<u32> {
-        for j in k..(k + 3).min(self.instrs.len()) {
-            let ins = &self.instrs[j];
+        let end = (k + 3).min(self.instrs.len());
+        for ins in self.instrs.iter().take(end).skip(k) {
             let b = ins.name.split('.').next().unwrap_or(&ins.name);
             if b == "Star" {
                 if let Some(Operand::Reg(r)) = ins.operands.first() {
@@ -6448,8 +6447,9 @@ impl<'a, 'b> FnCtx<'a, 'b> {
     /// 在 [start, limit) 内找"完成码设置"起点（`LdaSmi 1` 的前一条 Star）。
     fn completion_setup_start(&self, start: usize, limit: usize) -> Option<usize> {
         let mut found = None;
-        for k in start..limit.min(self.instrs.len()) {
-            let b = self.instrs[k].name.split('.').next().unwrap_or(&self.instrs[k].name);
+        let end = limit.min(self.instrs.len());
+        for (k, ins) in self.instrs.iter().enumerate().take(end).skip(start) {
+            let b = ins.name.split('.').next().unwrap_or(&ins.name);
             if (b == "LdaSmi" || b == "LdaZero") && k > start {
                 let prev = &self.instrs[k - 1];
                 if prev.name == "Star" || (prev.name.starts_with("Star") && prev.name[4..].chars().all(|c| c.is_ascii_digit())) {
