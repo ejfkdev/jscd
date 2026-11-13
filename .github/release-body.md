@@ -1,22 +1,19 @@
 **jscd @VERSION@** — reverse bytenode-compiled `.jsc` (V8 code cache) back to JavaScript.
 Static parsing: no patched V8, no Node runtime, no subprocesses.
 
-### What's new in 0.3.2
+### What's new in 0.3.3
 
-- **Huge functions no longer stall `decompile`.** Loop detection used to rescan the whole function
-  for every instruction (O(n²)); back edges and jump targets are now computed once per function.
-  A synthetic 465 KB function went from **35.2 s to 2.34 s** with byte-identical output; a 3.4 MB /
-  12,002-function bundle finishes in **3.5 s**. This addresses
-  [issue #4](https://github.com/ejfkdev/jscd/issues/4).
-- **`--skip-oversized <N>`** emits a stub for functions whose bytecode is longer than N bytes, and
-  **`--continue-on-error`** emits a stub and keeps going when a single function fails, so one
-  pathological function no longer costs the whole file. Stubs are `function name() { /* [jscd] … */ }`;
-  `--runtime` keeps the full comment, the default output keeps the function shell.
-- Fixed a latent clap debug assertion in the `decompile` subcommand: the positional `OUTPUT`
-  argument and `-o/--output` shared the same id (the positional is now `dest`).
-- 0.3.1's dependency refresh remains: cure 0.4.2, brotli 9.1.1, windows-sys 0.61.2, clap 4.6.7.
+- **Large bundles now decompile correctly, not just quickly.** Scopes with 75+ context-local
+  names use V8's `NameToIndexHashTable`; jscd read its capacity and entry slots at the wrong
+  offsets, so large module bundles produced `__ctx.ctxN` placeholders and `ReferenceError`s at run
+  time. The hash-table layout is fixed, including `Repeat(undefined)` empty slots. A webpack-shaped
+  synthetic bundle (5,000 modules, 300 top-level variables) now produces output whose stdout is
+  byte-identical to the original program.
+- A new 80-variable fixture (`tests/fixtures/jsc/largescope.jsc`) guards the hash-table path.
+- 0.3.2's huge-function speedup and `--skip-oversized` / `--continue-on-error` options are included:
+  back edges/jump targets are computed once per function (465 KB function: 35.2 s → 2.34 s).
 - Verified: **1,144 pass / 0 fail / 8 skip** across 32 Node lines × 36 fixtures plus **160 whole
-  scripts**, 66 cargo tests, clippy clean.
+  scripts**, 67 cargo tests, clippy clean.
 
 ### Install
 

@@ -1706,3 +1706,18 @@ clap 的 debug_assert 直接 panic（默认 `jscd <INPUT>` 形态绕过了它）
 - 32 条 Node 线 × 36 fixture = **1,144 pass / 0 fail / 8 skip** + **160 整脚本**；
 - `cargo test` **66 条**、clippy 零告警；
 - 大函数产物在修复前后 `cmp` 完全一致。
+
+## 20. 大作用域的 NameToIndexHashTable 读错（0.3.3，2026-11-13）
+
+§19 只解决了"大函数太慢"。用贴近 webpack 模块装配形态的合成包验证时发现：**输出虽然产生了，
+但跑不起来**——顶层 `const __cache = {}` 在产物里变成 `__ctx.ctx302`，`req()` 里却读 `__cache`，
+直接 ReferenceError。根因是 ≥75 个 context 局部名时 V8 改用 `NameToIndexHashTable`，而
+`name_from_locals_table` 的布局读错：
+
+- numberOfElements 在槽 2、numberOfDeleted 在槽 3、**capacity 在槽 4**（旧代码读槽 3，恒为 0）；
+- 键值对从**槽 5**开始（旧代码从槽 3 开始，把数值域当键）；
+- 空槽是 `Repeat(undefined)`，必须用 `unit_at_ts` 处理覆盖区，否则第一个空槽后就找不到真名。
+
+修正后：5000 个模块、300 个顶层变量的 webpack 形态 bundle，反编译产物与原代码 stdout
+**逐字一致**（5531）。80 变量的小 fixture 也已入库（`tests/fixtures/jsc/largescope.jsc`），
+防止布局再次回退。`cargo test` 67 条、32 线全矩阵不变。

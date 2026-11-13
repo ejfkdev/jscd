@@ -420,6 +420,22 @@ fn electron_11_to_45_closures_decompile() {
 }
 
 #[test]
+fn large_scope_names_come_from_hash_table() {
+    // ≥75 个 context 局部名时 V8 改用 NameToIndexHashTable；布局读错会让大文件
+    // 的变量名全部退化成 __ctx.ctxN / ReferenceError（issue #4 的实际可用性）。
+    let o = jscd(&[
+        "decompile",
+        "tests/fixtures/jsc/largescope.jsc",
+        "--runtime",
+    ]);
+    assert!(o.status.success(), "{}", err(&o));
+    let s = out(&o);
+    assert!(s.contains("v79 = 79"), "{s}");
+    assert!(s.contains("return v79"), "{s}");
+    assert!(!s.contains("__ctx.ctx79"), "{s}");
+}
+
+#[test]
 fn oversized_and_failed_functions_can_be_skipped() {
     // 大函数降级：只发占位函数，不让整个文件被拖垮（issue #4）。
     let valid = "tests/fixtures/jsc/electron45-main-v8_15.6.75.25.jsc";

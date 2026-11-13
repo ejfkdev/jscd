@@ -1720,25 +1720,33 @@ var __uncompiled = new Proxy({}, { get: () => function () {} });
 
     /// 从 NameToIndexHashTable 里按槽号找变量名（大作用域用）。
     pub fn name_from_locals_table(&self, table_id: ObjId, want_index: usize) -> Option<String> {
-        // HashTable: map, numberOfElements(Smi)@ts, numberOfDeleted(Smi)@2ts, capacity(Smi)@3ts,
-        //            之后每项两槽 (key, value)；kElementsStartIndex = 3
-        let n = self
-            .cache
-            .raw_at_ts(table_id, 2 * self.ts, self.ts, self.ts)
-            .and_then(crate::serializer::decode_smi_bytes)
-            .unwrap_or(0) as usize;
+        // NameToIndexHashTable 的布局（V8 `HashTable`）：
+        //   槽 0 map；槽 1 长度/raw；槽 2 numberOfElements(Smi)；槽 3 numberOfDeleted(Smi)；
+        //   槽 4 capacity(Smi)；槽 5 起是 (key, value) 对。
+        // 之前按 kElementsStartIndex=3 读，capacity 永远读成 0，键也从数值域开始读，
+        // 大作用域（≥75 个 context 名）因此一个名字都解不出来。
         let cap = self
             .cache
-            .raw_at_ts(table_id, 3 * self.ts, self.ts, self.ts)
+            .raw_at_ts(table_id, 4 * self.ts, self.ts, self.ts)
             .and_then(crate::serializer::decode_smi_bytes)
             .unwrap_or(0) as usize;
-        // 元素区起点 = kElementsStartIndex(=3) * ts + 数据区；实际首项在 4*ts
-        for e in 0..(n.min(cap).max(cap.min(256))) {
-            let key_slot = 3 + 2 * e;
+        // 空槽在码缓存里是 Repeat（同一个 undefined 连续多次）；`unit_at_ts` 能把 Repeat
+        // 覆盖区也映射回同一个值，逐槽遍历才不会在第一个空槽后就断掉。
+        let max_e = cap.min(self.cache.array_len(table_id).saturating_sub(5) / 2);
+        for e in 0..max_e {
+            let key_slot = 5 + 2 * e;
             let val_slot = key_slot + 1;
-            let key = match self.cache.slot_at(table_id, key_slot).and_then(|v| v.as_ref()) {
-                Some(r) => crate::disasm::name_of_ref_ro(self.cache, self.table, self.ro_map.as_deref(), r),
-                None => None,
+            let key = match self.cache.unit_at_ts(table_id, key_slot * self.ts, self.ts) {
+                Some(SlotValue::Ref(r)) => {
+                    crate::disasm::name_of_ref_ro(self.cache, self.table, self.ro_map.as_deref(), *r)
+                }
+                Some(SlotValue::Repeat(_, inner)) => match inner.as_ref() {
+                    SlotValue::Ref(r) => {
+                        crate::disasm::name_of_ref_ro(self.cache, self.table, self.ro_map.as_deref(), *r)
+                    }
+                    _ => None,
+                },
+                _ => None,
             };
             let val = self
                 .cache
